@@ -1,2 +1,1 @@
-# iSPTC
-inSecure Plain Text Chat
+# iSPTC - inSecure Plain Text Chat
