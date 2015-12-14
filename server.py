@@ -2,6 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
+ver = '1.12.14'
 
 def send_user_list(s,conn,data):
     sendlist = ''
@@ -37,7 +38,7 @@ def clientHandler(i):
     conn, addr = s.accept() # awaits for a client to connect and then accepts
     print addr, " is now connected! \n" # telling us a client is connected and address
     threadip.append([str(i),conn])
-    conn.sendall('SSERVER::Welcome to inSecure Plain Text Chat')
+    conn.sendall('SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver)
     while 1:
         data = recieveData(s, conn)
         if not data:
