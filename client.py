@@ -4,6 +4,12 @@ from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform
+OS = platform.system()
+sys_path = os.getcwd()
+if OS is 'Windows':
+    import winsound
+    
+ver = '1.12.15'
 
 def readf(filename):
     file = filename
@@ -53,13 +59,16 @@ def write_settings(text_find,new_value):
 def play_sound(name,ignore):
     global OS,sound_interval,dsound_interval
     if sound_interval < 0.5 or ignore == True:
-        if OS == 'Linux':
-            Thread(target=sound_thread,args=(name,)).start()
-            if ignore == False:
-                sound_interval = dsound_interval
+        Thread(target=sound_thread,args=(name,)).start()
+        if ignore == False:
+            sound_interval = dsound_interval
 
 def sound_thread(name):
-    os.popen('aplay %s' % (name))
+    global OS
+    if OS == 'Linux':
+        os.popen('aplay %s' % ('load/'+name))
+    elif OS == 'Windows':
+        winsound.PlaySound(sys_path+"\\"+"load\\"+name,winsound.SND_FILENAME)
 
 class Test(Text):
     def __init__(self, master, **kw):
@@ -101,7 +110,7 @@ def get_cur_time():
 def recv_thread(s):
     global action_time
     while action_time is True:
-        data = s.recv(1024)
+        data = s.recv(2048)
         if not data:
             break
         data_list.append(data+'\n')
@@ -138,7 +147,7 @@ def join_server(typing):
             joinaddr = str(read_settings('joinaddr='))
             TCP_IP = joinaddr
             TCP_PORT = 8001
-        BUFFER_SIZE = 1024
+        BUFFER_SIZE = 2048
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print 'joining',TCP_IP, TCP_PORT
         s.connect((TCP_IP, TCP_PORT))
@@ -147,7 +156,9 @@ def join_server(typing):
         sleep(1)
         s.send('USRINFO::'+username)
     except:
+        T.config(yscrollcommand=S.set,state="normal")
         T.insert(END, get_cur_time()+"         WARNING: Can't join\n", 'redcol')
+        T.config(yscrollcommand=S.set,state="disabled")
         
 def enter_text(event):
     global s
@@ -160,7 +171,9 @@ def enter_text(event):
         try:
             s.send('MESSAGE::'+text)
         except:
+            T.config(yscrollcommand=S.set,state="normal")
             T.insert(END, get_cur_time()+'         WARNING: Not connected\n', 'redcol')
+            T.config(yscrollcommand=S.set,state="disabled")
 
 def leave_server():
     global s
@@ -170,12 +183,16 @@ def leave_server():
         sleep(0.5)
         s.close()
         s = ''
+        T.config(yscrollcommand=S.set,state="normal")
         T.insert(END, get_cur_time()+'         WARNING: Left server\n', 'redcol')
+        T.config(yscrollcommand=S.set,state="disabled")
         User_area.config(yscrollcommand=S.set,state="normal")
         User_area.delete(1.0,END)
         User_area.config(yscrollcommand=S.set,state="disabled")
     except:
+        T.config(yscrollcommand=S.set,state="normal")
         T.insert(END, get_cur_time()+'         WARNING: Not connected\n', 'redcol')
+        T.config(yscrollcommand=S.set,state="disabled")
 
 def change_name(new_name):
     global username, s
@@ -234,7 +251,6 @@ except:
     username = 'User'+str(randrange(1,999,1))
 ## Setting global vars
 sound_interval = 0
-OS = platform.system()
 action_time = True
 data_list = []
 msg_recv = 0
@@ -247,6 +263,7 @@ root.geometry("1000x700")
 maxsize = "5x5"
 textt = StringVar()
 textt.set("")
+###Toolbar
 menu = Menu(root,tearoff=0)
 root.config(menu=menu)
 menu1 = Menu(menu,tearoff=0)
@@ -261,6 +278,7 @@ helpmenu = Menu(menu,tearoff=0)
 menu.add_cascade(label='Help', menu=helpmenu)
 helpmenu.add_command(label='About..', command=About)
 
+### Window widgets
 E = Entry(textvariable=textt)
 User_area = Text(root, height=44, width=20)
 S = Scrollbar(root, width=15)
@@ -331,11 +349,17 @@ def task():
 
 te = Test(root)
 ## Sets a window icon
-try:
-    img = PhotoImage(file='folder.png')
-    root.tk.call('wm', 'iconphoto', root._w, img)
-except:
-    print "Not linux"
+if OS is 'Windows':
+    try:
+        root.iconbitmap(sys_path+"\\"+"load\\windows.ico")
+    except:
+        print "Couldn't load windows icon"
+else:
+    try:
+        img = PhotoImage(file='load/linux.png')
+        root.tk.call('wm', 'iconphoto', root._w, img)
+    except:
+        print "Couldn't load Linux icon"
 
 root.protocol('WM_DELETE_WINDOW', closewin)
 root.after(250, task)

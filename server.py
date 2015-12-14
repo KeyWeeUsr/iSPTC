@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '1.12.13'
+ver = '1.12.15'
 
 def remove_spaces(username):
     for x in username:
@@ -37,7 +37,7 @@ def send_user_list(s,conn,oldusername,username):
 
 def recieveData(s, conn):# function to recieve data
     try:
-        data = conn.recv(1024) # conn.recv(1024) waits for data of 1024 or less bytes and stores it in data
+        data = conn.recv(2048) # conn.recv(2048) waits for data of 2048 or less bytes and stores it in data
 ##        print conn, data, "\n" # print the connection and data sent
     except:
         data = 'close::'
