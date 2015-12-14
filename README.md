@@ -1,5 +1,6 @@
 # iSPTC - inSecure Plain Text Chat
 ![Server screenshot](https://github.com/Bakterija/iSPTC/tree/master/load/server_screenshot.png)
+
 ![Client screenshot](https://github.com/Bakterija/iSPTC/tree/master/load/client_screenshot.png)
 
 ##Info

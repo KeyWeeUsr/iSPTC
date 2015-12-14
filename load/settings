@@ -1,2 +1,14 @@
 ## Join last server address
 joinaddr=127.0.0.1
+
+## Username
+username=human
+
+## How many symbols to match before marking as message for you -3/-2/-1/0(all)
+symbol_match=-1
+
+## Enable sound True/False
+sound=True
+
+## Minimum interval between chat sounds (seconds)
+sound_interval=10.0

@@ -3,7 +3,7 @@ from Tkinter import *
 from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
-import socket,os
+import socket,os,platform
 
 def readf(filename):
     file = filename
@@ -33,12 +33,8 @@ def edit_settings(text,text_find,new_value):
     return newlist
 
 def read_settings(text_find):
-    try:
-        a = readf('load/settings')
-        a = get_settings(a,text_find)
-    except:
-        print 'No settings found'
-        a = 'not found'
+    a = readf('load/settings')
+    a = get_settings(a,text_find)
     return a
 
 def get_settings(text,text_find):
@@ -53,6 +49,17 @@ def write_settings(text_find,new_value):
     a = edit_settings(a,text_find,new_value)
     text = a = '\n'.join(str(e) for e in a)
     savef(text,'load/settings')
+
+def play_sound(name,ignore):
+    global OS,sound_interval,dsound_interval
+    if sound_interval < 0.5 or ignore == True:
+        if OS == 'Linux':
+            Thread(target=sound_thread,args=(name,)).start()
+            if ignore == False:
+                sound_interval = dsound_interval
+
+def sound_thread(name):
+    os.popen('aplay %s' % (name))
 
 class Test(Text):
     def __init__(self, master, **kw):
@@ -89,7 +96,7 @@ def closewin():
         root.destroy()
 
 def get_cur_time():
-    return strftime("%H:%M:%S", gmtime())
+    return strftime("%H:%M:%S")
 
 def recv_thread(s):
     global action_time
@@ -149,8 +156,9 @@ def enter_text(event):
     text = textt.get()
     textt.set('')
     if len(text) > 0:
+        play_sound('beep1.wav',True)
         try:
-            s.send(text)
+            s.send('MESSAGE::'+text)
         except:
             T.insert(END, get_cur_time()+'         WARNING: Not connected\n', 'redcol')
 
@@ -171,10 +179,10 @@ def leave_server():
 
 def change_name(new_name):
     global username, s
-    print username,new_name
     new_name = new_name.get()
     username = new_name
     root.title("iSPTC - "+new_name)
+    write_settings('username',username)
     try:
         s.send('USRINFO::'+username)
     except:
@@ -193,18 +201,43 @@ def set_username():
                                                                 uw.destroy()})
     button.pack()
     
+def find_2name(text,name):
+    text2 = text[:15]
+    b = text.find(name)
+    if b is not -1:
+        return False
+    name = name[:-1]
+    text = text[15:]
+    text = text.lower()
+    b = text.find(name.lower())
+    if b is not -1:
+        play_sound('beep1.wav',False)
+        return True
+    else:
+        return False
+    
     
 def About():
     print 'about'
 
 
+
 ## Loading from settings file
+dsound_interval = float(6.0)
+dsound_interval=float(read_settings('sound_interval='))
+try:
+    username = str(read_settings('username='))
+    if username == 'default':
+        username = 'User'+str(randrange(1,999,1))
+except:
+    print "Couldn't load username"
+    username = 'User'+str(randrange(1,999,1))
 ## Setting global vars
+sound_interval = 0
+OS = platform.system()
 action_time = True
 data_list = []
 msg_recv = 0
-username = 'User'+str(randrange(1,999,1))
-print 'username is: ',username
 
 ## Tkinter below
 root = Tk()
@@ -242,17 +275,24 @@ S.config(command=T.yview)
 S2.config(command=User_area.yview)
 User_area.config(yscrollcommand=S2.set,state="normal")
 User_area.bind( '<Configure>', maxsize )
-T.config(yscrollcommand=S.set,state="normal")
+T.config(yscrollcommand=S.set,state="disabled")
 ##T.bind( '<Configure>', maxsize )
 T.tag_configure('redcol', foreground='red')
 T.tag_configure('bluecol', foreground='blue')
+T.tag_configure('greencol', foreground='green')
 
+def prindata(aa):
+    print data_list
 root.bind('<Return>', enter_text)
-##root.bind('<Escape>', sclose)
+root.bind('<Escape>',prindata)
 
 def task():
-    global msg_recv
+    global msg_recv,sound_interval,dsound_interval,username
     dtime = get_cur_time()
+    if sound_interval > 0:
+        sound_interval-=0.25
+        
+
     if msg_recv < len(data_list):
         for x in range(msg_recv,len(data_list)):
             if data_list[x][:9] == 'SSERVER::':
@@ -261,7 +301,12 @@ def task():
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
+                T.config(yscrollcommand=S.set,state="disabled")
+            elif data_list[x][:9] == 'CLOSING::':
                 T.config(yscrollcommand=S.set,state="normal")
+                T.insert(END, get_cur_time()+'         WARNING: Server shutting down\n', 'redcol')
+                leave_server()
+                T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'USRLIST::':
                 User_area.config(yscrollcommand=S.set,state="normal")
                 User_area.delete(1.0,END)
@@ -269,13 +314,18 @@ def task():
                 User_area.config(yscrollcommand=S.set,state="disabled")
             else:
                 T.config(yscrollcommand=S.set,state="normal")
-                T.insert(END, dtime+' '+data_list[x])
+                nfind = find_2name(data_list[x],username)
+                if nfind is True:
+                    T.insert(END, dtime+' '+data_list[x],'greencol')
+                else:
+                    T.insert(END, dtime+' '+data_list[x],)
+                nfind = False
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
-                T.config(yscrollcommand=S.set,state="normal")
+                T.config(yscrollcommand=S.set,state="disabled")
             msg_recv +=1
-    root.after(500, task)  # reschedule event in 0.5 second
+    root.after(250, task)  # reschedule event in 0.5 second
 
 
 
@@ -288,6 +338,6 @@ except:
     print "Not linux"
 
 root.protocol('WM_DELETE_WINDOW', closewin)
-root.after(500, task)
+root.after(250, task)
 root.mainloop()
 
