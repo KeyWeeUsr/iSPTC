@@ -33,8 +33,12 @@ def edit_settings(text,text_find,new_value):
     return newlist
 
 def read_settings(text_find):
-    a = readf('load/settings')
-    a = get_settings(a,text_find)
+    try:
+        a = readf('load/settings')
+        a = get_settings(a,text_find)
+    except:
+        print 'No settings found'
+        a = 'not found'
     return a
 
 def get_settings(text,text_find):
