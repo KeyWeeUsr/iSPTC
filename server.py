@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '1.12.15'
+ver = '0.8'
 def read_server_settings():
     print 'elo'
 def remove_spaces(username):

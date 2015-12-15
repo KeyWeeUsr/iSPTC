@@ -4,13 +4,23 @@ from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform
-OS = platform.system()
 sys_path = os.getcwd()
+bat_file = False
+try:
+    argv = sys.argv[1]
+    b = argv.find('bat_file')
+    if b is not -1:
+        sys_path+="\\iSPTC\\"
+        sys_path = str(sys_path)
+        bat_file=True
+except:
+    pass
+OS = platform.system()
 print sys_path
 if OS is 'Windows':
     import winsound
     
-ver = '1.12.15'
+ver = '0.8'
 
 def set_winicon(window,name):
     global OS
@@ -54,7 +64,11 @@ def edit_settings(text,text_find,new_value):
     return newlist
 
 def read_settings(text_find):
-    a = readf('load/settings')
+    global bat_file, sys_path
+    if bat_file is True:
+        a = readf(sys_path+'load/settings')
+    else:
+        a = readf('load/settings')
     a = get_settings(a,text_find)
     return a
 
@@ -66,10 +80,17 @@ def get_settings(text,text_find):
     return c
 
 def write_settings(text_find,new_value):
-    a = readf('load/settings')
-    a = edit_settings(a,text_find,new_value)
-    text = a = '\n'.join(str(e) for e in a)
-    savef(text,'load/settings')
+    global bat_file, sys_path
+    if bat_file is True:
+        a = readf(sys_path+'load/settings')
+        a = edit_settings(a,text_find,new_value)
+        text = a = '\n'.join(str(e) for e in a)
+        savef(text,sys_path+'load/settings')
+    else:
+        a = readf('load/settings')
+        a = edit_settings(a,text_find,new_value)
+        text = a = '\n'.join(str(e) for e in a)
+        savef(text,'load/settings')
 
 def play_sound(name,ignore):
     if sound_settings[0] == 1:
@@ -188,7 +209,15 @@ def enter_text(event):
 ##    T.config(yscrollcommand=S.set,state="normal")
 ##    T.config(yscrollcommand=S.set,state="disabled")
     text = textt.get()
-    textt.set('')
+    if len(text) > 0:
+        if text[0] is '@':
+            b = text.find(' ')
+            if b is not -1:
+                textt.set(text[:b]+" ")
+            else:
+                textt.set(text+" ")
+        else:
+            textt.set('')
     if len(text) > 0:
         if sound_settings[1] == True:
             play_sound('beep1.wav',True)
@@ -221,13 +250,18 @@ def leave_server():
 def change_name(new_name):
     global username, s
     new_name = new_name.get()
-    username = new_name
-    root.title("iSPTC - "+new_name)
-    write_settings('username',username)
-    try:
-        s.send('USRINFO::'+username)
-    except:
-        pass
+    if len(new_name) <3:
+        T.config(yscrollcommand=S.set,state="normal")
+        T.insert(END, get_cur_time()+'         WARNING: Name is too short\n', 'redcol')
+        T.config(yscrollcommand=S.set,state="disabled")
+    else:
+        username = new_name
+        root.title("iSPTC - "+new_name)
+        write_settings('username',username)
+        try:
+            s.send('USRINFO::'+username)
+        except:
+            pass
     
 def set_username():
     new_name = StringVar()
@@ -243,54 +277,69 @@ def set_username():
                                                                 uw.destroy()})
     button.pack()
     
-def change_sound_set(a,b,c):
+def change_sound_set(a,b,c,d):
+    global dsound_interval
     sound_settings[0] = a
     sound_settings[1] = b
     sound_settings[2] = c
+    dsound_interval = float(d)
     write_settings('enable_sound',a)
     write_settings('entry_enabled',b)
     write_settings('user_textbox',c)
+    write_settings('sound_interval',d)
 
 def sound_menu():
+    global dsound_interval
     sw = Toplevel()
     set_winicon(sw,'icon')
     sw.title("Sound options")
-    sw.minsize(280,140)
+    sw.minsize(280,180)
     sw.resizable(FALSE,FALSE)
     ### 0all_sound, 1entry, 2user textbox
     sound_enabled = IntVar()
     entry_enabled = IntVar()
     user_textbox = IntVar()
+    snd_interval = IntVar()
     sound_enabled.set(sound_settings[0])
     entry_enabled.set(sound_settings[1])
     user_textbox.set(sound_settings[2])
     Checkbutton(sw, text="Enable sound", variable=sound_enabled).grid(row=1, sticky=W,padx=20)
     Checkbutton(sw, text="Entry sound", variable=entry_enabled).grid(row=2, sticky=W,padx=20)
     Checkbutton(sw, text="Textbox sound", variable=user_textbox).grid(row=3, sticky=W,padx=20)
-    button = Button(sw, text='Done', width=20,
-                    command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),
-                                                      user_textbox.get()),sw.destroy()})
-    button.grid(row=4, padx=60,pady=10)
+    snd_interval = Scale(sw, from_=0, to=30,length=120, orient=HORIZONTAL)
+    Label(sw, text="Sound min interval").grid(row=1,padx=160)
+    snd_interval.grid(row=2,padx=160)
+    snd_interval.set(int(dsound_interval))
+    button = Button(sw, text='Done', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
+    button.grid(row=6, padx=60,pady=30)
 
-def change_other_settings(a):
-    global autojoin
+def change_other_settings(a,b):
+    global task_loop_interval,autojoin
     autojoin = a
+    task_loop_interval = b
     write_settings('autojoin',a)
+    write_settings('chat_interval',b)
     
 def other_menu():
+    global task_loop_interval, autojoin
     sm = Toplevel()
     set_winicon(sm,'icon')
     sm.title("Other options")
     sm.minsize(280,140)
     sm.resizable(FALSE,FALSE)
-    global autojoin
     autojoin_enabled = IntVar()
+    task_int = IntVar()
     autojoin_enabled.set(autojoin)
-    Checkbutton(sm, text="Enable autojoin", variable=autojoin_enabled).grid(row=1, sticky=W,padx=20)
+    Checkbutton(sm, text="Enable autojoin", variable=autojoin_enabled).pack(side=TOP)
+##    grid(row=1, sticky=W)
+    task_int = Scale(sm, from_=0, to=800,length=160, orient=HORIZONTAL)
+    Label(sm, text="Chat refresh ms").pack(side=TOP)
+    task_int.pack(side=TOP)
+    task_int.set(task_loop_interval)
     button = Button(sm, text='Done', width=20,
-                    command=lambda: {change_other_settings(autojoin_enabled.get()),
+                    command=lambda: {change_other_settings(autojoin_enabled.get(),task_int.get()),
                                                            sm.destroy()})
-    button.grid(row=4, padx=60,pady=10)
+    button.pack(side=BOTTOM)
 
     
 def find_2name(text,name):
@@ -308,8 +357,10 @@ def find_2name(text,name):
         return True
     else:
         return False
-    
-    
+
+def reset_entry(var):
+    textt.set('')
+      
 def About():
     print 'about'
 
@@ -318,6 +369,8 @@ def About():
 ## Loading from settings file
 ### 0all_sound, 1entry, 2user textbox
 sound_settings = [1,1,1]
+task_loop_interval = 500
+task_loop_interval = int(read_settings('chat_interval='))
 sound_settings[0] = int(read_settings('enable_sound='))
 sound_settings[1] = int(read_settings('entry_enabled='))
 sound_settings[2] = int(read_settings('user_textbox='))
@@ -389,16 +442,15 @@ T.tag_configure('greencol', foreground='green')
 T.tag_configure('purplecol', foreground='purple')
 User_area.tag_configure('purplecol', foreground='purple')
 
-def prindata(aa):
-    print data_list
+
 root.bind('<Return>', enter_text)
-root.bind('<Escape>',prindata)
+root.bind('<Escape>', reset_entry)
 
 def task():
-    global msg_recv,sound_interval,dsound_interval,username
+    global msg_recv,sound_interval,dsound_interval,username, task_loop_interval
     dtime = get_cur_time()
     if sound_interval > 0:
-        sound_interval-=0.25
+        sound_interval-=task_loop_interval/1000
         
 
     if msg_recv < len(data_list):
@@ -433,7 +485,7 @@ def task():
                     T.yview(END)
                 T.config(yscrollcommand=S.set,state="disabled")
             msg_recv +=1
-    root.after(250, task)  # reschedule event in 0.5 second
+    root.after(task_loop_interval, task)  # reschedule event in 0.5 second
 
 
 
@@ -441,7 +493,7 @@ te = Test(root)
 set_winicon(root,'icon')
 
 root.protocol('WM_DELETE_WINDOW', closewin)
-root.after(250, task)
+root.after(task_loop_interval, task)
 if autojoin == 1:
     join_server(False)
 root.mainloop()
