@@ -9,6 +9,6 @@ executables = [cx_Freeze.Executable("client.py", base = base)]
 cx_Freeze.setup(
     name="iSPTC",
     version="0.97",
-    options={"build_exe": {"packages":["os","platform","socket","threading","Tkinter","time","random"],"include_files":["load/folder.ico"]}},
+    options={"build_exe": {"packages":["os","platform","socket","threading","Tkinter","time","random"],"include_files":["load/windows.ico"]}},
     executables = executables
     )

@@ -3,7 +3,8 @@ from socket import *
 from threading import Thread
 import threading, time
 ver = '1.12.15'
-
+def read_server_settings():
+    print 'elo'
 def remove_spaces(username):
     for x in username:
         if x == ' ':
@@ -16,10 +17,23 @@ def get_list_len(llist):
     cnt = 0
     for x in llist:
         cnt+=1
-        print cnt
     return cnt
 
-def send_user_list(s,conn,oldusername,username):
+def check_duplicate(name):
+    cnt = 0
+    for x in threadip:
+        if x[2] == name:
+            cnt += 1
+    if cnt > 0:
+        cnt += 1
+        name = name+'('+str(cnt)+')'
+        if len(name) > 15:
+            name = name[len(name)-15:]
+        return name
+    else:
+        return name
+
+def send_user_list(s,conn,oldusername,username,addr):
     if oldusername is not '':
         oldusername = remove_spaces(oldusername)
     if username is not '':
@@ -31,7 +45,7 @@ def send_user_list(s,conn,oldusername,username):
         if oldusername is not '':
             broadcastData(s, conn,'SSERVER::'+oldusername+' is now '+username)
         else:
-            broadcastData(s, conn,'SSERVER::'+username+' joined')
+            broadcastData(s, conn,'SSERVER::'+username+'('+addr+')'+' joined')
     time.sleep(0.5)
     broadcastData(s, conn,'USRLIST::'+sendlist[:-1])
 
@@ -47,7 +61,8 @@ def broadcastData(s, conn, data): # function to send Data
 ##    conn.sendall(data)  # sends data received to connection
     for x in threadip:
         try:
-            x[1].sendall(data)
+            if x[2] is not '':
+                x[1].sendall(data)
         except:
             print x[1],' NOT AVAILABLE\n'
 ##    print "Data sent to all clients \n"  # print to inform data was went
@@ -58,7 +73,8 @@ def clientHandler(i):
     username,username_set = '',False
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
     print addr," is now connected! \n"
-    threadip.append([str(i),conn])
+    ## 0Thread, 1connecton, 2usrname, 3ip, 3-2port,4mode
+    threadip.append([str(i),conn,'',[addr[0],addr[1]],1])
     conn.sendall('SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver)
     while 1:
         data = recieveData(s, conn)
@@ -73,7 +89,7 @@ def clientHandler(i):
                 if b is not -1:
                     del threadip[cnt]
                 cnt+=1
-            send_user_list(s,conn,'','')
+            send_user_list(s,conn,'','',addr[0])
             time.sleep(1)
             username2 = remove_spaces(username)
             broadcastData(s, conn, 'SSERVER::'+username2+' left')
@@ -88,7 +104,7 @@ def clientHandler(i):
                 if b is not -1:
                    del threadip[cnt]
                 cnt+=1
-            send_user_list(s,conn,'','')
+            send_user_list(s,conn,'','',addr[0])
             time.sleep(1)
             username2 = remove_spaces(username)
             broadcastData(s, conn, 'SSERVER::'+username2+' left')
@@ -115,16 +131,18 @@ def clientHandler(i):
                         b = x[0].find(str(i))
                         if b is not -1:
                             username2 = remove_spaces(username)
+                            username2 = check_duplicate(username2)
                             x[2] = username2
-                            send_user_list(s,conn,oldusername,username)
+                            send_user_list(s,conn,oldusername,username,addr[0])
                 ## Login username received
                 else:
                     for x in threadip:
                         b = x[0].find(str(i))
                         if b is not -1:
                             username2 = remove_spaces(username)
-                            x.append(username2)
-                            send_user_list(s,conn,'',username)
+                            username2 = check_duplicate(username2)
+                            x[2] = (username2)
+                            send_user_list(s,conn,'',username,addr[0])
                 username_set = True
         
 threads = 10

@@ -6,10 +6,25 @@ from time import strftime,gmtime,sleep
 import socket,os,platform
 OS = platform.system()
 sys_path = os.getcwd()
+print sys_path
 if OS is 'Windows':
     import winsound
     
 ver = '1.12.15'
+
+def set_winicon(window,name):
+    global OS
+    if OS is 'Windows':
+        try:
+            window.iconbitmap(sys_path+"\\"+"load\\"+name+".ico")
+        except:
+            print "Couldn't load windows icon"
+    else:
+        try:
+            img = PhotoImage(file='load/'+name+'.png')
+            window.tk.call('wm', 'iconphoto', window._w, img)
+        except:
+            print "Couldn't load Linux icon"
 
 def readf(filename):
     file = filename
@@ -57,11 +72,12 @@ def write_settings(text_find,new_value):
     savef(text,'load/settings')
 
 def play_sound(name,ignore):
-    global OS,sound_interval,dsound_interval
-    if sound_interval < 0.5 or ignore == True:
-        Thread(target=sound_thread,args=(name,)).start()
-        if ignore == False:
-            sound_interval = dsound_interval
+    if sound_settings[0] == 1:
+        global OS,sound_interval,dsound_interval
+        if sound_interval < 0.5 or ignore == True:
+            Thread(target=sound_thread,args=(name,)).start()
+            if ignore == False:
+                sound_interval = dsound_interval
 
 def sound_thread(name):
     global OS
@@ -78,22 +94,28 @@ class Test(Text):
         self.bind('<Control-v>', self.paste)
         
     def copy(self, event=None):
+        self.config(state="normal")
         self.clipboard_clear()
         text = self.get("sel.first", "sel.last")
         self.clipboard_append(text)
+        self.config(state="disabled")
     
     def cut(self, event):
+        self.config(state="normal")
         self.copy()
         self.delete("sel.first", "sel.last")
+        self.config(state="disabled")
 
     def paste(self, event):
+        self.config(state="normal")
         text = self.selection_get(selection='CLIPBOARD')
         self.insert('insert', text)
+        self.config(state="disabled")
 
 
 def closewin():
     global s, action_time
-    print 'Good bye'
+    print 'Goodbye'
     action_time = False
     try:
         s.send('close::')
@@ -120,12 +142,13 @@ def join_typing():
     jaddr = StringVar()
     jaddr.set(joinaddr)
     jsrv = Toplevel()
+    set_winicon(jsrv,'icon')
     jsrv.title("Server address")
     jsrv.minsize(250,100)
     jsrv.resizable(FALSE,FALSE)
     usrEntry = Entry(jsrv,textvariable=jaddr)
     usrEntry.pack(pady=25)
-    button = Button(jsrv, text='Done', width=20, command=lambda: {join_server(jaddr.get()),
+    button = Button(jsrv, text='Done', width=20,pady=10, command=lambda: {join_server(jaddr.get()),
                                                                 jsrv.destroy()})
     button.pack()
     
@@ -167,7 +190,8 @@ def enter_text(event):
     text = textt.get()
     textt.set('')
     if len(text) > 0:
-        play_sound('beep1.wav',True)
+        if sound_settings[1] == True:
+            play_sound('beep1.wav',True)
         try:
             s.send('MESSAGE::'+text)
         except:
@@ -209,6 +233,7 @@ def set_username():
     new_name = StringVar()
     new_name.set("")
     uw = Toplevel()
+    set_winicon(uw,'icon')
     uw.title("New name")
     uw.minsize(250,100)
     uw.resizable(FALSE,FALSE)
@@ -218,9 +243,59 @@ def set_username():
                                                                 uw.destroy()})
     button.pack()
     
+def change_sound_set(a,b,c):
+    sound_settings[0] = a
+    sound_settings[1] = b
+    sound_settings[2] = c
+    write_settings('enable_sound',a)
+    write_settings('entry_enabled',b)
+    write_settings('user_textbox',c)
+
+def sound_menu():
+    sw = Toplevel()
+    set_winicon(sw,'icon')
+    sw.title("Sound options")
+    sw.minsize(280,140)
+    sw.resizable(FALSE,FALSE)
+    ### 0all_sound, 1entry, 2user textbox
+    sound_enabled = IntVar()
+    entry_enabled = IntVar()
+    user_textbox = IntVar()
+    sound_enabled.set(sound_settings[0])
+    entry_enabled.set(sound_settings[1])
+    user_textbox.set(sound_settings[2])
+    Checkbutton(sw, text="Enable sound", variable=sound_enabled).grid(row=1, sticky=W,padx=20)
+    Checkbutton(sw, text="Entry sound", variable=entry_enabled).grid(row=2, sticky=W,padx=20)
+    Checkbutton(sw, text="Textbox sound", variable=user_textbox).grid(row=3, sticky=W,padx=20)
+    button = Button(sw, text='Done', width=20,
+                    command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),
+                                                      user_textbox.get()),sw.destroy()})
+    button.grid(row=4, padx=60,pady=10)
+
+def change_other_settings(a):
+    global autojoin
+    autojoin = a
+    write_settings('autojoin',a)
+    
+def other_menu():
+    sm = Toplevel()
+    set_winicon(sm,'icon')
+    sm.title("Other options")
+    sm.minsize(280,140)
+    sm.resizable(FALSE,FALSE)
+    global autojoin
+    autojoin_enabled = IntVar()
+    autojoin_enabled.set(autojoin)
+    Checkbutton(sm, text="Enable autojoin", variable=autojoin_enabled).grid(row=1, sticky=W,padx=20)
+    button = Button(sm, text='Done', width=20,
+                    command=lambda: {change_other_settings(autojoin_enabled.get()),
+                                                           sm.destroy()})
+    button.grid(row=4, padx=60,pady=10)
+
+    
 def find_2name(text,name):
     text2 = text[:15]
-    b = text.find(name)
+    b = text2.find(name)
     if b is not -1:
         return False
     name = name[:-1]
@@ -228,7 +303,8 @@ def find_2name(text,name):
     text = text.lower()
     b = text.find(name.lower())
     if b is not -1:
-        play_sound('beep1.wav',False)
+        if sound_settings[2] == 1:
+            play_sound('beep1.wav',False)
         return True
     else:
         return False
@@ -240,6 +316,11 @@ def About():
 
 
 ## Loading from settings file
+### 0all_sound, 1entry, 2user textbox
+sound_settings = [1,1,1]
+sound_settings[0] = int(read_settings('enable_sound='))
+sound_settings[1] = int(read_settings('entry_enabled='))
+sound_settings[2] = int(read_settings('user_textbox='))
 dsound_interval = float(6.0)
 dsound_interval=float(read_settings('sound_interval='))
 try:
@@ -249,6 +330,8 @@ try:
 except:
     print "Couldn't load username"
     username = 'User'+str(randrange(1,999,1))
+autojoin = 0
+autojoin = int(read_settings('autojoin='))
 ## Setting global vars
 sound_interval = 0
 action_time = True
@@ -267,12 +350,17 @@ textt.set("")
 menu = Menu(root,tearoff=0)
 root.config(menu=menu)
 menu1 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Menu',menu=menu1)
+menu.add_cascade(label='Main',menu=menu1)
 menu1.add_command(label='Join', command=join_typing)
 menu1.add_command(label='Join last', command=lambda: join_server(False))
-menu1.add_command(label='Set username', command=set_username)
 menu1.add_command(label='Leave', command=leave_server)
 menu1.add_command(label='Quit', command=closewin)
+
+menu2 = Menu(menu,tearoff=0)
+menu.add_cascade(label='Settings',menu=menu2)
+menu2.add_command(label='Set username', command=set_username)
+menu2.add_command(label='Sound options', command=sound_menu)
+menu2.add_command(label='Other options', command=other_menu)
 
 helpmenu = Menu(menu,tearoff=0)
 menu.add_cascade(label='Help', menu=helpmenu)
@@ -298,6 +386,8 @@ T.config(yscrollcommand=S.set,state="disabled")
 T.tag_configure('redcol', foreground='red')
 T.tag_configure('bluecol', foreground='blue')
 T.tag_configure('greencol', foreground='green')
+T.tag_configure('purplecol', foreground='purple')
+User_area.tag_configure('purplecol', foreground='purple')
 
 def prindata(aa):
     print data_list
@@ -348,20 +438,11 @@ def task():
 
 
 te = Test(root)
-## Sets a window icon
-if OS is 'Windows':
-    try:
-        root.iconbitmap(sys_path+"\\"+"load\\windows.ico")
-    except:
-        print "Couldn't load windows icon"
-else:
-    try:
-        img = PhotoImage(file='load/linux.png')
-        root.tk.call('wm', 'iconphoto', root._w, img)
-    except:
-        print "Couldn't load Linux icon"
+set_winicon(root,'icon')
 
 root.protocol('WM_DELETE_WINDOW', closewin)
 root.after(250, task)
+if autojoin == 1:
+    join_server(False)
 root.mainloop()
 
