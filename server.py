@@ -2,9 +2,20 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.8'
+ver = '0.81'
 def read_server_settings():
-    print 'elo'
+    text = readf('load/server')
+    for x in text:
+        iplist.append(x)
+
+def readf(filename):
+    file = filename
+    f = open(file, 'rU')
+    a = f.read()
+    a = str.splitlines(a)
+    f.close()
+    return a
+
 def remove_spaces(username):
     for x in username:
         if x == ' ':
@@ -33,19 +44,35 @@ def check_duplicate(name):
     else:
         return name
 
+def set_threadip(i,addr,which):
+    level = 1
+    addr = str(addr)
+    for x in iplist:
+        if str(x) == addr:
+            level = 2
+            for x2 in threadip:
+                if x2[0] == i:
+                    x2[which] = 2
+                    return level
+    return level
+
 def send_user_list(s,conn,oldusername,username,addr):
+    ip_sending_enabled = False
     if oldusername is not '':
         oldusername = remove_spaces(oldusername)
     if username is not '':
         username = remove_spaces(username)
     sendlist = ''
     for x in threadip:
-        sendlist+= str(x[2]+'\n')
+        if ip_sending_enabled == True:
+            sendlist+= '[[['+str(x[3][0])+']['+str(x[2])+']['+str(x[4])+']]]'
+        else:
+            sendlist+= '[[['+str(x[2])+']['+str(x[4])+']]]'
     if username is not '':
         if oldusername is not '':
             broadcastData(s, conn,'SSERVER::'+oldusername+' is now '+username)
         else:
-            broadcastData(s, conn,'SSERVER::'+username+'('+addr+')'+' joined')
+            broadcastData(s, conn,'SERVELJ::'+username+'('+addr+')'+' joined')
     time.sleep(0.5)
     broadcastData(s, conn,'USRLIST::'+sendlist[:-1])
 
@@ -71,6 +98,7 @@ def broadcastData(s, conn, data): # function to send Data
 def clientHandler(i):
     global s, threadip, threads
     username,username_set = '',False
+    level = 1
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
     print addr," is now connected! \n"
     ## 0Thread, 1connecton, 2usrname, 3ip, 3-2port,4mode
@@ -80,7 +108,7 @@ def clientHandler(i):
         data = recieveData(s, conn)
         ##Normal messages
         if data[0:9] == 'MESSAGE::':
-            broadcastData(s, conn, username+': '+data[9:])
+            broadcastData(s, conn, 'm::'+str(level)+username+data[9:])
         ## Leaving
         if not data:
             cnt = 0
@@ -92,7 +120,7 @@ def clientHandler(i):
             send_user_list(s,conn,'','',addr[0])
             time.sleep(1)
             username2 = remove_spaces(username)
-            broadcastData(s, conn, 'SSERVER::'+username2+' left')
+            broadcastData(s, conn, 'SERVELJ::'+username2+' left')
             print addr," is now disconnected! \n"
             Thread(target=clientHandler,args=(i,)).start()
             break
@@ -107,7 +135,7 @@ def clientHandler(i):
             send_user_list(s,conn,'','',addr[0])
             time.sleep(1)
             username2 = remove_spaces(username)
-            broadcastData(s, conn, 'SSERVER::'+username2+' left')
+            broadcastData(s, conn, 'SERVELJ::'+username2+' left')
             print addr," is now disconnected! \n"
             Thread(target=clientHandler,args=(i,)).start()
             break
@@ -133,6 +161,10 @@ def clientHandler(i):
                             username2 = remove_spaces(username)
                             username2 = check_duplicate(username2)
                             x[2] = username2
+                            level = set_threadip(str(i),addr[0],4)
+                            print addr[0],' is level ',level,' !'
+                            broadcastData(s, 'nav','SSERVER::'+remove_spaces(username)+' is level'+str(level))
+                            time.sleep(0.5)
                             send_user_list(s,conn,oldusername,username,addr[0])
                 ## Login username received
                 else:
@@ -142,12 +174,19 @@ def clientHandler(i):
                             username2 = remove_spaces(username)
                             username2 = check_duplicate(username2)
                             x[2] = (username2)
+                            level = set_threadip(str(i),addr[0],4)
+                            print addr[0],' is level ',level,' !'
+                            broadcastData(s, 'nav','SSERVER::'+username2+' is level'+str(level))
+                            time.sleep(0.5)
                             send_user_list(s,conn,'',username,addr[0])
                 username_set = True
+        time.sleep(0.1)
         
 threads = 10
 action_time = True
+iplist = []
 threadip = []
+read_server_settings()
 def main(): # main function
     global s, action_time
     s = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
@@ -172,6 +211,10 @@ def main(): # main function
             time.sleep(1)
         elif msg == 'thread':
             print threading.active_count()
+        elif msg == 'lvluser':
+            lvluser = raw_input('Username:')
+            lvluserlvl = raw_input('level')
+            broadcastData(s, 'nav','SSERVER::'+str(lvluser)+' is now level '+str(lvluserlvl)+' !')
         else:
             print msg
 

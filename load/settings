@@ -1,26 +1,25 @@
 ## Join last server address
 joinaddr=127.0.0.1
 
-## Rejoin on startup 1/0
-autojoin=0
-
 ## Username
-username=
+username=aa
 
 ## How many symbols to match before marking as message for you -3/-2/-1/0(all)
 symbol_match=-1
 
+
 ## Enable sound 1/0
 enable_sound=1
-
 ## Enable entry box sound 1/0
 entry_enabled=0
-
 ## Enable textbox sound 1/0
 user_textbox=1
-
 ## Minimum interval between chat sounds (seconds)
-sound_interval=10.0
+sound_interval=2
 
+## Rejoin on startup 1/0
+autojoin=1
 ## Chat read interval
-chat_interval=300
+chat_interval=206
+## Show leave and join messages
+leave_join=1

@@ -20,7 +20,7 @@ print sys_path
 if OS is 'Windows':
     import winsound
     
-ver = '0.8'
+ver = '0.81'
 
 def set_winicon(window,name):
     global OS
@@ -106,6 +106,38 @@ def sound_thread(name):
         os.popen('aplay %s' % ('load/'+name))
     elif OS == 'Windows':
         winsound.PlaySound(sys_path+"\\"+"load\\"+name,winsound.SND_FILENAME)
+
+class HyperlinkManager:
+    def __init__(self, text):
+        self.text = text
+        self.text.tag_config("hyper", foreground="blue", underline=1)
+        self.text.tag_bind("hyper", "<Enter>", self._enter)
+        self.text.tag_bind("hyper", "<Leave>", self._leave)
+        self.text.tag_bind("hyper", "<Button-1>", self._click)
+
+        self.reset()
+
+    def reset(self):
+        self.links = {}
+
+    def add(self, action):
+        # add an action to the manager.  returns tags to use in
+        # associated text widget
+        tag = "hyper-%d" % len(self.links)
+        self.links[tag] = action
+        return "hyper", tag
+
+    def _enter(self, event):
+        self.text.config(cursor="hand2")
+
+    def _leave(self, event):
+        self.text.config(cursor="")
+
+    def _click(self, event):
+        for tag in self.text.tag_names(CURRENT):
+            if tag[:6] == "hyper-":
+                self.links[tag]()
+                return
 
 class Test(Text):
     def __init__(self, master, **kw):
@@ -313,41 +345,54 @@ def sound_menu():
     button = Button(sw, text='Done', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
     button.grid(row=6, padx=60,pady=30)
 
-def change_other_settings(a,b):
-    global task_loop_interval,autojoin
+def change_other_settings(a,b,c,d):
+    global task_loop_interval,autojoin, leave_join, usr_symbolmatch
     autojoin = a
     task_loop_interval = b
+    leave_join = c
+    usr_symbolmatch = d
     write_settings('autojoin',a)
     write_settings('chat_interval',b)
+    write_settings('leave_join',c)
+    write_settings('symbol_match',d)
     
 def other_menu():
-    global task_loop_interval, autojoin
+    global task_loop_interval, autojoin, leave_join, usr_symbolmatch
     sm = Toplevel()
     set_winicon(sm,'icon')
     sm.title("Other options")
     sm.minsize(280,140)
     sm.resizable(FALSE,FALSE)
+    leave_join_enabled = IntVar()
     autojoin_enabled = IntVar()
     task_int = IntVar()
+    symbolmatch = IntVar()
     autojoin_enabled.set(autojoin)
+    leave_join_enabled.set(leave_join)
+    Checkbutton(sm, text="Show leave and join", variable=leave_join_enabled).pack(side=TOP)
     Checkbutton(sm, text="Enable autojoin", variable=autojoin_enabled).pack(side=TOP)
-##    grid(row=1, sticky=W)
     task_int = Scale(sm, from_=0, to=800,length=160, orient=HORIZONTAL)
+    symbolmatch = Scale(sm, from_=-3, to=0,length=160, orient=HORIZONTAL)
     Label(sm, text="Chat refresh ms").pack(side=TOP)
     task_int.pack(side=TOP)
+    Label(sm, text="Textbox match user name 0=all").pack(side=TOP)
     task_int.set(task_loop_interval)
+    symbolmatch.set(usr_symbolmatch)
+    symbolmatch.pack(side=TOP)
     button = Button(sm, text='Done', width=20,
-                    command=lambda: {change_other_settings(autojoin_enabled.get(),task_int.get()),
-                                                           sm.destroy()})
+                    command=lambda: {change_other_settings(autojoin_enabled.get(),task_int.get(),
+                                                           leave_join_enabled.get(),symbolmatch.get())
+                                                           ,sm.destroy()})
     button.pack(side=BOTTOM)
 
     
 def find_2name(text,name):
+    global usr_symbolmatch
     text2 = text[:15]
     b = text2.find(name)
     if b is not -1:
         return False
-    name = name[:-1]
+    name = name[:usr_symbolmatch]
     text = text[15:]
     text = text.lower()
     b = text.find(name.lower())
@@ -360,6 +405,64 @@ def find_2name(text,name):
 
 def reset_entry(var):
     textt.set('')
+
+def reset_textbox(var):
+    T.set('')
+
+def organise_USRLIST(data):
+    USRLIST = []
+    temp_list = []
+    while True:
+        begn = data.find('[[')
+        end = data.find(']]')
+        if begn is -1 or end is -1:
+            break
+        temp_list.append(data[begn+2:end+1])
+        data = data[end+2:]
+    cnt = 0
+    for x in temp_list:
+        USRLIST.append([])
+    for x in temp_list:
+        while True:
+            begn = x.find('[')+1
+            end = x.find(']')
+            if begn is -1 or end is -1:
+                break
+            USRLIST[cnt].append(x[begn:end])
+            x = x[end+1:]
+        cnt+=1
+    print 'USRLISTE:',USRLIST
+
+    User_area.config(yscrollcommand=S.set,state="normal")
+    User_area.delete(1.0,END)
+    for x in USRLIST:
+        if x[1] == '2':
+            User_area.insert(END, x[0]+'\n','purplecol')
+        elif x[1] == '999':
+            User_area.insert(END, x[0]+'\n','pinkcol')
+        elif x[1] == '-1':
+            User_area.insert(END, x[0]+'\n','greycol')
+        else:
+            User_area.insert(END, x[0]+'\n')
+    User_area.config(yscrollcommand=S.set,state="disabled")
+
+def add_spaces(name):
+    for x in name:
+        while len(name) < 15:
+            name = ' '+name
+    return name
+
+def get_user_color(col,name):
+    dtime = get_cur_time()
+    name = add_spaces(name)
+    if col == '1':
+        return 'black',name
+    elif col == '2':
+        return 'purplecol',name
+    elif col == '9':
+        return 'pinkcol', name
+    return '0','0'
+
       
 def About():
     print 'about'
@@ -369,16 +472,22 @@ def About():
 ## Loading from settings file
 ### 0all_sound, 1entry, 2user textbox
 sound_settings = [1,1,1]
-task_loop_interval = 500
+task_loop_interval = int(500)
 task_loop_interval = int(read_settings('chat_interval='))
 sound_settings[0] = int(read_settings('enable_sound='))
 sound_settings[1] = int(read_settings('entry_enabled='))
 sound_settings[2] = int(read_settings('user_textbox='))
 dsound_interval = float(6.0)
 dsound_interval=float(read_settings('sound_interval='))
+leave_join = 1
+leave_join = int(read_settings('leave_join='))
+usr_symbolmatch = 0
+usr_symbolmatch = int(read_settings('symbol_match='))
 try:
     username = str(read_settings('username='))
     if username == 'default':
+        username = 'User'+str(randrange(1,999,1))
+    elif len(username) < 3:
         username = 'User'+str(randrange(1,999,1))
 except:
     print "Couldn't load username"
@@ -408,12 +517,19 @@ menu1.add_command(label='Join', command=join_typing)
 menu1.add_command(label='Join last', command=lambda: join_server(False))
 menu1.add_command(label='Leave', command=leave_server)
 menu1.add_command(label='Quit', command=closewin)
+##menu1.add_command(label='Test', command=lambda: s.send('USRINFO::user'))
 
 menu2 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Settings',menu=menu2)
-menu2.add_command(label='Set username', command=set_username)
-menu2.add_command(label='Sound options', command=sound_menu)
-menu2.add_command(label='Other options', command=other_menu)
+menu.add_cascade(label='Edit',menu=menu2)
+menu2.add_command(label='Clear textbox', command=reset_textbox)
+menu2.add_command(label='Clear Entry box', command=reset_entry)
+
+menu3 = Menu(menu,tearoff=0)
+menu.add_cascade(label='Settings',menu=menu3)
+menu3.add_command(label='Set username', command=set_username)
+menu3.add_command(label='Sound options', command=sound_menu)
+menu3.add_command(label='Other options', command=other_menu)
+
 
 helpmenu = Menu(menu,tearoff=0)
 menu.add_cascade(label='Help', menu=helpmenu)
@@ -440,21 +556,26 @@ T.tag_configure('redcol', foreground='red')
 T.tag_configure('bluecol', foreground='blue')
 T.tag_configure('greencol', foreground='green')
 T.tag_configure('purplecol', foreground='purple')
+T.tag_configure('pinkcol', foreground='pink')
 User_area.tag_configure('purplecol', foreground='purple')
+User_area.tag_configure('greycol', foreground='grey')
+User_area.tag_configure('pinkcol', foreground='pink')
+
 
 
 root.bind('<Return>', enter_text)
 root.bind('<Escape>', reset_entry)
 
 def task():
-    global msg_recv,sound_interval,dsound_interval,username, task_loop_interval
+    global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join
     dtime = get_cur_time()
     if sound_interval > 0:
-        sound_interval-=task_loop_interval/1000
+        sound_interval-=float(task_loop_interval)/1000
         
 
     if msg_recv < len(data_list):
         for x in range(msg_recv,len(data_list)):
+            print data_list[x]
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 T.insert(END, dtime+'          SERVER: '+data_list[x][9:],'bluecol')
@@ -462,23 +583,33 @@ def task():
                 if scroller[1] == 1.0:  
                     T.yview(END)
                 T.config(yscrollcommand=S.set,state="disabled")
+            elif data_list[x][:9] == 'SERVELJ::':
+                if leave_join == 0:
+                    doing = 'nothing'
+                else:
+                    T.config(yscrollcommand=S.set,state="normal")
+                    T.insert(END, dtime+'          SERVER: '+data_list[x][9:],'bluecol')
+                    scroller = S.get()
+                    if scroller[1] == 1.0:  
+                        T.yview(END)
+                    T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'CLOSING::':
                 T.config(yscrollcommand=S.set,state="normal")
                 T.insert(END, get_cur_time()+'         WARNING: Server shutting down\n', 'redcol')
                 leave_server()
                 T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'USRLIST::':
-                User_area.config(yscrollcommand=S.set,state="normal")
-                User_area.delete(1.0,END)
-                User_area.insert(END, data_list[x][9:])
-                User_area.config(yscrollcommand=S.set,state="disabled")
+                organise_USRLIST(data_list[x][9:])
             else:
                 T.config(yscrollcommand=S.set,state="normal")
-                nfind = find_2name(data_list[x],username)
+                nfind = find_2name(data_list[x][4:],username)
+                usercol,uname = get_user_color(data_list[x][3],data_list[x][4:19])
                 if nfind is True:
-                    T.insert(END, dtime+' '+data_list[x],'greencol')
+                    T.insert(END, dtime+' '+uname+': ',usercol)
+                    T.insert(END, dtime+' '+data_list[x][19:],'greencol')
                 else:
-                    T.insert(END, dtime+' '+data_list[x],)
+                    T.insert(END, dtime+' '+uname+': ',usercol)
+                    T.insert(END, data_list[x][19:])                        
                 nfind = False
                 scroller = S.get()
                 if scroller[1] == 1.0:  
@@ -487,7 +618,7 @@ def task():
             msg_recv +=1
     root.after(task_loop_interval, task)  # reschedule event in 0.5 second
 
-
+hyperlink = HyperlinkManager(T)
 
 te = Test(root)
 set_winicon(root,'icon')
