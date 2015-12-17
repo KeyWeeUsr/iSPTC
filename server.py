@@ -103,7 +103,7 @@ def clientHandler(i):
     print addr," is now connected! \n"
     ## 0Thread, 1connecton, 2usrname, 3ip, 3-2port,4mode
     threadip.append([str(i),conn,'',[addr[0],addr[1]],1])
-    conn.sendall('SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver)
+    conn.sendall('SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver+'\nhyperlink test is http://mans.bot.nu')
     while 1:
         data = recieveData(s, conn)
         ##Normal messages
@@ -180,7 +180,6 @@ def clientHandler(i):
                             time.sleep(0.5)
                             send_user_list(s,conn,'',username,addr[0])
                 username_set = True
-        time.sleep(0.1)
         
 threads = 10
 action_time = True
@@ -215,6 +214,12 @@ def main(): # main function
             lvluser = raw_input('Username:')
             lvluserlvl = raw_input('level')
             broadcastData(s, 'nav','SSERVER::'+str(lvluser)+' is now level '+str(lvluserlvl)+' !')
+        elif msg == 'threadip':
+            print threadip
+        elif msg == 'iplist':
+            print iplist
+        elif msg == 'help':
+            print 'Type: quit, lvluser, threadip, iplist'
         else:
             print msg
 

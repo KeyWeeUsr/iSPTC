@@ -3,7 +3,7 @@ from Tkinter import *
 from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
-import socket,os,platform
+import socket,os,platform,webbrowser
 sys_path = os.getcwd()
 bat_file = False
 try:
@@ -107,8 +107,11 @@ def sound_thread(name):
     elif OS == 'Windows':
         winsound.PlaySound(sys_path+"\\"+"load\\"+name,winsound.SND_FILENAME)
 
+linkk = 'aa'
+
 class HyperlinkManager:
     def __init__(self, text):
+        global linkk
         self.text = text
         self.text.tag_config("hyper", foreground="blue", underline=1)
         self.text.tag_bind("hyper", "<Enter>", self._enter)
@@ -125,6 +128,7 @@ class HyperlinkManager:
         # associated text widget
         tag = "hyper-%d" % len(self.links)
         self.links[tag] = action
+        self.linksss = linkk
         return "hyper", tag
 
     def _enter(self, event):
@@ -137,6 +141,8 @@ class HyperlinkManager:
         for tag in self.text.tag_names(CURRENT):
             if tag[:6] == "hyper-":
                 self.links[tag]()
+                print 'opening ',self.linksss
+                webbrowser.open(self.linksss)
                 return
 
 class Test(Text):
@@ -403,11 +409,13 @@ def find_2name(text,name):
     else:
         return False
 
-def reset_entry(var):
+def reset_entry():
     textt.set('')
 
-def reset_textbox(var):
-    T.set('')
+def reset_textbox():
+    T.config(yscrollcommand=S.set,state="normal")
+    T.delete(1.0,END)
+    T.config(yscrollcommand=S.set,state="disabled")
 
 def organise_USRLIST(data):
     USRLIST = []
@@ -438,7 +446,7 @@ def organise_USRLIST(data):
     for x in USRLIST:
         if x[1] == '2':
             User_area.insert(END, x[0]+'\n','purplecol')
-        elif x[1] == '999':
+        elif x[1] == '9':
             User_area.insert(END, x[0]+'\n','pinkcol')
         elif x[1] == '-1':
             User_area.insert(END, x[0]+'\n','greycol')
@@ -463,6 +471,19 @@ def get_user_color(col,name):
         return 'pinkcol', name
     return '0','0'
 
+def find_link(data):
+    data = data + ' '
+    begn = data.find('http://')
+    linktext = ''
+    if begn is not -1:
+        begn
+        while True:
+            if data[begn] is not ' ':
+                linktext = linktext+data[begn]
+                begn+=1
+            else:
+                return linktext
+    return False
       
 def About():
     print 'about'
@@ -561,12 +582,14 @@ User_area.tag_configure('purplecol', foreground='purple')
 User_area.tag_configure('greycol', foreground='grey')
 User_area.tag_configure('pinkcol', foreground='pink')
 
-
+def click1():
+    print "nothing"
 
 root.bind('<Return>', enter_text)
 root.bind('<Escape>', reset_entry)
 
 def task():
+    
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join
     dtime = get_cur_time()
     if sound_interval > 0:
@@ -605,11 +628,26 @@ def task():
                 nfind = find_2name(data_list[x][4:],username)
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:19])
                 if nfind is True:
-                    T.insert(END, dtime+' '+uname+': ',usercol)
-                    T.insert(END, dtime+' '+data_list[x][19:],'greencol')
+                    linkk = find_link(data_list[x])
+                    if linkk is not False:
+                        global linkk
+                        T.insert(END, dtime+' '+uname+': '+linkk, hyperlink.add(click1))
+                    else:
+                        T.insert(END, dtime+' '+uname+': ',usercol)
+                        T.insert(END, data_list[x][19:],'greencol')
                 else:
-                    T.insert(END, dtime+' '+uname+': ',usercol)
-                    T.insert(END, data_list[x][19:])                        
+                    linkk = find_link(data_list[x])
+                    if linkk is not False:
+                        global linkk
+                        T.insert(END, dtime+' '+uname+': '+linkk, hyperlink.add(click1))
+                    else:
+                        linkk = find_link(data_list[x])
+                        if linkk is not False:
+                            global linkk
+                            T.insert(END, dtime+' '+uname+': '+linkk, hyperlink.add(click1))
+                        else:
+                            T.insert(END, dtime+' '+uname+': ',usercol)
+                            T.insert(END, data_list[x][19:])                        
                 nfind = False
                 scroller = S.get()
                 if scroller[1] == 1.0:  
@@ -617,6 +655,7 @@ def task():
                 T.config(yscrollcommand=S.set,state="disabled")
             msg_recv +=1
     root.after(task_loop_interval, task)  # reschedule event in 0.5 second
+
 
 hyperlink = HyperlinkManager(T)
 
