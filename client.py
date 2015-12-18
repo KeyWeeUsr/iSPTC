@@ -108,6 +108,7 @@ def sound_thread(name):
         winsound.PlaySound(sys_path+"\\"+"load\\"+name,winsound.SND_FILENAME)
 
 linkk = 'aa'
+linklist = []
 
 class HyperlinkManager:
     def __init__(self, text):
@@ -129,6 +130,7 @@ class HyperlinkManager:
         tag = "hyper-%d" % len(self.links)
         self.links[tag] = action
         self.linksss = linkk
+        linklist.append([tag,linkk])
         return "hyper", tag
 
     def _enter(self, event):
@@ -140,9 +142,10 @@ class HyperlinkManager:
     def _click(self, event):
         for tag in self.text.tag_names(CURRENT):
             if tag[:6] == "hyper-":
-                self.links[tag]()
-                print 'opening ',self.linksss
-                webbrowser.open(self.linksss)
+                for x in linklist:
+                    if x[0] == tag:
+                        print x[1]
+                        webbrowser.open(x[1])
                 return
 
 class Test(Text):
@@ -394,12 +397,7 @@ def other_menu():
     
 def find_2name(text,name):
     global usr_symbolmatch
-    text2 = text[:15]
-    b = text2.find(name)
-    if b is not -1:
-        return False
     name = name[:usr_symbolmatch]
-    text = text[15:]
     text = text.lower()
     b = text.find(name.lower())
     if b is not -1:
@@ -409,7 +407,7 @@ def find_2name(text,name):
     else:
         return False
 
-def reset_entry():
+def reset_entry(var):
     textt.set('')
 
 def reset_textbox():
@@ -441,7 +439,7 @@ def organise_USRLIST(data):
         cnt+=1
     print 'USRLISTE:',USRLIST
 
-    User_area.config(yscrollcommand=S.set,state="normal")
+    User_area.config(yscrollcommand=S2.set,state="normal")
     User_area.delete(1.0,END)
     for x in USRLIST:
         if x[1] == '2':
@@ -452,7 +450,7 @@ def organise_USRLIST(data):
             User_area.insert(END, x[0]+'\n','greycol')
         else:
             User_area.insert(END, x[0]+'\n')
-    User_area.config(yscrollcommand=S.set,state="disabled")
+    User_area.config(yscrollcommand=S2.set,state="disabled")
 
 def add_spaces(name):
     for x in name:
@@ -476,13 +474,28 @@ def find_link(data):
     begn = data.find('http://')
     linktext = ''
     if begn is not -1:
-        begn
         while True:
             if data[begn] is not ' ':
                 linktext = linktext+data[begn]
                 begn+=1
             else:
                 return linktext
+    begn = data.find('https://')        
+    if begn is not -1:
+        while True:
+            if data[begn] is not ' ':
+                linktext = linktext+data[begn]
+                begn+=1
+            else:
+                return linktext
+    begn = data.find('www.')        
+    if begn is not -1:
+        while True:
+            if data[begn] is not ' ':
+                linktext = linktext+data[begn]
+                begn+=1
+            else:
+                return 'http://'+linktext
     return False
       
 def About():
@@ -539,11 +552,13 @@ menu1.add_command(label='Join last', command=lambda: join_server(False))
 menu1.add_command(label='Leave', command=leave_server)
 menu1.add_command(label='Quit', command=closewin)
 ##menu1.add_command(label='Test', command=lambda: s.send('USRINFO::user'))
-
+def linkp():
+    print linklist
 menu2 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Edit',menu=menu2)
 menu2.add_command(label='Clear textbox', command=reset_textbox)
-menu2.add_command(label='Clear Entry box', command=reset_entry)
+menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
+menu2.add_command(label='Print linklist', command=linkp)
 
 menu3 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Settings',menu=menu3)
@@ -569,7 +584,7 @@ E.pack(side=BOTTOM,fill=BOTH)
 T.pack(side=BOTTOM,fill=BOTH,expand=1)
 S.config(command=T.yview)
 S2.config(command=User_area.yview)
-User_area.config(yscrollcommand=S2.set,state="normal")
+User_area.config(yscrollcommand=S2.set,state="disabled")
 User_area.bind( '<Configure>', maxsize )
 T.config(yscrollcommand=S.set,state="disabled")
 ##T.bind( '<Configure>', maxsize )
@@ -598,7 +613,7 @@ def task():
 
     if msg_recv < len(data_list):
         for x in range(msg_recv,len(data_list)):
-            print data_list[x]
+##            print data_list[x]
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 T.insert(END, dtime+'          SERVER: '+data_list[x][9:],'bluecol')
@@ -624,30 +639,38 @@ def task():
             elif data_list[x][:9] == 'USRLIST::':
                 organise_USRLIST(data_list[x][9:])
             else:
+                global linkk
                 T.config(yscrollcommand=S.set,state="normal")
-                nfind = find_2name(data_list[x][4:],username)
+                nfind = find_2name(data_list[x][19:],username)
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:19])
-                if nfind is True:
-                    linkk = find_link(data_list[x])
-                    if linkk is not False:
+
+                temp_list = []
+                dat = data_list[x][19:]
+                while True:
+                    b = dat.find(' ')
+                    temp_list.append(dat[:b]+' ')
+                    dat = dat[b+1:]
+                    if b is -1:
+                        break
+
+                T.insert(END, dtime+' '+uname+':',usercol)
+                for x in temp_list:
+                    nfind = find_2name(x,username)
+                    if nfind is True:
+                        T.insert(END, x,'greencol')
+                    elif nfind is False:
                         global linkk
-                        T.insert(END, dtime+' '+uname+': '+linkk, hyperlink.add(click1))
-                    else:
-                        T.insert(END, dtime+' '+uname+': ',usercol)
-                        T.insert(END, data_list[x][19:],'greencol')
-                else:
-                    linkk = find_link(data_list[x])
-                    if linkk is not False:
-                        global linkk
-                        T.insert(END, dtime+' '+uname+': '+linkk, hyperlink.add(click1))
-                    else:
-                        linkk = find_link(data_list[x])
+                        linkk = find_link(x)
                         if linkk is not False:
-                            global linkk
-                            T.insert(END, dtime+' '+uname+': '+linkk, hyperlink.add(click1))
-                        else:
-                            T.insert(END, dtime+' '+uname+': ',usercol)
-                            T.insert(END, data_list[x][19:])                        
+                            T.insert(END, linkk, hyperlink.add(click1))
+                            T.insert(END,'\n')
+                    if linkk is False:
+                        T.insert(END, x)       
+                T.insert(END,'\n')
+                    
+                    
+
+                            
                 nfind = False
                 scroller = S.get()
                 if scroller[1] == 1.0:  
