@@ -2,11 +2,15 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.82'
+ver = '0.83'
+
 def read_server_settings():
     text = readf('load/server')
     for x in text:
         iplist.append(x)
+
+def get_cur_time():
+    return time.strftime("%H:%M:%S")
 
 def readf(filename):
     file = filename
@@ -14,6 +18,43 @@ def readf(filename):
     a = f.read()
     a = str.splitlines(a)
     f.close()
+    return a
+
+def savef(text,file):
+    f = open(file, 'w')
+    f.write(text)
+    f.close()
+
+def get_settings(text,text_find):
+    for lines in text:
+        b = lines.find(text_find)
+        if b is not -1:
+            c = lines[len(text_find):]
+    return c
+
+def edit_settings(text,text_find,new_value):
+    count = 0
+    newlist = []
+    for lines in text:
+        b = lines.find(text_find)
+        if b is not -1:
+            c = text_find + '=' + str(new_value)
+            newlist.append(c)
+        else:
+            newlist.append(lines)
+        count+=1
+    count = 1
+    return newlist
+
+def write_settings(text_find,new_value):
+        a = readf('load/server')
+        a = edit_settings(a,text_find,new_value)
+        text = a = '\n'.join(str(e) for e in a)
+        savef(text,'load/server')
+
+def read_settings(text_find):
+    a = readf('load/server')
+    a = get_settings(a,text_find)
     return a
 
 def remove_spaces(username):
@@ -79,24 +120,22 @@ def send_user_list(s,conn,oldusername,username,addr):
 def recieveData(s, conn):# function to recieve data
     try:
         data = conn.recv(2048) # conn.recv(2048) waits for data of 2048 or less bytes and stores it in data
-##        print conn, data, "\n" # print the connection and data sent
     except:
         data = 'close::'
     return data; # returns the contents of data
 
 def broadcastData(s, conn, data): # function to send Data
-##    conn.sendall(data)  # sends data received to connection
+    ## Send data to everyone connected
     for x in threadip:
         try:
             if x[2] is not '':
                 x[1].sendall(data)
         except:
             print x[1],' NOT AVAILABLE\n'
-##    print "Data sent to all clients \n"  # print to inform data was went
 
 
 def clientHandler(i):
-    global s, threadip, threads
+    global s, threadip, threads, msgprint_enabled, logging_enabled
     username,username_set = '',False
     level = 1
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
@@ -106,8 +145,11 @@ def clientHandler(i):
     conn.sendall('SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver+'\nhyperlink test is http://mans.bot.nu')
     while 1:
         data = recieveData(s, conn)
+        chatlog.append([get_cur_time(),username,data])
         ##Normal messages
         if data[0:9] == 'MESSAGE::':
+            if msgprint_enabled == 1:
+                print get_cur_time(),username2,data[9:]
             broadcastData(s, conn, 'm::'+str(level)+username+data[9:])
         ## Leaving
         if not data:
@@ -180,19 +222,23 @@ def clientHandler(i):
                             time.sleep(0.5)
                             send_user_list(s,conn,'',username,addr[0])
                 username_set = True
-        
+
 threads = 10
 action_time = True
-iplist = []
-threadip = []
+iplist,chatlog,threadip = [],[],[]
 read_server_settings()
+log_enabled = int(read_settings('logging='))
+msgprint_enabled = 0
+msgprint_enabled = int(read_settings('msgprint='))
 def main(): # main function
-    global s, action_time
+    global s, action_time, msgprint_enabled, log_enabled
     s = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
-    s.bind(('', 8001)) # tells the socket to bind to localhost on port 8000
-        # 'localhost'
-        # ''
-        # "127.0.0.1"
+    try:
+        s.bind(('', 8001)) # tells the socket to bind to localhost on port 8000
+    except:
+        print "Can't bind address"
+        time.sleep(2)
+        quit()
     s.listen(threads) # number of connections listening for
     print "Server is running...... \n"
 
@@ -219,7 +265,40 @@ def main(): # main function
         elif msg == 'iplist':
             print iplist
         elif msg == 'help':
-            print 'Type: quit, lvluser, threadip, iplist'
+            print 'Type: quit, lvluser, threadip, iplist, log, log-toggle, log-save, say, msgprint, msgprint-toggle'
+        elif msg == 'log-toggle':
+            if log_enabled == 1:
+                log_enabled = 0
+                print 'Logging disabled'
+            if log_enabled == 0:
+                log_enabled = 1
+                print 'Logging enabled'
+            write_settings('logging',log_enabled)
+        elif msg == 'log':
+            for x in chatlog:
+                print x
+        elif msg == 'log-save':
+            for x in chatlog:
+                fh = open('load/chatlog.txt', 'a')
+                if len(x) < 1:
+                    x = ' '
+                print 'Writing ',str(x)
+                fh.write(str(x)+'\n')
+                fh.close()
+            chatlog = []
+        elif msg == 'msgprint':
+            global msgprint_enabled
+            print 'msgprint is: ',msgprint_enabled
+        elif msg == 'msgprint-toggle':
+            if msgprint_enabled is 1:
+                msgprint_enabled = 0
+            else:
+               msgprint_enabled = 1
+            write_settings('msgprint',msgprint_enabled)
+        elif msg == 'say':
+            x = raw_input(':::Say what? ')
+            print 'Sending "'+x+'" to all'
+            broadcastData(s, 'nav','SSERVER::'+x)
         else:
             print msg
 
