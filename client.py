@@ -4,6 +4,8 @@ from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
+ver = '0.83'
+
 sys_path = os.getcwd()
 bat_file = False
 try:
@@ -19,8 +21,6 @@ OS = platform.system()
 print sys_path
 if OS is 'Windows':
     import winsound
-    
-ver = '0.81'
 
 def set_winicon(window,name):
     global OS
@@ -242,7 +242,11 @@ def join_server(typing):
         s.send('USRINFO::'+username)
     except:
         T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, get_cur_time()+"         WARNING: Can't join\n", 'redcol')
+        if nadd_spaces is 1:
+            war = '          WARNING: '
+        else:
+            war = 'WARNING: '
+        T.insert(END, format_time()+war+"Can't join\n", 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
         
 def enter_text(event):
@@ -264,10 +268,14 @@ def enter_text(event):
             play_sound('beep1.wav',True)
         try:
             s.send('MESSAGE::'+text)
-        except:
+        except Exception as ee:
             T.config(yscrollcommand=S.set,state="normal")
-            T.insert(END, get_cur_time()+'         WARNING: Not connected\n', 'redcol')
-            T.config(yscrollcommand=S.set,state="disabled")
+            if nadd_spaces is 1:
+                war = '          WARNING: '
+            else:
+                war = 'WARNING: '
+                T.insert(END, format_time()+war+str(ee)+'\n', 'redcol')
+                T.config(yscrollcommand=S.set,state="disabled")
 
 def leave_server():
     global s
@@ -278,7 +286,11 @@ def leave_server():
         s.close()
         s = ''
         T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, get_cur_time()+'         WARNING: Left server\n', 'redcol')
+        if nadd_spaces is 1:
+            war = '          WARNING: '
+        else:
+            war = 'WARNING: '
+        T.insert(END, format_time()+war+'Left server\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
         User_area.config(yscrollcommand=S.set,state="normal")
         User_area.delete(1.0,END)
@@ -293,7 +305,11 @@ def change_name(new_name):
     new_name = new_name.get()
     if len(new_name) <3:
         T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, get_cur_time()+'         WARNING: Name is too short\n', 'redcol')
+        if nadd_spaces is 1:
+            war = '          WARNING: '
+        else:
+            war = 'WARNING: '
+        T.insert(END, format_time()+war+'Name is too short\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
     else:
         username = new_name
@@ -354,43 +370,66 @@ def sound_menu():
     button = Button(sw, text='Done', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
     button.grid(row=6, padx=60,pady=30)
 
-def change_other_settings(a,b,c,d):
-    global task_loop_interval,autojoin, leave_join, usr_symbolmatch
+def change_other_settings(a,b,c,d,e,f):
+    global task_loop_interval,autojoin, leave_join, usr_symbolmatch, nadd_spaces, show_ttime
     autojoin = a
     task_loop_interval = b
     leave_join = c
     usr_symbolmatch = d
+    nadd_spaces = e
+    show_ttime = f
     write_settings('autojoin',a)
     write_settings('chat_interval',b)
     write_settings('leave_join',c)
     write_settings('symbol_match',d)
+    write_settings('nadd_spaces',e)
+    write_settings('show_ttime',f)
     
 def other_menu():
-    global task_loop_interval, autojoin, leave_join, usr_symbolmatch
+    global task_loop_interval, autojoin, leave_join, usr_symbolmatch, nadd_spaces, show_ttime
     sm = Toplevel()
     set_winicon(sm,'icon')
     sm.title("Other options")
-    sm.minsize(280,140)
+    sm.minsize(500,200)
     sm.resizable(FALSE,FALSE)
+    frame = Frame(sm, height=210,width=210, relief=SUNKEN)
+    frame2 = Frame(sm, height=180,width=220, relief=SUNKEN)
+    frame.pack_propagate(0)
+    frame2.pack_propagate(0)
+    frame.pack(anchor=NE,side=LEFT)
+    frame2.pack(anchor=NE,side=LEFT)
+    
     leave_join_enabled = IntVar()
     autojoin_enabled = IntVar()
     task_int = IntVar()
     symbolmatch = IntVar()
     autojoin_enabled.set(autojoin)
     leave_join_enabled.set(leave_join)
-    Checkbutton(sm, text="Show leave and join", variable=leave_join_enabled).pack(side=TOP)
-    Checkbutton(sm, text="Enable autojoin", variable=autojoin_enabled).pack(side=TOP)
-    task_int = Scale(sm, from_=0, to=800,length=160, orient=HORIZONTAL)
-    symbolmatch = Scale(sm, from_=-3, to=0,length=160, orient=HORIZONTAL)
-    Label(sm, text="Chat refresh ms").pack(side=TOP)
+    Checkbutton(frame, text="Show leave and join", variable=leave_join_enabled).pack(side=TOP)
+    Checkbutton(frame, text="Enable autojoin", variable=autojoin_enabled).pack(side=TOP)
+    task_int = Scale(frame, from_=0, to=800,length=160, orient=HORIZONTAL)
+    symbolmatch = Scale(frame, from_=-3, to=0,length=160, orient=HORIZONTAL)
+    Label(frame, text="Chat refresh ms").pack(side=TOP)
     task_int.pack(side=TOP)
-    Label(sm, text="Textbox match user name 0=all").pack(side=TOP)
+    Label(frame, text="Textbox match user name 0=all").pack(side=TOP)
     task_int.set(task_loop_interval)
     symbolmatch.set(usr_symbolmatch)
     symbolmatch.pack(side=TOP)
-    button = Button(sm, text='Done', width=20,
+    
+    lenchspaces = IntVar()
+    lenchspaces.set(nadd_spaces)
+    Checkbutton(frame2, text="Lenghten usernames to 15", variable=lenchspaces).pack(anchor=NW)
+    t_box_time = IntVar()
+    t_box_time.set = (show_ttime)
+    Label(frame2, text="Textbox time:",justify = LEFT).pack(anchor=NW)
+    Radiobutton(frame2,text="Show full",variable=t_box_time,value=3).pack(anchor=NW)
+    Radiobutton(frame2,text="Without seconds",variable=t_box_time,value=2).pack(anchor=NW)
+    Radiobutton(frame2,text="Hide",variable=t_box_time,value=1).pack(anchor=NW)
+    t_box_time.set = (show_ttime)
+    button = Button(frame2, text='Save', width=20,
                     command=lambda: {change_other_settings(autojoin_enabled.get(),task_int.get(),
-                                                           leave_join_enabled.get(),symbolmatch.get())
+                                                           leave_join_enabled.get(),symbolmatch.get(),
+                                                           lenchspaces.get(),t_box_time.get())
                                                            ,sm.destroy()})
     button.pack(side=BOTTOM)
 
@@ -400,7 +439,7 @@ def find_2name(text,name):
     name = name[:usr_symbolmatch]
     text = text.lower()
     b = text.find(name.lower())
-    if b is not -1:
+    if b is not -1 and len(text) < len(username)+2:
         if sound_settings[2] == 1:
             play_sound('beep1.wav',False)
         return True
@@ -458,9 +497,32 @@ def add_spaces(name):
             name = ' '+name
     return name
 
+def remove_spaces(name):
+    for x in name:
+        if x is ' ':
+            name = name[1:]
+        else:
+            break
+    return name
+
+def format_time():
+    global show_ttime
+    if show_ttime is 1:
+        return ''
+    if show_ttime is 2:
+        dtime = get_cur_time()
+        return dtime[:-3]
+    if show_ttime is 3:
+        return get_cur_time()
+
 def get_user_color(col,name):
+    global nadd_spaces
     dtime = get_cur_time()
-    name = add_spaces(name)
+    if nadd_spaces is 1:
+        name = add_spaces(name)
+    elif nadd_spaces is 0:
+        name = remove_spaces(name)
+        print 'ss'
     if col == '1':
         return 'black',name
     elif col == '2':
@@ -499,7 +561,34 @@ def find_link(data):
     return False
       
 def About():
-    print 'about'
+    global ver
+    winwi = 350
+    aboutwin = Toplevel()
+    aboutwin.resizable(FALSE,FALSE)
+    aboutwin.config()
+    frame = Frame(aboutwin, height=280,width=winwi, relief=SUNKEN,bg='grey')
+    frame.pack_propagate(0)
+    frame.pack(side=TOP)
+    
+    Text = ("iSPTC ver%s" % (ver))
+    msg = Message(frame, text = Text,width=winwi)
+    msg.config(bg='grey',fg='white',width=winwi,font=('system', 26))
+    msg.pack(anchor=NW)
+
+    Text = ("inSecure Plain Text Chat")
+    msg = Message(frame, text = Text,width=winwi)
+    msg.config(bg='grey',fg='white',width=winwi,font=('system', 14))
+    msg.pack(anchor=NW)
+
+    Text = (" ")
+    msg = Message(frame, text = Text,width=winwi)
+    msg.config(bg='grey',width=winwi,font=('system', 54))
+    msg.pack(anchor=NW)
+
+    Text = ("Github page: github.com/Bakterija")
+    msg = Message(frame, text = Text,width=winwi)
+    msg.config(bg='grey',fg='white',width=winwi,font=('system', 9))
+    msg.pack(anchor=NW)
 
 
 
@@ -517,6 +606,8 @@ leave_join = 1
 leave_join = int(read_settings('leave_join='))
 usr_symbolmatch = 0
 usr_symbolmatch = int(read_settings('symbol_match='))
+show_ttime= int(read_settings('show_ttime='))
+nadd_spaces= int(read_settings('nadd_spaces='))
 try:
     username = str(read_settings('username='))
     if username == 'default':
@@ -528,11 +619,15 @@ except:
     username = 'User'+str(randrange(1,999,1))
 autojoin = 0
 autojoin = int(read_settings('autojoin='))
+
+
 ## Setting global vars
 sound_interval = 0
 action_time = True
 data_list = []
 msg_recv = 0
+windowfocus = True
+icon_was_switched = False
 
 ## Tkinter below
 root = Tk()
@@ -599,14 +694,29 @@ User_area.tag_configure('pinkcol', foreground='pink')
 
 def click1():
     print "nothing"
-
+def winf_is(vv):
+    global windowfocus,icon_was_switched
+    windowfocus = True
+    if icon_was_switched is True:
+        set_winicon(root,'icon')
+        icon_was_switched = False
+def winf_isnt(vv):
+    global windowfocus
+    windowfocus = False
 root.bind('<Return>', enter_text)
 root.bind('<Escape>', reset_entry)
+root.bind('<FocusIn>', winf_is)
+root.bind('<FocusOut>', winf_isnt)
 
 def task():
     
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join
-    dtime = get_cur_time()
+    global show_ttime,nadd_spaces,icon_was_switched
+    dtime = format_time()
+    if show_ttime is not 1:
+        dtime = dtime+' '
+    else:
+        dtime = ''
     if sound_interval > 0:
         sound_interval-=float(task_loop_interval)/1000
         
@@ -616,7 +726,11 @@ def task():
 ##            print data_list[x]
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
-                T.insert(END, dtime+'          SERVER: '+data_list[x][9:],'bluecol')
+                if nadd_spaces is 1:
+                    name = '          SERVER: '
+                else:
+                    name = 'SERVER: '
+                T.insert(END, dtime+name+data_list[x][9:],'bluecol')
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
@@ -626,14 +740,22 @@ def task():
                     doing = 'nothing'
                 else:
                     T.config(yscrollcommand=S.set,state="normal")
-                    T.insert(END, dtime+'          SERVER: '+data_list[x][9:],'bluecol')
+                    if nadd_spaces is 1:
+                        name = '          SERVER: '
+                    else:
+                        name = 'SERVER: '
+                    T.insert(END, dtime+name+data_list[x][9:],'bluecol')
                     scroller = S.get()
                     if scroller[1] == 1.0:  
                         T.yview(END)
                     T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'CLOSING::':
                 T.config(yscrollcommand=S.set,state="normal")
-                T.insert(END, get_cur_time()+'         WARNING: Server shutting down\n', 'redcol')
+                if nadd_spaces is 1:
+                    name = '         WARNING: '
+                else:
+                    name = 'WARNING: '
+                T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
                 leave_server()
                 T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'USRLIST::':
@@ -653,7 +775,7 @@ def task():
                     if b is -1:
                         break
 
-                T.insert(END, dtime+' '+uname+':',usercol)
+                T.insert(END, dtime+uname+': ',usercol)
                 for x in temp_list:
                     nfind = find_2name(x,username)
                     if nfind is True:
@@ -663,21 +785,25 @@ def task():
                         linkk = find_link(x)
                         if linkk is not False:
                             T.insert(END, linkk, hyperlink.add(click1))
-                            T.insert(END,'\n')
-                    if linkk is False:
+                            T.insert(END,' ')
+                    if x[0] is '@' and x[1] is not ' ' and len(x) > 2:
+                        T.insert(END, x,'greencol')
+                    elif linkk is False and nfind is False:
                         T.insert(END, x)       
                 T.insert(END,'\n')
                     
-                    
-
-                            
+                      
                 nfind = False
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
                 T.config(yscrollcommand=S.set,state="disabled")
+                if windowfocus is False:
+                    set_winicon(root,'icon2')
+                    icon_was_switched = True
             msg_recv +=1
-    root.after(task_loop_interval, task)  # reschedule event in 0.5 second
+
+    root.after(task_loop_interval, task)  # reschedule event
 
 
 hyperlink = HyperlinkManager(T)

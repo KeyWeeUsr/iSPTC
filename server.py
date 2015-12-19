@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.81'
+ver = '0.82'
 def read_server_settings():
     text = readf('load/server')
     for x in text:

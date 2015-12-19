@@ -23,3 +23,7 @@ autojoin=1
 chat_interval=206
 ## Show leave and join messages
 leave_join=1
+##Show textbox time 1/2/3
+show_ttime=3
+##Lenghten usernames to 15 symbols
+nadd_spaces=1
