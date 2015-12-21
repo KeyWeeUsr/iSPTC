@@ -4,7 +4,7 @@ from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
-ver = '0.83'
+ver = '0.85'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -226,12 +226,12 @@ def join_server(typing):
     try:
         if typing is not False:
             TCP_IP = typing
-            TCP_PORT = 8001
+            TCP_PORT = 44671
             write_settings('joinaddr',TCP_IP) 
         else:
             joinaddr = str(read_settings('joinaddr='))
             TCP_IP = joinaddr
-            TCP_PORT = 8001
+            TCP_PORT = 44671
         BUFFER_SIZE = 2048
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print 'joining',TCP_IP, TCP_PORT
@@ -243,42 +243,78 @@ def join_server(typing):
     except:
         T.config(yscrollcommand=S.set,state="normal")
         if nadd_spaces is 1:
-            war = '          WARNING: '
+            war = '         WARNING: '
         else:
             war = 'WARNING: '
         T.insert(END, format_time()+war+"Can't join\n", 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
-        
+
+def T_ins_userlist():
+    global USRLIST
+    T.config(yscrollcommand=S.set,state="normal")
+    T.insert(END, '[Userlist]\n', 'black')
+    for x in USRLIST:
+        T.insert(END, x[1]+', '+x[0]+'\n', 'black')
+    T.config(yscrollcommand=S.set,state="disabled")
+
+def T_ins_help():
+    global USRLIST
+    T.config(yscrollcommand=S.set,state="normal")
+    T.insert(END, '[Help]\n', 'black')
+    T.insert(END, 'Type: /users for userlist\n', 'black')
+    T.config(yscrollcommand=S.set,state="disabled")
+
+def T_ins_log():
+    T.config(yscrollcommand=S.set,state="normal")
+    T.insert(END, '[Log]\n', 'black')
+    for x in data_list:
+        T.insert(END, x,'greycol')
+    T.config(yscrollcommand=S.set,state="disabled")
+    
 def enter_text(event):
-    global s
+    global s, USRLIST
 ##    T.config(yscrollcommand=S.set,state="normal")
 ##    T.config(yscrollcommand=S.set,state="disabled")
     text = textt.get()
-    if len(text) > 0:
-        if text[0] is '@':
-            b = text.find(' ')
-            if b is not -1:
-                textt.set(text[:b]+" ")
+    if text[0] == '/':
+        if text == '/users':
+            T_ins_userlist()
+        elif text == '/help':
+            T_ins_help()
+        elif text == '/log':
+            T_ins_log()
+        textt.set('')
+    else:
+        if len(text) > 0:
+            if text[0] is '@':
+                b = text.find(' ')
+                if b is not -1:
+                    textt.set(text[:b]+" ")
+                else:
+                    textt.set(text+" ")
             else:
-                textt.set(text+" ")
-        else:
-            textt.set('')
-    if len(text) > 0:
-        if sound_settings[1] == True:
-            play_sound('beep1.wav',True)
-        try:
-            s.send('MESSAGE::'+text)
-        except Exception as ee:
-            T.config(yscrollcommand=S.set,state="normal")
-            if nadd_spaces is 1:
-                war = '          WARNING: '
-            else:
-                war = 'WARNING: '
+                textt.set('')
+        if len(text) > 0:
+            if sound_settings[1] == True:
+                play_sound('beep1.wav',True)
+            try:
+                s.send('MESSAGE::'+text)
+            except Exception as ee:
+                T.config(yscrollcommand=S.set,state="normal")
+                if nadd_spaces is 1:
+                    war = '         WARNING: '
+                else:
+                    war = 'WARNING: '
                 T.insert(END, format_time()+war+str(ee)+'\n', 'redcol')
                 T.config(yscrollcommand=S.set,state="disabled")
+    T.yview(END)
 
 def leave_server():
     global s
+    if nadd_spaces is 1:
+        war = '         WARNING: '
+    else:
+        war = 'WARNING: '
     try:
         s.send('close::')
         action_time = False
@@ -286,10 +322,6 @@ def leave_server():
         s.close()
         s = ''
         T.config(yscrollcommand=S.set,state="normal")
-        if nadd_spaces is 1:
-            war = '          WARNING: '
-        else:
-            war = 'WARNING: '
         T.insert(END, format_time()+war+'Left server\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
         User_area.config(yscrollcommand=S.set,state="normal")
@@ -297,7 +329,7 @@ def leave_server():
         User_area.config(yscrollcommand=S.set,state="disabled")
     except:
         T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, get_cur_time()+'         WARNING: Not connected\n', 'redcol')
+        T.insert(END, format_time()+war+'\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
 def change_name(new_name):
@@ -306,7 +338,7 @@ def change_name(new_name):
     if len(new_name) <3:
         T.config(yscrollcommand=S.set,state="normal")
         if nadd_spaces is 1:
-            war = '          WARNING: '
+            war = '         WARNING: '
         else:
             war = 'WARNING: '
         T.insert(END, format_time()+war+'Name is too short\n', 'redcol')
@@ -370,23 +402,63 @@ def sound_menu():
     button = Button(sw, text='Done', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
     button.grid(row=6, padx=60,pady=30)
 
-def change_other_settings(a,b,c,d,e,f):
-    global task_loop_interval,autojoin, leave_join, usr_symbolmatch, nadd_spaces, show_ttime
+def change_other_settings(a,b,c,d,e,f,g):
+    global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users
+    global User_area, S2, T, S, E, s, username
     autojoin = a
-    task_loop_interval = b
+    X_size = b
     leave_join = c
-    usr_symbolmatch = d
+    Y_size = d
     nadd_spaces = e
-    show_ttime = f
+    if hide_users is not g:
+        hide_users = g
+        if g == 1:
+            User_area.destroy()
+            S2.destroy()
+        else:
+            T.destroy()
+            E.destroy()
+            S.destroy()
+            E = Entry(textvariable=textt)
+            User_area = Text(root, height=44, width=20)
+            S = Scrollbar(root, width=15)
+            S2 = Scrollbar(root, width=15)
+            T = Text(root, height=46, width=114,wrap=WORD)
+            S.pack(side=RIGHT, fill=Y)
+            User_area.pack(side=LEFT,fill=Y)
+            S2.pack(side=LEFT, fill=Y)
+            E.pack(side=BOTTOM,fill=BOTH)
+            T.pack(side=BOTTOM,fill=BOTH,expand=1)
+            S.config(command=T.yview)
+            S2.config(command=User_area.yview)
+            User_area.config(yscrollcommand=S2.set,state="disabled")
+            User_area.bind( '<Configure>', maxsize )
+            T.config(yscrollcommand=S.set,state="disabled")
+            ##T.bind( '<Configure>', maxsize )
+            T.tag_configure('redcol', foreground='red')
+            T.tag_configure('bluecol', foreground='blue')
+            T.tag_configure('greencol', foreground='green')
+            T.tag_configure('purplecol', foreground='purple')
+            T.tag_configure('pinkcol', foreground='pink')
+            T.tag_configure('greycol', foreground='grey')
+            User_area.tag_configure('purplecol', foreground='purple')
+            User_area.tag_configure('greycol', foreground='grey')
+            User_area.tag_configure('pinkcol', foreground='pink')
+            user_area_insert()
+    if f is not 0:
+        show_ttime = f
+        write_settings('show_ttime',f)
     write_settings('autojoin',a)
-    write_settings('chat_interval',b)
+    write_settings('X_size',b)
     write_settings('leave_join',c)
-    write_settings('symbol_match',d)
+    write_settings('Y_size',d)
     write_settings('nadd_spaces',e)
-    write_settings('show_ttime',f)
+    write_settings('hide_users',g)
+    root.geometry('%sx%s' % (X_size,Y_size))
+    
     
 def other_menu():
-    global task_loop_interval, autojoin, leave_join, usr_symbolmatch, nadd_spaces, show_ttime
+    global X_size,Y_size , autojoin, leave_join, nadd_spaces, show_ttime, hide_users
     sm = Toplevel()
     set_winicon(sm,'icon')
     sm.title("Other options")
@@ -401,23 +473,26 @@ def other_menu():
     
     leave_join_enabled = IntVar()
     autojoin_enabled = IntVar()
-    task_int = IntVar()
-    symbolmatch = IntVar()
+    t_X_size = IntVar()
+    t_Y_size = IntVar()
     autojoin_enabled.set(autojoin)
     leave_join_enabled.set(leave_join)
     Checkbutton(frame, text="Show leave and join", variable=leave_join_enabled).pack(side=TOP)
     Checkbutton(frame, text="Enable autojoin", variable=autojoin_enabled).pack(side=TOP)
-    task_int = Scale(frame, from_=0, to=800,length=160, orient=HORIZONTAL)
-    symbolmatch = Scale(frame, from_=-3, to=0,length=160, orient=HORIZONTAL)
-    Label(frame, text="Chat refresh ms").pack(side=TOP)
-    task_int.pack(side=TOP)
-    Label(frame, text="Textbox match user name 0=all").pack(side=TOP)
-    task_int.set(task_loop_interval)
-    symbolmatch.set(usr_symbolmatch)
-    symbolmatch.pack(side=TOP)
+    t_X_size = Scale(frame, from_=300, to=2000,length=160, orient=HORIZONTAL)
+    t_Y_size = Scale(frame, from_=300, to=1600,length=160, orient=HORIZONTAL)
+    Label(frame, text="X_size").pack(side=TOP)
+    t_X_size.pack(side=TOP)
+    Label(frame, text="Y_size").pack(side=TOP)
+    t_X_size.set(X_size)
+    t_Y_size.set(Y_size)
+    t_Y_size.pack(side=TOP)
     
     lenchspaces = IntVar()
+    t_hide_users = IntVar()
     lenchspaces.set(nadd_spaces)
+    t_hide_users.set(hide_users)
+    Checkbutton(frame2, text="Hide userbox", variable=t_hide_users).pack(anchor=NW)
     Checkbutton(frame2, text="Lenghten usernames to 15", variable=lenchspaces).pack(anchor=NW)
     t_box_time = IntVar()
     t_box_time.set = (show_ttime)
@@ -427,19 +502,20 @@ def other_menu():
     Radiobutton(frame2,text="Hide",variable=t_box_time,value=1).pack(anchor=NW)
     t_box_time.set = (show_ttime)
     button = Button(frame2, text='Save', width=20,
-                    command=lambda: {change_other_settings(autojoin_enabled.get(),task_int.get(),
-                                                           leave_join_enabled.get(),symbolmatch.get(),
-                                                           lenchspaces.get(),t_box_time.get())
+                    command=lambda: {change_other_settings(autojoin_enabled.get(),t_X_size.get(),
+                                                           leave_join_enabled.get(),t_Y_size.get(),
+                                                           lenchspaces.get(),t_box_time.get(),
+                                                           t_hide_users.get())
                                                            ,sm.destroy()})
     button.pack(side=BOTTOM)
 
     
 def find_2name(text,name):
-    global usr_symbolmatch
-    name = name[:usr_symbolmatch]
+    global username
     text = text.lower()
-    b = text.find(name.lower())
-    if b is not -1 and len(text) < len(username)+2:
+    name = name.lower()
+    b = text.find(name)
+    if b is not -1:
         if sound_settings[2] == 1:
             play_sound('beep1.wav',False)
         return True
@@ -455,6 +531,7 @@ def reset_textbox():
     T.config(yscrollcommand=S.set,state="disabled")
 
 def organise_USRLIST(data):
+    global USRLIST, hide_users
     USRLIST = []
     temp_list = []
     while True:
@@ -477,7 +554,11 @@ def organise_USRLIST(data):
             x = x[end+1:]
         cnt+=1
     print 'USRLISTE:',USRLIST
+    if hide_users == 0:
+        user_area_insert()
 
+def user_area_insert():
+    global USRLIST
     User_area.config(yscrollcommand=S2.set,state="normal")
     User_area.delete(1.0,END)
     for x in USRLIST:
@@ -489,7 +570,7 @@ def organise_USRLIST(data):
             User_area.insert(END, x[0]+'\n','greycol')
         else:
             User_area.insert(END, x[0]+'\n')
-    User_area.config(yscrollcommand=S2.set,state="disabled")
+    User_area.config(yscrollcommand=S2.set,state="disabled") 
 
 def add_spaces(name):
     for x in name:
@@ -522,7 +603,6 @@ def get_user_color(col,name):
         name = add_spaces(name)
     elif nadd_spaces is 0:
         name = remove_spaces(name)
-        print 'ss'
     if col == '1':
         return 'black',name
     elif col == '2':
@@ -619,7 +699,9 @@ except:
     username = 'User'+str(randrange(1,999,1))
 autojoin = 0
 autojoin = int(read_settings('autojoin='))
-
+hide_users = int(read_settings('hide_users='))
+X_size = int(read_settings('X_size='))
+Y_size = int(read_settings('Y_size='))
 
 ## Setting global vars
 sound_interval = 0
@@ -633,7 +715,7 @@ icon_was_switched = False
 root = Tk()
 root.title("iSPTC - "+username)
 root.minsize(300,300)
-root.geometry("1000x700")
+root.geometry('%sx%s' % (X_size,Y_size))
 maxsize = "5x5"
 textt = StringVar()
 textt.set("")
@@ -646,14 +728,14 @@ menu1.add_command(label='Join', command=join_typing)
 menu1.add_command(label='Join last', command=lambda: join_server(False))
 menu1.add_command(label='Leave', command=leave_server)
 menu1.add_command(label='Quit', command=closewin)
-##menu1.add_command(label='Test', command=lambda: s.send('USRINFO::user'))
-def linkp():
-    print linklist
+
+
 menu2 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Edit',menu=menu2)
 menu2.add_command(label='Clear textbox', command=reset_textbox)
 menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
-menu2.add_command(label='Print linklist', command=linkp)
+menu2.add_command(label='Print userlist', command=T_ins_userlist)
+menu2.add_command(label='Print log', command=T_ins_log)
 
 menu3 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Settings',menu=menu3)
@@ -671,10 +753,11 @@ E = Entry(textvariable=textt)
 User_area = Text(root, height=44, width=20)
 S = Scrollbar(root, width=15)
 S2 = Scrollbar(root, width=15)
-T = Text(root, height=46, width=114)
+T = Text(root, height=46, width=114,wrap=WORD)
 S.pack(side=RIGHT, fill=Y)
-User_area.pack(side=LEFT,fill=Y)
-S2.pack(side=LEFT, fill=Y)
+if hide_users == 0:
+    User_area.pack(side=LEFT,fill=Y)
+    S2.pack(side=LEFT, fill=Y)
 E.pack(side=BOTTOM,fill=BOTH)
 T.pack(side=BOTTOM,fill=BOTH,expand=1)
 S.config(command=T.yview)
@@ -688,6 +771,7 @@ T.tag_configure('bluecol', foreground='blue')
 T.tag_configure('greencol', foreground='green')
 T.tag_configure('purplecol', foreground='purple')
 T.tag_configure('pinkcol', foreground='pink')
+T.tag_configure('greycol', foreground='grey')
 User_area.tag_configure('purplecol', foreground='purple')
 User_area.tag_configure('greycol', foreground='grey')
 User_area.tag_configure('pinkcol', foreground='pink')
@@ -727,7 +811,7 @@ def task():
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 if nadd_spaces is 1:
-                    name = '          SERVER: '
+                    name = '        SERVER: '
                 else:
                     name = 'SERVER: '
                 T.insert(END, dtime+name+data_list[x][9:],'bluecol')
@@ -741,7 +825,7 @@ def task():
                 else:
                     T.config(yscrollcommand=S.set,state="normal")
                     if nadd_spaces is 1:
-                        name = '          SERVER: '
+                        name = '        SERVER: '
                     else:
                         name = 'SERVER: '
                     T.insert(END, dtime+name+data_list[x][9:],'bluecol')
@@ -752,7 +836,7 @@ def task():
             elif data_list[x][:9] == 'CLOSING::':
                 T.config(yscrollcommand=S.set,state="normal")
                 if nadd_spaces is 1:
-                    name = '         WARNING: '
+                    name = '        WARNING: '
                 else:
                     name = 'WARNING: '
                 T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
@@ -786,9 +870,7 @@ def task():
                         if linkk is not False:
                             T.insert(END, linkk, hyperlink.add(click1))
                             T.insert(END,' ')
-                    if x[0] is '@' and x[1] is not ' ' and len(x) > 2:
-                        T.insert(END, x,'greencol')
-                    elif linkk is False and nfind is False:
+                    if linkk is False and nfind is False:
                         T.insert(END, x)       
                 T.insert(END,'\n')
                     

@@ -3,6 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 ver = '0.83'
+welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver
 
 def read_server_settings():
     text = readf('load/server')
@@ -64,12 +65,6 @@ def remove_spaces(username):
         else:
             pass
     return username
-
-def get_list_len(llist):
-    cnt = 0
-    for x in llist:
-        cnt+=1
-    return cnt
 
 def check_duplicate(name):
     cnt = 0
@@ -135,19 +130,25 @@ def broadcastData(s, conn, data): # function to send Data
 
 
 def clientHandler(i):
-    global s, threadip, threads, msgprint_enabled, logging_enabled
+    global s, threadip, threads, msgprint_enabled, logging_enabled, welcome_msg
     username,username_set = '',False
     level = 1
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
     print addr," is now connected! \n"
     ## 0Thread, 1connecton, 2usrname, 3ip, 3-2port,4mode
     threadip.append([str(i),conn,'',[addr[0],addr[1]],1])
-    conn.sendall('SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver+'\nhyperlink test is http://mans.bot.nu')
+    conn.sendall(welcome_msg)
     while 1:
         data = recieveData(s, conn)
         chatlog.append([get_cur_time(),username,data])
         ##Normal messages
         if data[0:9] == 'MESSAGE::':
+            while True:
+                b = data[9:].find('MESSAGE::')
+                if b is not -1:
+                    data = data[:b]+data[b+9:]
+                else:
+                    break
             if msgprint_enabled == 1:
                 print get_cur_time(),username2,data[9:]
             broadcastData(s, conn, 'm::'+str(level)+username+data[9:])
@@ -234,7 +235,7 @@ def main(): # main function
     global s, action_time, msgprint_enabled, log_enabled
     s = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
     try:
-        s.bind(('', 8001)) # tells the socket to bind to localhost on port 8000
+        s.bind(('', 44671)) # tells the socket to bind to localhost on port 8000
     except:
         print "Can't bind address"
         time.sleep(2)
@@ -278,14 +279,19 @@ def main(): # main function
             for x in chatlog:
                 print x
         elif msg == 'log-save':
-            for x in chatlog:
+            chat_len = len(chatlog)
+            for cnt in range(0,chat_len):
+                print cnt
                 fh = open('load/chatlog.txt', 'a')
+                x = chatlog[cnt]
                 if len(x) < 1:
                     x = ' '
                 print 'Writing ',str(x)
                 fh.write(str(x)+'\n')
                 fh.close()
-            chatlog = []
+            print chatlog
+            for cnt in range(0,chat_len):
+                chatlog.pop(0)
         elif msg == 'msgprint':
             global msgprint_enabled
             print 'msgprint is: ',msgprint_enabled
@@ -295,6 +301,8 @@ def main(): # main function
             else:
                msgprint_enabled = 1
             write_settings('msgprint',msgprint_enabled)
+        elif msg == 'chatlog':
+            print chatlog
         elif msg == 'say':
             x = raw_input(':::Say what? ')
             print 'Sending "'+x+'" to all'

@@ -24,6 +24,11 @@ chat_interval=206
 ## Show leave and join messages
 leave_join=1
 ##Show textbox time 1/2/3
-show_ttime=3
-##Lenghten usernames to 15 symbols
+show_ttime=2
+##Lenghten names in chatbox to 15 symbols (adds spaces)
 nadd_spaces=1
+##Disable user list
+hide_users=0
+##Window minsize
+X_size=1004
+Y_size=706
