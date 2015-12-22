@@ -4,11 +4,11 @@ base = None
 if sys.platform == "win32":
     base = "Win32GUI"
 
-executables = [cx_Freeze.Executable("client.py", base = base)]
+executables = [cx_Freeze.Executable("client.py", base = base,icon="load/icon.ico")]
 
 cx_Freeze.setup(
     name="iSPTC",
-    version="0.83",
+    version="0.86",
     options={"build_exe": {"packages":["os","platform","socket","threading","Tkinter","time","random"],
                            "include_files":["load/icon.ico","load/beep1.wav","load/icon.png","load/settings","load/server","load/icon2.png","load/icon2.ico"]}},
     executables = executables

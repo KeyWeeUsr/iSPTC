@@ -4,7 +4,7 @@ from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
-ver = '0.85'
+ver = '0.86'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -148,7 +148,7 @@ class HyperlinkManager:
                         webbrowser.open(x[1])
                 return
 
-class Test(Text):
+class TT(Text):
     def __init__(self, master, **kw):
         Text.__init__(self, master, **kw)
         self.bind('<Control-c>', self.copy)
@@ -157,6 +157,7 @@ class Test(Text):
         
     def copy(self, event=None):
         self.config(state="normal")
+        print 'lllll'
         self.clipboard_clear()
         text = self.get("sel.first", "sel.last")
         self.clipboard_append(text)
@@ -190,6 +191,27 @@ def closewin():
 
 def get_cur_time():
     return strftime("%H:%M:%S")
+
+def cp_destroy(*arg):
+    global cp_is
+    bb1.destroy()
+    bb2.destroy()
+    cp_is = False
+    
+def copy_paste_buttons(*arg):
+    global bb2, bb1, cp_is, m_x, m_y
+    if cp_is == False:
+        bb1 = Button(root, text='Copy', width=26,
+                        command=lambda: {copy_text(),cp_destroy()})
+        bb1.place(x=m_x, y=m_y,width=80, height=26)
+        bb2 = Button(root, text='Paste', width=26,
+                        command=lambda: {entry_paste(),cp_destroy()})
+        bb2.place(x=m_x, y=m_y+26,width=80, height=26)
+        cp_is = True
+    else:
+        bb1.destroy()
+        bb2.destroy()
+        cp_is = False
 
 def recv_thread(s):
     global action_time
@@ -351,6 +373,16 @@ def change_name(new_name):
             s.send('USRINFO::'+username)
         except:
             pass
+
+def winf_is(vv):
+    global windowfocus,icon_was_switched
+    windowfocus = True
+    if icon_was_switched is True:
+        set_winicon(root,'icon')
+        icon_was_switched = False
+def winf_isnt(vv):
+    global windowfocus
+    windowfocus = False
     
 def set_username():
     new_name = StringVar()
@@ -445,6 +477,7 @@ def change_other_settings(a,b,c,d,e,f,g):
             User_area.tag_configure('greycol', foreground='grey')
             User_area.tag_configure('pinkcol', foreground='pink')
             user_area_insert()
+            hyperlink = HyperlinkManager(T)
     if f is not 0:
         show_ttime = f
         write_settings('show_ttime',f)
@@ -640,6 +673,36 @@ def find_link(data):
             else:
                 return 'http://'+linktext
     return False
+
+def copy_text(*arg):
+    try:
+        try:
+            T.config(state="normal")
+            T.clipboard_clear()
+            text = T.get("sel.first", "sel.last")
+            T.clipboard_append(text)
+            T.config(state="disabled")
+        except:
+            try:
+                User_area.config(state="normal")
+                User_area.clipboard_clear()
+                text = User_area.get("sel.first", "sel.last")
+                User_area.clipboard_append(text)
+                User_area.config(state="disabled")
+            except:
+                E.clipboard_clear()
+                text = E.selection_get()
+                E.clipboard_append(text)
+    except:
+        pass
+
+def entry_paste(*arg):
+    text = root.selection_get(selection='CLIPBOARD')
+    E.insert('insert', text)
+
+def motion(event):
+    global m_x,m_y
+    m_x, m_y = event.x, event.y
       
 def About():
     global ver
@@ -711,7 +774,7 @@ data_list = []
 msg_recv = 0
 windowfocus = True
 icon_was_switched = False
-
+cp_is = False
 ## Tkinter below
 root = Tk()
 root.title("iSPTC - "+username)
@@ -733,6 +796,7 @@ menu1.add_command(label='Quit', command=closewin)
 
 menu2 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Edit',menu=menu2)
+menu2.add_command(label='Paste', command=entry_paste)
 menu2.add_command(label='Clear textbox', command=reset_textbox)
 menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
 menu2.add_command(label='Print userlist', command=T_ins_userlist)
@@ -776,22 +840,19 @@ T.tag_configure('greycol', foreground='grey')
 User_area.tag_configure('purplecol', foreground='purple')
 User_area.tag_configure('greycol', foreground='grey')
 User_area.tag_configure('pinkcol', foreground='pink')
+cp_focus = False
 
 def click1():
     print "nothing"
-def winf_is(vv):
-    global windowfocus,icon_was_switched
-    windowfocus = True
-    if icon_was_switched is True:
-        set_winicon(root,'icon')
-        icon_was_switched = False
-def winf_isnt(vv):
-    global windowfocus
-    windowfocus = False
+    
 root.bind('<Return>', enter_text)
 root.bind('<Escape>', reset_entry)
 root.bind('<FocusIn>', winf_is)
 root.bind('<FocusOut>', winf_isnt)
+root.bind('<Control-c>', copy_text)
+root.bind('<Motion>', motion)
+root.bind('<Button-3>', copy_paste_buttons)   
+
 
 def task():
     
@@ -891,7 +952,7 @@ def task():
 
 hyperlink = HyperlinkManager(T)
 
-te = Test(root)
+##te = Test(root)
 set_winicon(root,'icon')
 
 root.protocol('WM_DELETE_WINDOW', closewin)
