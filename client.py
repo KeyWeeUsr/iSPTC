@@ -261,7 +261,7 @@ def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'black')
-    T.insert(END, 'Type: /users for userlist\n', 'black')
+    T.insert(END, 'Type: /users for userlist, /log for chatlog\n', 'black')
     T.config(yscrollcommand=S.set,state="disabled")
 
 def T_ins_log():
@@ -553,6 +553,7 @@ def organise_USRLIST(data):
             USRLIST[cnt].append(x[begn:end])
             x = x[end+1:]
         cnt+=1
+    USRLIST.sort()
     print 'USRLISTE:',USRLIST
     if hide_users == 0:
         user_area_insert()
