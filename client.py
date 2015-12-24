@@ -4,7 +4,8 @@ from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
-ver = '0.86'
+import tkFont
+ver = '0.88'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -157,7 +158,6 @@ class TT(Text):
         
     def copy(self, event=None):
         self.config(state="normal")
-        print 'lllll'
         self.clipboard_clear()
         text = self.get("sel.first", "sel.last")
         self.clipboard_append(text)
@@ -182,11 +182,11 @@ def closewin():
     action_time = False
     try:
         s.send('close::')
-        sleep(1)
+        sleep(0.5)
         s.close()
         root.destroy()
     except:
-        sleep(1)
+        sleep(0.5)
         root.destroy()
 
 def get_cur_time():
@@ -232,6 +232,7 @@ def join_typing():
     jsrv.resizable(FALSE,FALSE)
     usrEntry = Entry(jsrv,textvariable=jaddr)
     usrEntry.pack(pady=25)
+    usrEntry.focus_set()
     button = Button(jsrv, text='Done', width=20,pady=10, command=lambda: {join_server(jaddr.get()),
                                                                 jsrv.destroy()})
     button.pack()
@@ -241,7 +242,7 @@ def join_server(typing):
     try:
         action_time = False
         s.send('close::')
-        sleep(2)
+        sleep(0.5)
         s.close()
     except:
         pass
@@ -260,7 +261,7 @@ def join_server(typing):
         s.connect((TCP_IP, TCP_PORT))
         action_time = True
         Thread(target=recv_thread,args=(s,)).start()
-        sleep(1)
+        sleep(0.5)
         s.send('USRINFO::'+username)
     except:
         T.config(yscrollcommand=S.set,state="normal")
@@ -275,8 +276,9 @@ def T_ins_userlist():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Userlist]\n', 'black')
+    T.insert(END, '[Name] [IP] [Level] [AFK]\n', 'black')
     for x in USRLIST:
-        T.insert(END, x[1]+', '+x[0]+'\n', 'black')
+        T.insert(END, x[0]+', '+x[1]+', '+x[2]+', '+x[3]+'\n', 'black')
     T.config(yscrollcommand=S.set,state="disabled")
 
 def T_ins_help():
@@ -292,22 +294,30 @@ def T_ins_log():
     for x in data_list:
         T.insert(END, x,'greycol')
     T.config(yscrollcommand=S.set,state="disabled")
-    
+
+def send_afk():
+    try:
+        s.send('aAFKAFK::')
+    except:
+        pass
+
 def enter_text(event):
     global s, USRLIST
 ##    T.config(yscrollcommand=S.set,state="normal")
 ##    T.config(yscrollcommand=S.set,state="disabled")
     text = textt.get()
-    if text[0] == '/':
-        if text == '/users':
-            T_ins_userlist()
-        elif text == '/help':
-            T_ins_help()
-        elif text == '/log':
-            T_ins_log()
-        textt.set('')
-    else:
-        if len(text) > 0:
+    if len(text) > 0:
+        if text[0] == '/':
+            if text == '/users':
+                T_ins_userlist()
+            elif text == '/help':
+                T_ins_help()
+            elif text == '/log':
+                T_ins_log()
+            elif text == '/afk':
+                send_afk()
+            textt.set('')
+        else:
             if text[0] is '@':
                 b = text.find(' ')
                 if b is not -1:
@@ -316,7 +326,6 @@ def enter_text(event):
                     textt.set(text+" ")
             else:
                 textt.set('')
-        if len(text) > 0:
             if sound_settings[1] == True:
                 play_sound('beep1.wav',True)
             try:
@@ -394,6 +403,7 @@ def set_username():
     uw.resizable(FALSE,FALSE)
     usrEntry = Entry(uw,textvariable=new_name)
     usrEntry.pack(pady=25)
+    usrEntry.focus_set()
     button = Button(uw, text='Done', width=20, command=lambda: {change_name(new_name),
                                                                 uw.destroy()})
     button.pack()
@@ -434,6 +444,92 @@ def sound_menu():
     button = Button(sw, text='Done', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
     button.grid(row=6, padx=60,pady=30)
 
+def set_font(font,fontlist,t_font_size):
+    global T,E,User_area, text_font, font_size
+    global font_size, text_font
+    try: 
+        if len(font) > 0:
+            text_font = font
+    except:
+        pass
+    try:
+        font_size = t_font_size
+    except:
+        pass
+    tag_colors()
+
+    write_settings('tfont',text_font[0])
+    write_settings('font_size',font_size)
+    
+def font_menu():
+    global font_size, text_font
+    fom = Toplevel()
+    set_winicon(fom,'icon')
+    fom.title("Font options")
+    fom.minsize(700,400)
+    fom.resizable(FALSE,FALSE)
+
+    frame = Frame(fom, height=380,width=300, relief=SUNKEN)
+    frame2 = Frame(fom, height=400,width=400, relief=SUNKEN)
+    frame.pack_propagate(0)
+    frame2.pack_propagate(0)
+    frame.pack(anchor=NE,side=LEFT)
+    frame2.pack(anchor=NE,side=LEFT)
+    
+    fonts=list(tkFont.families())
+    fonts.sort()
+
+    display = Listbox(frame)
+    scroll = Scrollbar(frame)
+    scroll.pack(side=RIGHT, fill=Y, expand=NO)
+    display.pack(padx=10, fill=BOTH, expand=YES, side=LEFT)
+    scroll.configure(command=display.yview)
+    display.configure(yscrollcommand=scroll.set)
+    for item in fonts:
+        display.insert(END, item)
+
+    t_font_size = IntVar()
+    t_font_size.set(font_size)
+    Label(frame2, text="Font size:",justify = LEFT).place(x=20,y=300)
+    Efont_size = Entry(frame2,textvariable=t_font_size,width=3).place(x=100,y=300)
+    display_text = Text(frame2, height=12, width=50,wrap=WORD)
+    display_text.place(x=20,y=80)
+    display_text.insert(END, get_cur_time()+' SERVER: Hello human\n','bluecol')
+    display_text.insert(END, get_cur_time()+' WARNING: Hello human\n','redcol')
+    display_text.insert(END, get_cur_time()+' Human: Hello\n','greencol')
+    display_text.insert(END, get_cur_time()+' SERVER: human is afk\n','greycol')
+    display_text.insert(END, get_cur_time()+' Admin: /kick human\n','purplecol')
+    display_text.insert(END, get_cur_time()+' Cat: hello ','blackcol')       
+
+    button2 = Button(frame2, text='Apply', width=12,
+                    command=lambda: {apply_display_font(display_text,display.curselection(),fonts,
+                                                        t_font_size.get())})
+    button = Button(frame2, text='Save', width=12,
+                    command=lambda: {set_font(display.curselection(),fonts,
+                                                        t_font_size.get()),
+                                     fom.destroy()})
+    button.place(x=40,y=360)
+    button2.place(x=200,y=360)
+    apply_display_font(display_text,(10,),fonts,font_size)
+
+def apply_display_font(display_text,font,fontlist,t_font_size):
+    global font_size, text_font
+    try: 
+        if len(font) > 0:
+            text_font = font
+    except:
+        pass
+    try:
+        font_size = t_font_size
+    except:
+        pass
+    display_text.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
+    display_text.tag_configure('bluecol', font=(fontlist[text_font[0]], font_size), foreground='blue')
+    display_text.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='green')
+    display_text.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
+    display_text.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
+    display_text.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+
 def change_other_settings(a,b,c,d,e,f,g):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users
     global User_area, S2, T, S, E, s, username
@@ -466,16 +562,7 @@ def change_other_settings(a,b,c,d,e,f,g):
             User_area.config(yscrollcommand=S2.set,state="disabled")
             User_area.bind( '<Configure>', maxsize )
             T.config(yscrollcommand=S.set,state="disabled")
-            ##T.bind( '<Configure>', maxsize )
-            T.tag_configure('redcol', foreground='red')
-            T.tag_configure('bluecol', foreground='blue')
-            T.tag_configure('greencol', foreground='green')
-            T.tag_configure('purplecol', foreground='purple')
-            T.tag_configure('pinkcol', foreground='pink')
-            T.tag_configure('greycol', foreground='grey')
-            User_area.tag_configure('purplecol', foreground='purple')
-            User_area.tag_configure('greycol', foreground='grey')
-            User_area.tag_configure('pinkcol', foreground='pink')
+            tag_colors()
             user_area_insert()
             hyperlink = HyperlinkManager(T)
     if f is not 0:
@@ -556,7 +643,13 @@ def find_2name(text,name):
         return False
 
 def reset_entry(var):
-    textt.set('')
+    global cp_is, bb1, bb2
+    if cp_is == True:
+        bb1.destroy()
+        bb2.destroy()
+        cp_is = False
+    else:
+        textt.set('')
 
 def reset_textbox():
     T.config(yscrollcommand=S.set,state="normal")
@@ -596,14 +689,20 @@ def user_area_insert():
     User_area.config(yscrollcommand=S2.set,state="normal")
     User_area.delete(1.0,END)
     for x in USRLIST:
-        if x[1] == '2':
-            User_area.insert(END, x[0]+'\n','purplecol')
-        elif x[1] == '9':
-            User_area.insert(END, x[0]+'\n','pinkcol')
-        elif x[1] == '-1':
-            User_area.insert(END, x[0]+'\n','greycol')
-        else:
-            User_area.insert(END, x[0]+'\n')
+        try:
+            if x[3] == '0':
+                User_area.insert(END, x[0]+'\n','greycol')
+            else:
+                if x[2] == '2':
+                    User_area.insert(END, x[0]+'\n','purplecol')
+                elif x[2] == '9':
+                    User_area.insert(END, x[0]+'\n','pinkcol')
+                elif x[2] == '-1':
+                    User_area.insert(END, x[0]+'\n','greycol')
+                else:
+                    User_area.insert(END, x[0]+'\n','blackcol')
+        except:
+            User_area.insert(END, x[0]+'\n','blackcol')
     User_area.config(yscrollcommand=S2.set,state="disabled") 
 
 def add_spaces(name):
@@ -709,6 +808,8 @@ def About():
     winwi = 350
     aboutwin = Toplevel()
     aboutwin.resizable(FALSE,FALSE)
+    set_winicon(aboutwin,'icon')
+    aboutwin.title("About..")
     aboutwin.config()
     frame = Frame(aboutwin, height=280,width=winwi, relief=SUNKEN,bg='grey')
     frame.pack_propagate(0)
@@ -766,6 +867,8 @@ autojoin = int(read_settings('autojoin='))
 hide_users = int(read_settings('hide_users='))
 X_size = int(read_settings('X_size='))
 Y_size = int(read_settings('Y_size='))
+font_size = int(read_settings('font_size='))
+text_font = (int(read_settings('tfont=')),)
 
 ## Setting global vars
 sound_interval = 0
@@ -790,24 +893,31 @@ menu1 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Main',menu=menu1)
 menu1.add_command(label='Join', command=join_typing)
 menu1.add_command(label='Join last', command=lambda: join_server(False))
+menu1.add_separator()
 menu1.add_command(label='Leave', command=leave_server)
 menu1.add_command(label='Quit', command=closewin)
 
-
 menu2 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Edit',menu=menu2)
+menu2.add_command(label='Copy', command=copy_text)
 menu2.add_command(label='Paste', command=entry_paste)
-menu2.add_command(label='Clear textbox', command=reset_textbox)
+menu2.add_separator()
+menu2.add_command(label='Clear Text box', command=reset_textbox)
 menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
-menu2.add_command(label='Print userlist', command=T_ins_userlist)
-menu2.add_command(label='Print log', command=T_ins_log)
+
 
 menu3 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Settings',menu=menu3)
-menu3.add_command(label='Set username', command=set_username)
-menu3.add_command(label='Sound options', command=sound_menu)
-menu3.add_command(label='Other options', command=other_menu)
+menu.add_cascade(label='Commands',menu=menu3)
+menu3.add_command(label='Go afk', command=send_afk)
+menu3.add_command(label='Print userlist', command=T_ins_userlist)
+menu3.add_command(label='Print log', command=T_ins_log)
 
+menu4 = Menu(menu,tearoff=0)
+menu.add_cascade(label='Settings',menu=menu4)
+menu4.add_command(label='Set username', command=set_username)
+menu4.add_command(label='Set font', command=font_menu)
+menu4.add_command(label='Sound options', command=sound_menu)
+menu4.add_command(label='Other options', command=other_menu)
 
 helpmenu = Menu(menu,tearoff=0)
 menu.add_cascade(label='Help', menu=helpmenu)
@@ -830,17 +940,34 @@ S2.config(command=User_area.yview)
 User_area.config(yscrollcommand=S2.set,state="disabled")
 User_area.bind( '<Configure>', maxsize )
 T.config(yscrollcommand=S.set,state="disabled")
+E.focus_set()
 ##T.bind( '<Configure>', maxsize )
-T.tag_configure('redcol', foreground='red')
-T.tag_configure('bluecol', foreground='blue')
-T.tag_configure('greencol', foreground='green')
-T.tag_configure('purplecol', foreground='purple')
-T.tag_configure('pinkcol', foreground='pink')
-T.tag_configure('greycol', foreground='grey')
-User_area.tag_configure('purplecol', foreground='purple')
-User_area.tag_configure('greycol', foreground='grey')
-User_area.tag_configure('pinkcol', foreground='pink')
+
+def tag_colors():
+    global font_size, text_font
+    font = text_font
+    fontlist=list(tkFont.families())
+    fontlist.sort()
+    T.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
+    T.tag_configure('bluecol', font=(fontlist[text_font[0]], font_size), foreground='blue')
+    T.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='green')
+    T.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
+    T.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
+    T.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    T.tag_configure('pinkcol', font=(fontlist[font[0]], 10), foreground='pink')
+
+    User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    User_area.tag_configure('pinkcol', font=(fontlist[font[0]], 10), foreground='pink')
+    User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
+    User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
+    E.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
+tag_colors()
+
 cp_focus = False
+
+
+##E[i].grid(row=i/9,column=i%9,ipady=14) 
+
 
 def click1():
     print "nothing"
@@ -933,7 +1060,7 @@ def task():
                             T.insert(END, linkk, hyperlink.add(click1))
                             T.insert(END,' ')
                     if linkk is False and nfind is False:
-                        T.insert(END, x)       
+                        T.insert(END, x,'blackcol')       
                 T.insert(END,'\n')
                     
                       

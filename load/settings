@@ -7,6 +7,9 @@ username=aa
 ## How many symbols to match before marking as message for you -3/-2/-1/0(all)
 symbol_match=-1
 
+##text_font
+tfont=16
+font_size=10
 
 ## Enable sound 1/0
 enable_sound=1
