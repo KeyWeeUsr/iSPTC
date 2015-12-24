@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.83'
+ver = '0.85'
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver
 
 def read_server_settings():
@@ -92,16 +92,45 @@ def set_threadip(i,addr,which):
                     return level
     return level
 
+def change_brckname(name):
+    brktemp_list = []
+    for x in name:
+        brktemp_list.append(x)
+    cnt = 0
+    for x in brktemp_list:
+        if x == '[':
+            brktemp_list[cnt] = '{'
+        elif x == ']':
+            brktemp_list[cnt] = '}'
+        cnt+=1
+    name = ''
+    for x in brktemp_list:
+        name = name+x
+    return name
+
+def send_ulist_only(s):
+    ip_sending_enabled = True
+    sendlist = ''
+    for x in threadip:
+        print x
+        x[2] = change_brckname(x[2])
+        if ip_sending_enabled == True:
+            sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']]]'
+        else:
+            sendlist+= '[[['+str(x[2])+']['+str(x[4])+']]]'
+    broadcastData(s, 'nav','USRLIST::'+sendlist[:-1])
+
 def send_user_list(s,conn,oldusername,username,addr):
-    ip_sending_enabled = False
+    ip_sending_enabled = True
     if oldusername is not '':
         oldusername = remove_spaces(oldusername)
     if username is not '':
         username = remove_spaces(username)
     sendlist = ''
     for x in threadip:
+        x[2] = change_brckname(x[2])
         if ip_sending_enabled == True:
-            sendlist+= '[[['+str(x[3][0])+']['+str(x[2])+']['+str(x[4])+']]]'
+            sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']]]'
         else:
             sendlist+= '[[['+str(x[2])+']['+str(x[4])+']]]'
     if username is not '':
@@ -134,9 +163,9 @@ def clientHandler(i):
     username,username_set = '',False
     level = 1
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
-    print addr," is now connected! \n"
-    ## 0Thread, 1connecton, 2usrname, 3ip, 3-2port,4mode
-    threadip.append([str(i),conn,'',[addr[0],addr[1]],1])
+    print get_cur_time(),addr," is now connected! \n"
+    ## 0Thread, 1connecton, 2usrname, 3ip, 3-2port,4mode,5afk
+    threadip.append([str(i),conn,'',[addr[0],addr[1]],1,'1'])
     conn.sendall(welcome_msg)
     while 1:
         data = recieveData(s, conn)
@@ -163,7 +192,7 @@ def clientHandler(i):
             send_user_list(s,conn,'','',addr[0])
             time.sleep(1)
             username2 = remove_spaces(username)
-            broadcastData(s, conn, 'SERVELJ::'+username2+' left')
+            broadcastData(s, conn, 'SERVELJ::'+username2+'('+addr[0]+')'+' left')
             print addr," is now disconnected! \n"
             Thread(target=clientHandler,args=(i,)).start()
             break
@@ -178,10 +207,23 @@ def clientHandler(i):
             send_user_list(s,conn,'','',addr[0])
             time.sleep(1)
             username2 = remove_spaces(username)
-            broadcastData(s, conn, 'SERVELJ::'+username2+' left')
+            broadcastData(s, conn, 'SERVELJ::'+username2+'('+addr[0]+')'+' left')
             print addr," is now disconnected! \n"
             Thread(target=clientHandler,args=(i,)).start()
             break
+        elif data[0:9] == 'aAFKAFK::':
+            for x in threadip:
+                b = x[0].find(str(i))
+                if b is not -1:
+                    if x[5] == '1':
+                        broadcastData(s, 'nav','SSERVER::'+username2+' is afk')
+                        newval = '0'
+                    else:
+                        broadcastData(s, 'nav','SSERVER::'+username2+' is no longer afk')
+                        newval = '1'
+                    x[5] = newval
+            time.sleep(0.2)
+            send_ulist_only(s)
         elif data[0:9] == 'USRINFO::':
             oldusername = str(username)
             for x in oldusername:
@@ -202,26 +244,28 @@ def clientHandler(i):
                         b = x[0].find(str(i))
                         if b is not -1:
                             username2 = remove_spaces(username)
+                            username2 = change_brckname(username2)
                             username2 = check_duplicate(username2)
                             x[2] = username2
                             level = set_threadip(str(i),addr[0],4)
                             print addr[0],' is level ',level,' !'
                             broadcastData(s, 'nav','SSERVER::'+remove_spaces(username)+' is level'+str(level))
                             time.sleep(0.5)
-                            send_user_list(s,conn,oldusername,username,addr[0])
+                            send_user_list(s,conn,oldusername,username2,addr[0])
                 ## Login username received
                 else:
                     for x in threadip:
                         b = x[0].find(str(i))
                         if b is not -1:
                             username2 = remove_spaces(username)
+                            username2 = change_brckname(username2)
                             username2 = check_duplicate(username2)
                             x[2] = (username2)
                             level = set_threadip(str(i),addr[0],4)
                             print addr[0],' is level ',level,' !'
                             broadcastData(s, 'nav','SSERVER::'+username2+' is level'+str(level))
                             time.sleep(0.5)
-                            send_user_list(s,conn,'',username,addr[0])
+                            send_user_list(s,conn,'',username2,addr[0])
                 username_set = True
 
 threads = 10
@@ -262,9 +306,11 @@ def main(): # main function
             lvluserlvl = raw_input('level')
             broadcastData(s, 'nav','SSERVER::'+str(lvluser)+' is now level '+str(lvluserlvl)+' !')
         elif msg == 'threadip':
-            print threadip
+            for x in threadip:
+                print x
         elif msg == 'iplist':
-            print iplist
+            for x in iplist:
+                print x
         elif msg == 'help':
             print 'Type: quit, lvluser, threadip, iplist, log, log-toggle, log-save, say, msgprint, msgprint-toggle'
         elif msg == 'log-toggle':
