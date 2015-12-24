@@ -222,21 +222,57 @@ def recv_thread(s):
         data_list.append(data+'\n')
         
 def join_typing():
+    global server_list
+    server_list = []
+    temp_text = readf('load/serverlist')
+    for x in temp_text:
+        server_list.append(x)
     joinaddr = str(read_settings('joinaddr='))
     jaddr = StringVar()
     jaddr.set(joinaddr)
     jsrv = Toplevel()
     set_winicon(jsrv,'icon')
     jsrv.title("Server address")
-    jsrv.minsize(250,100)
+    jsrv.minsize(320,360)
     jsrv.resizable(FALSE,FALSE)
+
+    frame = Frame(jsrv, height=260,width=300, relief=SUNKEN)
+    frame.pack_propagate(0)
+    frame.pack(padx=10,pady=10,anchor=NE,side=TOP)
+
+    Label(frame, text="Select from list:").pack(anchor=NW)
+    display = Listbox(frame)
+    scroll = Scrollbar(frame)
+    scroll.pack(side=RIGHT, fill=Y, expand=NO)
+    display.pack(fill=BOTH, expand=YES, side=TOP)
+    scroll.configure(command=display.yview)
+    display.configure(yscrollcommand=scroll.set)
+    for item in server_list:
+        display.insert(END, item)
+
+    Label(jsrv, text="Or type manually:").pack(side=TOP)
     usrEntry = Entry(jsrv,textvariable=jaddr)
-    usrEntry.pack(pady=25)
+    usrEntry.pack(side=TOP,pady=10,)
     usrEntry.focus_set()
-    button = Button(jsrv, text='Done', width=20,pady=10, command=lambda: {join_server(jaddr.get()),
+    button = Button(jsrv, text='Join',pady=10, width=10,height=1, command=lambda: {join_srv_check(display.curselection(),jaddr.get()),
                                                                 jsrv.destroy()})
-    button.pack()
-    
+    button.pack(side=TOP)
+
+def join_srv_check(curselection,jaddr):
+    global server_list
+    if curselection is not ():
+        join_server(server_list[curselection[0]])
+    else:
+        dontadd = False
+        for x in server_list:
+            if x == jaddr:
+                dontadd = True
+        if dontadd == False:
+            fh = open('load/serverlist', 'a')
+            fh.write(str(jaddr)+'\n')
+            fh.close()
+        join_server(jaddr)
+                
 def join_server(typing):
     global username, s, action_time
     try:
@@ -508,8 +544,8 @@ def font_menu():
                     command=lambda: {set_font(display.curselection(),fonts,
                                                         t_font_size.get()),
                                      fom.destroy()})
-    button.place(x=40,y=360)
-    button2.place(x=200,y=360)
+    button.place(x=200,y=360)
+    button2.place(x=40,y=360)
     apply_display_font(display_text,(10,),fonts,font_size)
 
 def apply_display_font(display_text,font,fontlist,t_font_size):
@@ -869,6 +905,7 @@ X_size = int(read_settings('X_size='))
 Y_size = int(read_settings('Y_size='))
 font_size = int(read_settings('font_size='))
 text_font = (int(read_settings('tfont=')),)
+server_list = []
 
 ## Setting global vars
 sound_interval = 0
@@ -1000,7 +1037,7 @@ def task():
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 if nadd_spaces is 1:
-                    name = '        SERVER: '
+                    name = '         SERVER: '
                 else:
                     name = 'SERVER: '
                 T.insert(END, dtime+name+data_list[x][9:],'bluecol')
@@ -1014,7 +1051,7 @@ def task():
                 else:
                     T.config(yscrollcommand=S.set,state="normal")
                     if nadd_spaces is 1:
-                        name = '        SERVER: '
+                        name = '         SERVER: '
                     else:
                         name = 'SERVER: '
                     T.insert(END, dtime+name+data_list[x][9:],'bluecol')
