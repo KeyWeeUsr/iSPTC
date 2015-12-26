@@ -5,7 +5,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
 import tkFont
-ver = '0.88'
+ver = '0.91'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -67,9 +67,9 @@ def edit_settings(text,text_find,new_value):
 def read_settings(text_find):
     global bat_file, sys_path
     if bat_file is True:
-        a = readf(sys_path+'load/settings')
+        a = readf(sys_path+'load/settings.cfg')
     else:
-        a = readf('load/settings')
+        a = readf('load/settings.cfg')
     a = get_settings(a,text_find)
     return a
 
@@ -83,15 +83,15 @@ def get_settings(text,text_find):
 def write_settings(text_find,new_value):
     global bat_file, sys_path
     if bat_file is True:
-        a = readf(sys_path+'load/settings')
+        a = readf(sys_path+'load/settings.cfg')
         a = edit_settings(a,text_find,new_value)
         text = a = '\n'.join(str(e) for e in a)
-        savef(text,sys_path+'load/settings')
+        savef(text,sys_path+'load/settings.cfg')
     else:
-        a = readf('load/settings')
+        a = readf('load/settings.cfg')
         a = edit_settings(a,text_find,new_value)
         text = a = '\n'.join(str(e) for e in a)
-        savef(text,'load/settings')
+        savef(text,'load/settings.cfg')
 
 def play_sound(name,ignore):
     if sound_settings[0] == 1:
@@ -113,9 +113,12 @@ linklist = []
 
 class HyperlinkManager:
     def __init__(self, text):
-        global linkk
+        global linkk, font_size, text_font
+        font = text_font
+        fontlist=list(tkFont.families())
+        fontlist.sort()
         self.text = text
-        self.text.tag_config("hyper", foreground="blue", underline=1)
+        self.text.tag_config("hyper", font=(fontlist[text_font[0]], font_size), foreground='blue', underline=1)
         self.text.tag_bind("hyper", "<Enter>", self._enter)
         self.text.tag_bind("hyper", "<Leave>", self._leave)
         self.text.tag_bind("hyper", "<Button-1>", self._click)
@@ -175,7 +178,13 @@ class TT(Text):
         self.insert('insert', text)
         self.config(state="disabled")
 
-
+def lenghten_name(name,symbols):
+    global nadd_spaces
+    if nadd_spaces is 1:
+        while len(name) < symbols:
+            name = " " + name
+    return name
+    
 def closewin():
     global s, action_time
     print 'Goodbye'
@@ -301,10 +310,7 @@ def join_server(typing):
         s.send('USRINFO::'+username)
     except:
         T.config(yscrollcommand=S.set,state="normal")
-        if nadd_spaces is 1:
-            war = '         WARNING: '
-        else:
-            war = 'WARNING: '
+        war = lenghten_name('WARNING: ',20)
         T.insert(END, format_time()+war+"Can't join\n", 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
@@ -321,7 +327,7 @@ def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'black')
-    T.insert(END, 'Type: /users for userlist, /log for chatlog\n', 'black')
+    T.insert(END, 'Type: /users for userlist, /log for chatlog\n,/afk to go afk, /link_list to see all links', 'black')
     T.config(yscrollcommand=S.set,state="disabled")
 
 def T_ins_log():
@@ -329,6 +335,13 @@ def T_ins_log():
     T.insert(END, '[Log]\n', 'black')
     for x in data_list:
         T.insert(END, x,'greycol')
+    T.config(yscrollcommand=S.set,state="disabled")
+    
+def T_ins_linklist():
+    T.config(yscrollcommand=S.set,state="normal")
+    T.insert(END, '[Link list]\n', 'black')
+    for x in linklist:
+        T.insert(END, x[1]+'\n','bluecol')
     T.config(yscrollcommand=S.set,state="disabled")
 
 def send_afk():
@@ -352,6 +365,8 @@ def enter_text(event):
                 T_ins_log()
             elif text == '/afk':
                 send_afk()
+            elif text == '/link_list':
+                T_ins_linklist()
             textt.set('')
         else:
             if text[0] is '@':
@@ -368,20 +383,14 @@ def enter_text(event):
                 s.send('MESSAGE::'+text)
             except Exception as ee:
                 T.config(yscrollcommand=S.set,state="normal")
-                if nadd_spaces is 1:
-                    war = '         WARNING: '
-                else:
-                    war = 'WARNING: '
+                war = lenghten_name('WARNING: ',20)
                 T.insert(END, format_time()+war+str(ee)+'\n', 'redcol')
                 T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
 def leave_server():
     global s
-    if nadd_spaces is 1:
-        war = '         WARNING: '
-    else:
-        war = 'WARNING: '
+    war = lenghten_name('WARNING: ',20)
     try:
         s.send('close::')
         action_time = False
@@ -404,10 +413,7 @@ def change_name(new_name):
     new_name = new_name.get()
     if len(new_name) <3:
         T.config(yscrollcommand=S.set,state="normal")
-        if nadd_spaces is 1:
-            war = '         WARNING: '
-        else:
-            war = 'WARNING: '
+        war = lenghten_name('WARNING: ',20)
         T.insert(END, format_time()+war+'Name is too short\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
     else:
@@ -493,7 +499,7 @@ def set_font(font,fontlist,t_font_size):
     except:
         pass
     tag_colors()
-
+    hyperlink = HyperlinkManager(T)
     write_settings('tfont',text_font[0])
     write_settings('font_size',font_size)
     
@@ -574,6 +580,7 @@ def change_other_settings(a,b,c,d,e,f,g):
     leave_join = c
     Y_size = d
     nadd_spaces = e
+
     if hide_users is not g:
         hide_users = g
         if g == 1:
@@ -583,24 +590,8 @@ def change_other_settings(a,b,c,d,e,f,g):
             T.destroy()
             E.destroy()
             S.destroy()
-            E = Entry(textvariable=textt)
-            User_area = Text(root, height=44, width=20)
-            S = Scrollbar(root, width=15)
-            S2 = Scrollbar(root, width=15)
-            T = Text(root, height=46, width=114,wrap=WORD)
-            S.pack(side=RIGHT, fill=Y)
-            User_area.pack(side=LEFT,fill=Y)
-            S2.pack(side=LEFT, fill=Y)
-            E.pack(side=BOTTOM,fill=BOTH)
-            T.pack(side=BOTTOM,fill=BOTH,expand=1)
-            S.config(command=T.yview)
-            S2.config(command=User_area.yview)
-            User_area.config(yscrollcommand=S2.set,state="disabled")
-            User_area.bind( '<Configure>', maxsize )
-            T.config(yscrollcommand=S.set,state="disabled")
-            tag_colors()
+            create_widgets()
             user_area_insert()
-            hyperlink = HyperlinkManager(T)
     if f is not 0:
         show_ttime = f
         write_settings('show_ttime',f)
@@ -716,7 +707,9 @@ def organise_USRLIST(data):
             x = x[end+1:]
         cnt+=1
     USRLIST.sort()
-    print 'USRLISTE:',USRLIST
+    print 'USRLISTE:'                
+    for x in USRLIST:
+        print x
     if hide_users == 0:
         user_area_insert()
 
@@ -773,7 +766,7 @@ def get_user_color(col,name):
     elif nadd_spaces is 0:
         name = remove_spaces(name)
     if col == '1':
-        return 'black',name
+        return 'blackcol',name
     elif col == '2':
         return 'purplecol',name
     elif col == '9':
@@ -838,7 +831,39 @@ def entry_paste(*arg):
 def motion(event):
     global m_x,m_y
     m_x, m_y = event.x, event.y
-      
+
+def Changelog():
+    global font_size, text_font
+    font = text_font
+    fontlist=list(tkFont.families())
+    fontlist.sort()
+    topwin = Toplevel()
+    set_winicon(topwin,'icon')
+    topwin.title("Changelog")
+    topwin.minsize(750,550)
+    topwin.resizable(FALSE,FALSE)
+    frame = Frame(topwin, height=510,width=730, relief=SUNKEN,bg='grey')
+    frame.pack_propagate(0)
+    frame.pack(side=TOP,padx=10,pady=10)
+    
+    Tbox = Text(frame, height=12, width=50,wrap=WORD)
+    Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    S1 = Scrollbar(frame, width=15)
+    S1.pack(side=RIGHT, fill=Y)
+    Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
+    Tbox.focus_set()
+    Tbox.config(yscrollcommand=S1.set,state="normal")
+    S1.config(command=Tbox.yview)
+
+    bb1 = Button(topwin, text='Close', width=26,
+                        command=lambda: {copy_text(),cp_destroy()})
+    
+    bb1.pack(side=BOTTOM,pady=10)
+    changelogfile = readf('load/changelog.txt')
+    for x in changelogfile:
+        Tbox.insert(END, x+'\n','blackcol')
+    Tbox.config(yscrollcommand=S1.set,state="normal")
+     
 def About():
     global ver
     winwi = 350
@@ -915,6 +940,7 @@ msg_recv = 0
 windowfocus = True
 icon_was_switched = False
 cp_is = False
+cp_focus = False
 ## Tkinter below
 root = Tk()
 root.title("iSPTC - "+username)
@@ -948,6 +974,7 @@ menu.add_cascade(label='Commands',menu=menu3)
 menu3.add_command(label='Go afk', command=send_afk)
 menu3.add_command(label='Print userlist', command=T_ins_userlist)
 menu3.add_command(label='Print log', command=T_ins_log)
+menu3.add_command(label='Print link list', command=T_ins_linklist)
 
 menu4 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Settings',menu=menu4)
@@ -958,53 +985,54 @@ menu4.add_command(label='Other options', command=other_menu)
 
 helpmenu = Menu(menu,tearoff=0)
 menu.add_cascade(label='Help', menu=helpmenu)
+helpmenu.add_command(label='Changelog', command=Changelog)
 helpmenu.add_command(label='About..', command=About)
 
 ### Window widgets
-E = Entry(textvariable=textt)
-User_area = Text(root, height=44, width=20)
-S = Scrollbar(root, width=15)
-S2 = Scrollbar(root, width=15)
-T = Text(root, height=46, width=114,wrap=WORD)
-S.pack(side=RIGHT, fill=Y)
-if hide_users == 0:
-    User_area.pack(side=LEFT,fill=Y)
-    S2.pack(side=LEFT, fill=Y)
-E.pack(side=BOTTOM,fill=BOTH)
-T.pack(side=BOTTOM,fill=BOTH,expand=1)
-S.config(command=T.yview)
-S2.config(command=User_area.yview)
-User_area.config(yscrollcommand=S2.set,state="disabled")
-User_area.bind( '<Configure>', maxsize )
-T.config(yscrollcommand=S.set,state="disabled")
-E.focus_set()
-##T.bind( '<Configure>', maxsize )
+def create_widgets():
+    global T,E,User_area,S,S2,hyperlink
+    E = Entry(textvariable=textt)
+    User_area = Text(root, height=44, width=20)
+    S = Scrollbar(root, width=15)
+    S2 = Scrollbar(root, width=15)
+    T = Text(root, height=46, width=114,wrap=WORD)
+    S.pack(side=RIGHT, fill=Y)
+    if hide_users == 0:
+        User_area.pack(side=LEFT,fill=Y)
+        S2.pack(side=LEFT, fill=Y)
+    E.pack(side=BOTTOM,fill=BOTH)
+    T.pack(side=BOTTOM,fill=BOTH,expand=1)
+    S.config(command=T.yview)
+    S2.config(command=User_area.yview)
+    User_area.config(yscrollcommand=S2.set,state="disabled")
+    User_area.bind( '<Configure>', maxsize )
+    T.config(yscrollcommand=S.set,state="disabled")
+    E.focus_set()
+    hyperlink = HyperlinkManager(T)
+    tag_colors()
 
 def tag_colors():
-    global font_size, text_font
+    global font_size, text_font, hide_users
     font = text_font
     fontlist=list(tkFont.families())
     fontlist.sort()
     T.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
     T.tag_configure('bluecol', font=(fontlist[text_font[0]], font_size), foreground='blue')
-    T.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='green')
+    T.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='#009900')
     T.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
     T.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
     T.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
     T.tag_configure('pinkcol', font=(fontlist[font[0]], 10), foreground='pink')
+    T.tag_configure('blue_link', font=(fontlist[font[0]], 10), foreground='blue')
 
-    User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    User_area.tag_configure('pinkcol', font=(fontlist[font[0]], 10), foreground='pink')
-    User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
-    User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
+    if hide_users is not 1:
+        User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+        User_area.tag_configure('pinkcol', font=(fontlist[font[0]], 10), foreground='pink')
+        User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
+        User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
     E.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
-tag_colors()
 
-cp_focus = False
-
-
-##E[i].grid(row=i/9,column=i%9,ipady=14) 
-
+create_widgets()
 
 def click1():
     print "nothing"
@@ -1015,13 +1043,13 @@ root.bind('<FocusIn>', winf_is)
 root.bind('<FocusOut>', winf_isnt)
 root.bind('<Control-c>', copy_text)
 root.bind('<Motion>', motion)
-root.bind('<Button-3>', copy_paste_buttons)   
+root.bind('<Button-3>', copy_paste_buttons)
 
 
 def task():
     
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join
-    global show_ttime,nadd_spaces,icon_was_switched
+    global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink
     dtime = format_time()
     if show_ttime is not 1:
         dtime = dtime+' '
@@ -1036,10 +1064,7 @@ def task():
 ##            print data_list[x]
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
-                if nadd_spaces is 1:
-                    name = '         SERVER: '
-                else:
-                    name = 'SERVER: '
+                name = lenghten_name('SERVER: ',20)
                 T.insert(END, dtime+name+data_list[x][9:],'bluecol')
                 scroller = S.get()
                 if scroller[1] == 1.0:  
@@ -1050,10 +1075,7 @@ def task():
                     doing = 'nothing'
                 else:
                     T.config(yscrollcommand=S.set,state="normal")
-                    if nadd_spaces is 1:
-                        name = '         SERVER: '
-                    else:
-                        name = 'SERVER: '
+                    name = lenghten_name('SERVER: ',20)
                     T.insert(END, dtime+name+data_list[x][9:],'bluecol')
                     scroller = S.get()
                     if scroller[1] == 1.0:  
@@ -1061,10 +1083,7 @@ def task():
                     T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'CLOSING::':
                 T.config(yscrollcommand=S.set,state="normal")
-                if nadd_spaces is 1:
-                    name = '        WARNING: '
-                else:
-                    name = 'WARNING: '
+                war = lenghten_name('WARNING: ',20)
                 T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
                 leave_server()
                 T.config(yscrollcommand=S.set,state="disabled")
@@ -1074,10 +1093,10 @@ def task():
                 global linkk
                 T.config(yscrollcommand=S.set,state="normal")
                 nfind = find_2name(data_list[x][19:],username)
-                usercol,uname = get_user_color(data_list[x][3],data_list[x][4:19])
+                usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23])
 
                 temp_list = []
-                dat = data_list[x][19:]
+                dat = data_list[x][23:]
                 while True:
                     b = dat.find(' ')
                     temp_list.append(dat[:b]+' ')
@@ -1113,8 +1132,6 @@ def task():
 
     root.after(task_loop_interval, task)  # reschedule event
 
-
-hyperlink = HyperlinkManager(T)
 
 ##te = Test(root)
 set_winicon(root,'icon')

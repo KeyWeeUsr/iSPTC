@@ -2,16 +2,16 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.85'
+ver = '0.86'
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver
 
 def read_server_settings():
-    text = readf('load/server')
+    text = readf('load/server.cfg')
     for x in text:
         iplist.append(x)
 
 def get_cur_time():
-    return time.strftime("%H:%M:%S")
+    return time.strftime("%H:%M")
 
 def readf(filename):
     file = filename
@@ -48,15 +48,20 @@ def edit_settings(text,text_find,new_value):
     return newlist
 
 def write_settings(text_find,new_value):
-        a = readf('load/server')
+        a = readf('load/server.cfg')
         a = edit_settings(a,text_find,new_value)
         text = a = '\n'.join(str(e) for e in a)
-        savef(text,'load/server')
+        savef(text,'load/server.cfg')
 
 def read_settings(text_find):
-    a = readf('load/server')
+    a = readf('load/server.cfg')
     a = get_settings(a,text_find)
     return a
+
+def add_spaces(username):
+    while len(username) < 19:
+        username = ' '+username
+    return username
 
 def remove_spaces(username):
     for x in username:
@@ -68,14 +73,21 @@ def remove_spaces(username):
 
 def check_duplicate(name):
     cnt = 0
+    again = False
     for x in threadip:
         if x[2] == name:
-            cnt += 1
+            cnt += 2
     if cnt > 0:
-        cnt += 1
-        name = name+'('+str(cnt)+')'
-        if len(name) > 15:
-            name = name[len(name)-15:]
+        name_without_cnt = name
+        while True:
+            again = False
+            name = name_without_cnt+'('+str(cnt)+')'
+            for x in threadip:
+                if x[2] == name:
+                    again = True
+            if again == False:
+                break
+            cnt += 1
         return name
     else:
         return name
@@ -192,7 +204,7 @@ def clientHandler(i):
             send_user_list(s,conn,'','',addr[0])
             time.sleep(1)
             username2 = remove_spaces(username)
-            broadcastData(s, conn, 'SERVELJ::'+username2+'('+addr[0]+')'+' left')
+            broadcastData(s, conn, 'SERVELJ::'+username+'('+addr[0]+')'+' left')
             print addr," is now disconnected! \n"
             Thread(target=clientHandler,args=(i,)).start()
             break
@@ -246,6 +258,7 @@ def clientHandler(i):
                             username2 = remove_spaces(username)
                             username2 = change_brckname(username2)
                             username2 = check_duplicate(username2)
+                            username = add_spaces(username2)
                             x[2] = username2
                             level = set_threadip(str(i),addr[0],4)
                             print addr[0],' is level ',level,' !'
@@ -260,6 +273,7 @@ def clientHandler(i):
                             username2 = remove_spaces(username)
                             username2 = change_brckname(username2)
                             username2 = check_duplicate(username2)
+                            username = add_spaces(username2)
                             x[2] = (username2)
                             level = set_threadip(str(i),addr[0],4)
                             print addr[0],' is level ',level,' !'

@@ -1,0 +1,15 @@
+## Client[0.91] - 2015-12-26
+### Added
+ - Changelog toplevel window
+ - Command to print all received links
+### Changed
+ - Increased username length to 19 to have space for duplicate renaming
+### Fixed
+ - text tagging bugs
+ - Tkinter error when attempting to color tag text in disabled user window
+
+## Server[0.86] - 2015-12-26
+### Fixed
+ - Duplica username bug
+###Changed
+ - Increased username length to 19 to have space for duplicate renaming
