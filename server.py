@@ -2,13 +2,34 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.86'
+ver = '0.86t'
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver
 
-def read_server_settings():
-    text = readf('load/server.cfg')
+def read_server_usr_settings():
+    text = readf('load/server_users.cfg')
+    level = 9
+    for x in range(-1,level+1):
+        iplist.append([x])
+    for x in range(-1,level+1):
+        iplist[x].append([])
     for x in text:
-        iplist.append(x)
+        dont_append = False
+        if len(x) < 1:
+            dont_append = True
+        elif x[:3] == '[[l':
+            level = int(x[3:5])
+            dont_append = True
+        elif x[:2] == '##':
+            dont_append = True
+        if dont_append == False:
+            b = x.find('[')+1
+            c = x.find(']')
+            IP_or_Name = x[b:c]
+            x = x[c+1:]
+            b = x.find('[')+1
+            c = x.find(']')
+            Auth_pass = x[b:c]
+            iplist[level+1][1].append([IP_or_Name,Auth_pass])
 
 def get_cur_time():
     return time.strftime("%H:%M")
@@ -92,16 +113,21 @@ def check_duplicate(name):
     else:
         return name
 
-def set_threadip(i,addr,which):
+def set_threadip(i,addr,username2):
+    global iplist
     level = 1
-    addr = str(addr)
-    for x in iplist:
-        if str(x) == addr:
-            level = 2
-            for x2 in threadip:
-                if x2[0] == i:
-                    x2[which] = 2
-                    return level
+    for levels in iplist:
+        for x in levels[1]:
+            print x
+            if x[0] == addr or x[0] == username2:
+                if x[1] == 'False':
+                    level = levels[0]
+                else:
+                    pass
+    for x in threadip:
+        if x[0] == i:
+            x[4] = level
+            break
     return level
 
 def rm_illegal_chr(name):
@@ -160,6 +186,16 @@ def recieveData(s, conn):# function to recieve data
         data = 'close::'
     return data; # returns the contents of data
 
+def broadcastPrivate(user, data):
+    ## Find user
+    for x in threadip:
+        if x[2] == user:
+            try:
+                x[1].send(data)
+            except:
+                print x[1],' NOT AVAILABLE\n'
+            break
+
 def broadcastData(s, conn, data): # function to send Data
     ## Send data to everyone connected
     for x in threadip:
@@ -192,7 +228,15 @@ def clientHandler(i):
                     break
             if msgprint_enabled == 1:
                 print get_cur_time(),username2,data[9:]
-            broadcastData(s, conn, 'm::'+str(level)+username+data[9:])
+            if data[9:11] == '@@' and data[11] is not " ":
+                b = data[11:].find(' ')
+                if b is -1:
+                    usr_to_send = data[11:]
+                else:
+                    usr_to_send = data[11:b+11]
+                broadcastPrivate(usr_to_send, 'm:'+sendlevel+username+data[9:])
+            else:
+                broadcastData(s, conn, 'm:'+sendlevel+username+data[9:])
         ## Leaving
         if not data:
             cnt = 0
@@ -258,7 +302,11 @@ def clientHandler(i):
                             username2 = check_duplicate(username2)
                             username = add_spaces(username2)
                             x[2] = username2
-                            level = set_threadip(str(i),addr[0],4)
+                            level = set_threadip(str(i),addr[0],username2)
+                            if len(str(level)) == 1:
+                                sendlevel = '0'+str(level)
+                            else:
+                                sendlevel = str(level)
                             print addr[0],' is level ',level,' !'
                             broadcastData(s, 'nav','SSERVER::'+remove_spaces(username)+' is level'+str(level))
                             time.sleep(0.4)
@@ -274,9 +322,13 @@ def clientHandler(i):
                             username2 = check_duplicate(username2)
                             username = add_spaces(username2)
                             x[2] = (username2)
-                            level = set_threadip(str(i),addr[0],4)
+                            level = set_threadip(str(i),addr[0],username2)
+                            if len(str(level)) == 1:
+                                sendlevel = '0'+str(level)
+                            else:
+                                sendlevel = str(level)
                             print addr[0],' is level ',level,' !'
-                            broadcastData(s, 'nav','SSERVER::'+username2+' is level'+str(level))
+                            broadcastData(s, 'nav','SSERVER::'+username2+' is level '+str(level))
                             time.sleep(0.4)
                             send_user_list(s,conn,'',username2,addr[0])
                 username_set = True
@@ -284,7 +336,7 @@ def clientHandler(i):
 threads = 10
 action_time = True
 iplist,chatlog,threadip = [],[],[]
-read_server_settings()
+read_server_usr_settings()
 log_enabled = int(read_settings('logging='))
 msgprint_enabled = 0
 msgprint_enabled = int(read_settings('msgprint='))

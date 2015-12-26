@@ -5,7 +5,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
 import tkFont
-ver = '0.91'
+ver = '0.91t'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -198,11 +198,14 @@ def closewin():
         sleep(0.3)
         root.destroy()
 
-def get_cur_time(seconds):
-    if seconds == True:
-        return strftime("%H:%M:%S")
-    else:
+def get_cur_time():
+    global show_ttime
+    if show_ttime is 1:
+        return ''
+    if show_ttime is 2:
         return strftime("%H:%M")
+    if show_ttime is 3:
+        return strftime("%H:%M:%S")
 
 def cp_destroy(*arg):
     global cp_is
@@ -318,7 +321,7 @@ def join_server(typing):
     except:
         T.config(yscrollcommand=S.set,state="normal")
         war = lenghten_name('WARNING: ',21)
-        T.insert(END, format_time()+war+"Can't join\n", 'redcol')
+        T.insert(END, get_cur_time()+war+"Can't join\n", 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
 def T_ins_userlist():
@@ -391,7 +394,7 @@ def enter_text(event):
             except Exception as ee:
                 T.config(yscrollcommand=S.set,state="normal")
                 war = lenghten_name('WARNING: ',21)
-                T.insert(END, format_time()+war+str(ee)+'\n', 'redcol')
+                T.insert(END, get_cur_time()+war+str(ee)+'\n', 'redcol')
                 T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
@@ -405,14 +408,14 @@ def leave_server():
         s.close()
         s = ''
         T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, format_time()+war+'Left server\n', 'redcol')
+        T.insert(END, get_cur_time()+war+'Left server\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
         User_area.config(yscrollcommand=S.set,state="normal")
         User_area.delete(1.0,END)
         User_area.config(yscrollcommand=S.set,state="disabled")
     except:
         T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, format_time()+war+'\n', 'redcol')
+        T.insert(END, get_cur_time()+war+'\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
 def change_name(new_name):
@@ -421,7 +424,7 @@ def change_name(new_name):
     if len(new_name) <3:
         T.config(yscrollcommand=S.set,state="normal")
         war = lenghten_name('WARNING: ',21)
-        T.insert(END, format_time()+war+'Name is too short\n', 'redcol')
+        T.insert(END, get_cur_time()+war+'Name is too short\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
     else:
         username = new_name
@@ -730,20 +733,14 @@ def user_area_insert():
     User_area.delete(1.0,END)
     for x in USRLIST:
         try:
+            usercol = get_user_color(x[2],x[0],False)
             if x[3] == '0':
                 User_area.insert(END, x[0]+'\n','greycol')
             else:
-                if x[2] == '2':
-                    User_area.insert(END, x[0]+'\n','purplecol')
-                elif x[2] == '9':
-                    User_area.insert(END, x[0]+'\n','pinkcol')
-                elif x[2] == '-1':
-                    User_area.insert(END, x[0]+'\n','greycol')
-                else:
-                    User_area.insert(END, x[0]+'\n','blackcol')
+                User_area.insert(END, x[0]+'\n',usercol)
         except:
             User_area.insert(END, x[0]+'\n','blackcol')
-    User_area.config(yscrollcommand=S2.set,state="disabled") 
+    User_area.config(yscrollcommand=S2.set,state="disabled")
 
 def add_spaces(name):
     for x in name:
@@ -759,27 +756,38 @@ def remove_spaces(name):
             break
     return name
 
-def format_time():
-    global show_ttime
-    if show_ttime is 1:
-        return ''
-    if show_ttime is 2:
-        return get_cur_time(False)
-    if show_ttime is 3:
-        return get_cur_time(True)
-
-def get_user_color(col,name):
+def get_user_color(col,name,add_zero):
     global nadd_spaces
     if nadd_spaces is 1:
         name = add_spaces(name)
     elif nadd_spaces is 0:
         name = remove_spaces(name)
-    if col == '1':
+    if add_zero == True:
+        addz = '0'
+    else:
+        addz = ''
+    if col == '-1':
+        return 'redcol',name
+    elif col == addz+'0':
+        return 'greycol',name
+    elif col == addz+'1':
         return 'blackcol',name
-    elif col == '2':
+    elif col == addz+'2':
+        return 'pinkcol',name
+    elif col == addz+'3':
+        return 'pinkcol',name
+    elif col == addz+'4':
+        return 'pinkcol',name
+    elif col == addz+'5':
         return 'purplecol',name
-    elif col == '9':
-        return 'pinkcol', name
+    elif col == addz+'6':
+        return 'purplecol',name
+    elif col == addz+'7':
+        return 'purplecol',name
+    elif col == addz+'8':
+        return 'purplecol', name
+    elif col == addz+'9':
+        return 'purplecol', name
     return '0','0'
 
 def find_link(data):
@@ -1039,6 +1047,7 @@ def tag_colors():
         User_area.tag_configure('pinkcol', font=(fontlist[font[0]], 10), foreground='pink')
         User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
         User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
+        User_area.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
     E.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
 
 create_widgets()
@@ -1069,7 +1078,7 @@ def task():
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
-                T.insert(END, format_time()+name+data_list[x][9:],'bluecol')
+                T.insert(END, get_cur_time()+name+data_list[x][9:],'bluecol')
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
@@ -1080,7 +1089,7 @@ def task():
                 else:
                     T.config(yscrollcommand=S.set,state="normal")
                     name = lenghten_name('SERVER: ',21)
-                    T.insert(END, format_time()+name+data_list[x][9:],'bluecol')
+                    T.insert(END, get_cur_time()+name+data_list[x][9:],'bluecol')
                     scroller = S.get()
                     if scroller[1] == 1.0:  
                         T.yview(END)
@@ -1088,7 +1097,7 @@ def task():
             elif data_list[x][:9] == 'CLOSING::':
                 T.config(yscrollcommand=S.set,state="normal")
                 war = lenghten_name('WARNING: ',21)
-                T.insert(END, format_time()+name+'Server shutting down\n', 'redcol')
+                T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
                 leave_server()
                 T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'USRLIST::':
@@ -1097,8 +1106,7 @@ def task():
                 global linkk
                 T.config(yscrollcommand=S.set,state="normal")
                 nfind = find_2name(data_list[x][23:],username)
-                usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23])
-                print data_list[x][4:23]
+                usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
 
                 temp_list = []
                 dat = data_list[x][23:]
@@ -1109,7 +1117,7 @@ def task():
                     if b is -1:
                         break
 
-                T.insert(END, format_time()+uname+': ',usercol)
+                T.insert(END, get_cur_time()+uname+': ',usercol)
                 for x in temp_list:
                     nfind = find_2name(x,username)
                     if nfind is True:

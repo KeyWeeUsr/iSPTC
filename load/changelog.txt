@@ -1,3 +1,15 @@
+## Client[0.91t] - 2015-12-26
+### Added
+ - Private messages
+### Changed
+ - the way that userlevels get displayed
+
+## Server[0.86t] - 2015-12-26
+### Added
+ - User levels
+ - IP address authentification
+ - Private messages
+
 ## Client[0.91] - 2015-12-26
 ### Added
  - Changelog toplevel window
