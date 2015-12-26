@@ -191,15 +191,18 @@ def closewin():
     action_time = False
     try:
         s.send('close::')
-        sleep(0.5)
+        sleep(0.3)
         s.close()
         root.destroy()
     except:
-        sleep(0.5)
+        sleep(0.3)
         root.destroy()
 
-def get_cur_time():
-    return strftime("%H:%M:%S")
+def get_cur_time(seconds):
+    if seconds == True:
+        return strftime("%H:%M:%S")
+    else:
+        return strftime("%H:%M")
 
 def cp_destroy(*arg):
     global cp_is
@@ -266,6 +269,10 @@ def join_typing():
     button = Button(jsrv, text='Join',pady=10, width=10,height=1, command=lambda: {join_srv_check(display.curselection(),jaddr.get()),
                                                                 jsrv.destroy()})
     button.pack(side=TOP)
+    def cmdbind(*arg):
+        join_srv_check(display.curselection(),jaddr.get())
+        jsrv.destroy()
+    jsrv.bind('<Return>', cmdbind)
 
 def join_srv_check(curselection,jaddr):
     global server_list
@@ -287,7 +294,7 @@ def join_server(typing):
     try:
         action_time = False
         s.send('close::')
-        sleep(0.5)
+        sleep(0.3)
         s.close()
     except:
         pass
@@ -306,11 +313,11 @@ def join_server(typing):
         s.connect((TCP_IP, TCP_PORT))
         action_time = True
         Thread(target=recv_thread,args=(s,)).start()
-        sleep(0.5)
+        sleep(0.3)
         s.send('USRINFO::'+username)
     except:
         T.config(yscrollcommand=S.set,state="normal")
-        war = lenghten_name('WARNING: ',20)
+        war = lenghten_name('WARNING: ',21)
         T.insert(END, format_time()+war+"Can't join\n", 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
@@ -383,18 +390,18 @@ def enter_text(event):
                 s.send('MESSAGE::'+text)
             except Exception as ee:
                 T.config(yscrollcommand=S.set,state="normal")
-                war = lenghten_name('WARNING: ',20)
+                war = lenghten_name('WARNING: ',21)
                 T.insert(END, format_time()+war+str(ee)+'\n', 'redcol')
                 T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
 def leave_server():
     global s
-    war = lenghten_name('WARNING: ',20)
+    war = lenghten_name('WARNING: ',21)
     try:
         s.send('close::')
         action_time = False
-        sleep(0.5)
+        sleep(0.3)
         s.close()
         s = ''
         T.config(yscrollcommand=S.set,state="normal")
@@ -413,7 +420,7 @@ def change_name(new_name):
     new_name = new_name.get()
     if len(new_name) <3:
         T.config(yscrollcommand=S.set,state="normal")
-        war = lenghten_name('WARNING: ',20)
+        war = lenghten_name('WARNING: ',21)
         T.insert(END, format_time()+war+'Name is too short\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
     else:
@@ -449,6 +456,10 @@ def set_username():
     button = Button(uw, text='Done', width=20, command=lambda: {change_name(new_name),
                                                                 uw.destroy()})
     button.pack()
+    def cmdbind(*arg):
+        change_name(new_name)
+        uw.destroy()
+    uw.bind('<Return>', cmdbind)
     
 def change_sound_set(a,b,c,d):
     global dsound_interval
@@ -753,14 +764,12 @@ def format_time():
     if show_ttime is 1:
         return ''
     if show_ttime is 2:
-        dtime = get_cur_time()
-        return dtime[:-3]
+        return get_cur_time(False)
     if show_ttime is 3:
-        return get_cur_time()
+        return get_cur_time(True)
 
 def get_user_color(col,name):
     global nadd_spaces
-    dtime = get_cur_time()
     if nadd_spaces is 1:
         name = add_spaces(name)
     elif nadd_spaces is 0:
@@ -905,7 +914,6 @@ task_loop_interval = int(500)
 task_loop_interval = int(read_settings('chat_interval='))
 sound_settings[0] = int(read_settings('enable_sound='))
 sound_settings[1] = int(read_settings('entry_enabled='))
-print sound_settings[1]
 sound_settings[2] = int(read_settings('user_textbox='))
 dsound_interval = float(6.0)
 dsound_interval=float(read_settings('sound_interval='))
@@ -1051,11 +1059,6 @@ def task():
     
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join
     global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink
-    dtime = format_time()
-    if show_ttime is not 1:
-        dtime = dtime+' '
-    else:
-        dtime = ''
     if sound_interval > 0:
         sound_interval-=float(task_loop_interval)/1000
         
@@ -1065,8 +1068,8 @@ def task():
 ##            print data_list[x]
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
-                name = lenghten_name('SERVER: ',20)
-                T.insert(END, dtime+name+data_list[x][9:],'bluecol')
+                name = lenghten_name('SERVER: ',21)
+                T.insert(END, format_time()+name+data_list[x][9:],'bluecol')
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
@@ -1076,16 +1079,16 @@ def task():
                     doing = 'nothing'
                 else:
                     T.config(yscrollcommand=S.set,state="normal")
-                    name = lenghten_name('SERVER: ',20)
-                    T.insert(END, dtime+name+data_list[x][9:],'bluecol')
+                    name = lenghten_name('SERVER: ',21)
+                    T.insert(END, format_time()+name+data_list[x][9:],'bluecol')
                     scroller = S.get()
                     if scroller[1] == 1.0:  
                         T.yview(END)
                     T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'CLOSING::':
                 T.config(yscrollcommand=S.set,state="normal")
-                war = lenghten_name('WARNING: ',20)
-                T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
+                war = lenghten_name('WARNING: ',21)
+                T.insert(END, format_time()+name+'Server shutting down\n', 'redcol')
                 leave_server()
                 T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'USRLIST::':
@@ -1095,6 +1098,7 @@ def task():
                 T.config(yscrollcommand=S.set,state="normal")
                 nfind = find_2name(data_list[x][23:],username)
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23])
+                print data_list[x][4:23]
 
                 temp_list = []
                 dat = data_list[x][23:]
@@ -1105,7 +1109,7 @@ def task():
                     if b is -1:
                         break
 
-                T.insert(END, dtime+uname+': ',usercol)
+                T.insert(END, format_time()+uname+': ',usercol)
                 for x in temp_list:
                     nfind = find_2name(x,username)
                     if nfind is True:

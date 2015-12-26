@@ -68,7 +68,7 @@ def remove_spaces(username):
         if x == ' ':
             username = username[1:]
         else:
-            pass
+            break
     return username
 
 def check_duplicate(name):
@@ -104,7 +104,7 @@ def set_threadip(i,addr,which):
                     return level
     return level
 
-def change_brckname(name):
+def rm_illegal_chr(name):
     brktemp_list = []
     for x in name:
         brktemp_list.append(x)
@@ -125,7 +125,7 @@ def send_ulist_only(s):
     sendlist = ''
     for x in threadip:
         print x
-        x[2] = change_brckname(x[2])
+        x[2] = rm_illegal_chr(x[2])
         if ip_sending_enabled == True:
             sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']]]'
         else:
@@ -140,7 +140,7 @@ def send_user_list(s,conn,oldusername,username,addr):
         username = remove_spaces(username)
     sendlist = ''
     for x in threadip:
-        x[2] = change_brckname(x[2])
+        x[2] = rm_illegal_chr(x[2])
         if ip_sending_enabled == True:
             sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']]]'
         else:
@@ -150,7 +150,7 @@ def send_user_list(s,conn,oldusername,username,addr):
             broadcastData(s, conn,'SSERVER::'+oldusername+' is now '+username)
         else:
             broadcastData(s, conn,'SERVELJ::'+username+'('+addr+')'+' joined')
-    time.sleep(0.5)
+    time.sleep(0.4)
     broadcastData(s, conn,'USRLIST::'+sendlist[:-1])
 
 def recieveData(s, conn):# function to recieve data
@@ -202,7 +202,7 @@ def clientHandler(i):
                     del threadip[cnt]
                 cnt+=1
             send_user_list(s,conn,'','',addr[0])
-            time.sleep(1)
+            time.sleep(0.7)
             username2 = remove_spaces(username)
             broadcastData(s, conn, 'SERVELJ::'+username+'('+addr[0]+')'+' left')
             print addr," is now disconnected! \n"
@@ -217,7 +217,7 @@ def clientHandler(i):
                    del threadip[cnt]
                 cnt+=1
             send_user_list(s,conn,'','',addr[0])
-            time.sleep(1)
+            time.sleep(0.7)
             username2 = remove_spaces(username)
             broadcastData(s, conn, 'SERVELJ::'+username2+'('+addr[0]+')'+' left')
             print addr," is now disconnected! \n"
@@ -245,10 +245,7 @@ def clientHandler(i):
                     pass
             if len(data) > 11:
                 username = data[9:]
-                if len(username) < 15:
-                    for x in range(0,15-len(username)):
-                        username = ' '+username
-                else:
+                if len(username) > 15:
                     username = username[:15]
                 ## Username gets changed
                 if username_set is True:
@@ -256,14 +253,15 @@ def clientHandler(i):
                         b = x[0].find(str(i))
                         if b is not -1:
                             username2 = remove_spaces(username)
-                            username2 = change_brckname(username2)
+                            username2 = rm_illegal_chr(username2)
+                            x[2] = ''
                             username2 = check_duplicate(username2)
                             username = add_spaces(username2)
                             x[2] = username2
                             level = set_threadip(str(i),addr[0],4)
                             print addr[0],' is level ',level,' !'
                             broadcastData(s, 'nav','SSERVER::'+remove_spaces(username)+' is level'+str(level))
-                            time.sleep(0.5)
+                            time.sleep(0.4)
                             send_user_list(s,conn,oldusername,username2,addr[0])
                 ## Login username received
                 else:
@@ -271,14 +269,15 @@ def clientHandler(i):
                         b = x[0].find(str(i))
                         if b is not -1:
                             username2 = remove_spaces(username)
-                            username2 = change_brckname(username2)
+                            username2 = rm_illegal_chr(username2)
+                            x[2] = ''
                             username2 = check_duplicate(username2)
                             username = add_spaces(username2)
                             x[2] = (username2)
                             level = set_threadip(str(i),addr[0],4)
                             print addr[0],' is level ',level,' !'
                             broadcastData(s, 'nav','SSERVER::'+username2+' is level'+str(level))
-                            time.sleep(0.5)
+                            time.sleep(0.4)
                             send_user_list(s,conn,'',username2,addr[0])
                 username_set = True
 
