@@ -377,7 +377,7 @@ def enter_text(event):
                     textt.set(text+" ")
             else:
                 textt.set('')
-            if sound_settings[1] == True:
+            if sound_settings[1] == 1:
                 play_sound('beep1.wav',True)
             try:
                 s.send('MESSAGE::'+text)
@@ -856,7 +856,7 @@ def Changelog():
     S1.config(command=Tbox.yview)
 
     bb1 = Button(topwin, text='Close', width=26,
-                        command=lambda: {copy_text(),cp_destroy()})
+                        command=lambda: {topwin.destroy()})
     
     bb1.pack(side=BOTTOM,pady=10)
     changelogfile = readf('load/changelog.txt')
@@ -905,6 +905,7 @@ task_loop_interval = int(500)
 task_loop_interval = int(read_settings('chat_interval='))
 sound_settings[0] = int(read_settings('enable_sound='))
 sound_settings[1] = int(read_settings('entry_enabled='))
+print sound_settings[1]
 sound_settings[2] = int(read_settings('user_textbox='))
 dsound_interval = float(6.0)
 dsound_interval=float(read_settings('sound_interval='))
@@ -1092,7 +1093,7 @@ def task():
             else:
                 global linkk
                 T.config(yscrollcommand=S.set,state="normal")
-                nfind = find_2name(data_list[x][19:],username)
+                nfind = find_2name(data_list[x][23:],username)
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23])
 
                 temp_list = []
