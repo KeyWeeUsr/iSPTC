@@ -2,8 +2,8 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.91'
-welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver+'\nRegistration is now supported'
+ver = '0.91b'
+welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver
 
 def read_server_usr_settings():
     text = readf('load/server_users.cfg')
@@ -195,7 +195,7 @@ def register_user(username,usr_pass):
         fh.write(str(x)+'\n')
         fh.close()
 
-def send_ulist_only(s):
+def send_ulist_only():
     ip_sending_enabled = True
     sendlist = ''
     sendlist+= '[[[Users: '+str(len(threadip))+'/'+str(threads)+'][][-1][ ]]]'
@@ -205,7 +205,7 @@ def send_ulist_only(s):
             sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']]]'
         else:
             sendlist+= '[[['+str(x[2])+']['+str(x[4])+']]]'
-    broadcastData(s, 'nav','USRLIST::'+sendlist[:-1])
+    broadcastData('nav','USRLIST::'+sendlist[:-1])
 
 def send_user_list(s,conn,oldusername,username,addr):
     global threads
@@ -224,11 +224,11 @@ def send_user_list(s,conn,oldusername,username,addr):
             sendlist+= '[[['+str(x[2])+']['+str(x[4])+']]]'
     if username is not '':
         if oldusername is not '':
-            broadcastData(s, conn,'SSERVER::'+oldusername+' is now '+username)
+            broadcastData(conn,'SSERVER::'+oldusername+' is now '+username)
         else:
-            broadcastData(s, conn,'SERVELJ::'+username+'('+addr+')'+' joined')
+            broadcastData(conn,'SERVELJ::'+username+'('+addr+')'+' joined')
     time.sleep(0.4)
-    broadcastData(s, conn,'USRLIST::'+sendlist[:-1])
+    broadcastData(conn,'USRLIST::'+sendlist[:-1])
 
 def recieveData(s, conn):# function to recieve data
     try:
@@ -244,42 +244,49 @@ def broadcastPrivate(user, data):
             try:
                 x[1].send(data)
             except:
-                print x[1],' NOT AVAILABLE\n'
+##                print x[1],' NOT AVAILABLE\n'
+                chatlog.append([get_cur_time(),x[1],' NOT AVAILABLE\n'])
+                threadip.remove(x)
+                send_ulist_only()
             break
 
-def broadcastData(s, conn, data): # function to send Data
+def broadcastData(conn, data): # function to send Data
     ## Send data to everyone connected
     for x in threadip:
         try:
             if x[2] is not '':
                 x[1].sendall(data)
         except:
-            print x[1],' NOT AVAILABLE\n'
+##            print x[1],' NOT AVAILABLE\n'
+            chatlog.append([get_cur_time(),x[1],' NOT AVAILABLE\n'])
+            threadip.remove(x)
+            send_ulist_only()
 
 def usrLeaving(s,conn,username2,addr,threadip,i):
     cnt = 0
     for x in threadip:
-        b = x[0].find(str(i))
-        if b is not -1:
+        if x[0] == str(i):
            del threadip[cnt]
         cnt+=1
     send_user_list(s,conn,'','',addr[0])
-    time.sleep(0.5)
-    broadcastData(s, conn, 'SERVELJ::'+username2+'('+addr[0]+')'+' left')
-    print addr," is now disconnected! \n"
+    time.sleep(0.2)
+    broadcastData(conn, 'SERVELJ::'+username2+'('+addr[0]+')'+' left')
+##    print addr," is now disconnected! \n"
+    chatlog.append([get_cur_time(),addr," is now disconnected! \n"])
     
 def clientHandler(i):
-    global s, threadip, threads, msgprint_enabled, logging_enabled, welcome_msg, iplist
+    global threadip, threads, msgprint_enabled, logging_enabled, welcome_msg, iplist
     username,username_set = '',False
     level = 1
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
-    print get_cur_time(),addr," is now connected! \n"
+##    print get_cur_time(),addr," is now connected! \n"
+    chatlog.append([get_cur_time(),addr," is now connected! \n"])
     ## 0Thread, 1connecton, 2usrname, 3ip, 3-2port,4mode,5afk
     threadip.append([str(i),conn,'',[addr[0],addr[1]],1,'1'])
     conn.sendall(welcome_msg)
     while 1:
         data = recieveData(s, conn)
-        chatlog.append([get_cur_time(),username,data])
+        chatmlog.append([get_cur_time(),username,data])
         ##Normal messages
         if data[0:9] == 'MESSAGE::':
             while True:
@@ -298,16 +305,18 @@ def clientHandler(i):
                     usr_to_send = data[11:b+11]
                 broadcastPrivate(usr_to_send, 'm:'+sendlevel+username+data[9:])
             else:
-                broadcastData(s, conn, 'm:'+sendlevel+username+data[9:])
+                broadcastData(conn, 'm:'+sendlevel+username+data[9:])
         ## Leaving
         if not data:
             usrLeaving(s,conn,username2,addr,threadip,i)
             Thread(target=clientHandler,args=(i,)).start()
+            conn.close()
             break
         ## Leaving2
         elif data == 'close::':
             usrLeaving(s,conn,username2,addr,threadip,i)
             Thread(target=clientHandler,args=(i,)).start()
+            conn.close()
             break
         ## Registration
         elif data[0:9] == 'aUSRREG::':
@@ -335,30 +344,28 @@ def clientHandler(i):
             registered = check_if_registered(username2,addr,True)
             if registered[0] == True and usr_pass == registered[1]:
                 level = registered[2]
-                broadcastData(s, 'nav','SSERVER::'+remove_spaces(username)+' is level'+str(level))
+                broadcastData('nav','SSERVER::'+remove_spaces(username)+' is level'+str(level))
                 for x in threadip:
-                    b = x[0].find(str(i))
-                    if b is not -1:
+                    if x[0] == str(i):
                         x[2] = username2
                         x[4] = level
                         break
-                send_ulist_only(s)
+                send_ulist_only()
             else:
                 conn.send('SSERVER::Wrong pass')
         ## AFK
         elif data[0:9] == 'aAFKAFK::':
             for x in threadip:
-                b = x[0].find(str(i))
-                if b is not -1:
+                if x[0] == str(i):
                     if x[5] == '1':
-                        broadcastData(s, 'nav','SSERVER::'+username2+' is afk')
+                        broadcastData('nav','SSERVER::'+username2+' is afk')
                         newval = '0'
                     else:
-                        broadcastData(s, 'nav','SSERVER::'+username2+' is no longer afk')
+                        broadcastData('nav','SSERVER::'+username2+' is no longer afk')
                         newval = '1'
                     x[5] = newval
             time.sleep(0.2)
-            send_ulist_only(s)
+            send_ulist_only()
         ## Username
         elif data[0:9] == 'USRINFO::':
             oldusername = str(username)
@@ -381,8 +388,7 @@ def clientHandler(i):
                 ## Username gets changed
                 if username_set is True:
                     for x in threadip:
-                        b = x[0].find(str(i))
-                        if b is not -1:
+                        if x[0] == str(i):
                             username2 = remove_spaces(username)
                             username2 = rm_illegal_chr(username2)
                             x[2] = ''
@@ -402,15 +408,15 @@ def clientHandler(i):
                                 sendlevel = '0'+str(level)
                             else:
                                 sendlevel = str(level)
-                            print addr[0],' is level ',level,' !'
-                            broadcastData(s, 'nav','SSERVER::'+username2+' is level '+str(level))
-                            time.sleep(0.4)
+##                            print addr[0],' is level ',level,' !'
+                            chatlog.append([get_cur_time(),addr[0],' is level ',level,' !'])
+                            broadcastData('nav','SSERVER::'+username2+' is level '+str(level))
+                            time.sleep(0.2)
                             send_user_list(s,conn,'',username2,addr[0])
                 ## Login username received
                 else:
                     for x in threadip:
-                        b = x[0].find(str(i))
-                        if b is not -1:
+                        if x[0] == str(i):
                             username2 = remove_spaces(username)
                             username2 = rm_illegal_chr(username2)
                             x[2] = ''
@@ -428,16 +434,17 @@ def clientHandler(i):
                                 sendlevel = '0'+str(level)
                             else:
                                 sendlevel = str(level)
-                            print addr[0],' is level ',level,' !'
-                            broadcastData(s, 'nav','SSERVER::'+username2+' is level '+str(level))
-                            time.sleep(0.4)
+##                            print addr[0],' is level ',level,' !'
+                            chatlog.append([get_cur_time(),addr[0],' is level ',level,' !'])
+                            broadcastData('nav','SSERVER::'+username2+' is level '+str(level))
+                            time.sleep(0.2)
                             send_user_list(s,conn,'',username2,addr[0])
                 username_set = True
 
 
 threads = int(read_settings('threadcnt='))
 action_time = True
-iplist,chatlog,threadip = [],[],[]
+iplist,chatlog,chatmlog,threadip = [],[],[],[]
 read_server_usr_settings()
 log_enabled = int(read_settings('logging='))
 msgprint_enabled = 0
@@ -463,7 +470,7 @@ def main(): # main function
         msg = raw_input('::: ')
         msg = str(msg)
         if msg == 'quit':
-            broadcastData(s, '', 'CLOSING::')
+            broadcastData('', 'CLOSING::')
             action_time = False
             time.sleep(1)
         elif msg == 'thread':
@@ -472,7 +479,7 @@ def main(): # main function
             print 'disabled'
 ##            lvluser = raw_input('Username:')
 ##            lvluserlvl = raw_input('level')
-##            broadcastData(s, 'nav','SSERVER::'+str(lvluser)+' is now level '+str(lvluserlvl)+' !')
+##            broadcastData('nav','SSERVER::'+str(lvluser)+' is now level '+str(lvluserlvl)+' !')
             
         elif msg == 'threadip':
             for x in threadip:
@@ -480,8 +487,11 @@ def main(): # main function
         elif msg == 'iplist':
             for x in iplist:
                 print x
+        elif msg == 'iplist-reload':
+            read_server_usr_settings()
         elif msg == 'help':
-            print 'Type: quit, lvluser, threadip, iplist, log, log-toggle, log-save, say, msgprint, msgprint-toggle'
+            print 'Type: quit, lvluser, threadip, iplist, iplist-reload, log, mlog, log-toggle, '
+            +'log-save, say, msgprint, msgprint-toggle'
         elif msg == 'log-toggle':
             if log_enabled == 1:
                 log_enabled = 0
@@ -493,20 +503,23 @@ def main(): # main function
         elif msg == 'log':
             for x in chatlog:
                 print x
+        elif msg == 'mlog':
+            for x in chatmlog:
+                print x
         elif msg == 'log-save':
-            chat_len = len(chatlog)
+            chat_len = len(chatmlog)
             for cnt in range(0,chat_len):
                 print cnt
                 fh = open('load/chatlog.txt', 'a')
-                x = chatlog[cnt]
+                x = chatmlog[cnt]
                 if len(x) < 1:
                     x = ' '
                 print 'Writing ',str(x)
                 fh.write(str(x)+'\n')
                 fh.close()
-            print chatlog
+            print chatmlog
             for cnt in range(0,chat_len):
-                chatlog.pop(0)
+                chatmlog.pop(0)
         elif msg == 'msgprint':
             global msgprint_enabled
             print 'msgprint is: ',msgprint_enabled
@@ -516,12 +529,10 @@ def main(): # main function
             else:
                msgprint_enabled = 1
             write_settings('msgprint',msgprint_enabled)
-        elif msg == 'chatlog':
-            print chatlog
         elif msg == 'say':
             x = raw_input(':::Say what? ')
             print 'Sending "'+x+'" to all'
-            broadcastData(s, 'nav','SSERVER::'+x)
+            broadcastData('nav','SSERVER::'+x)
         else:
             print msg
 

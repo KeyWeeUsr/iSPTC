@@ -5,7 +5,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
 import tkFont
-ver = '0.93'
+ver = '0.94b'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -211,25 +211,46 @@ def cp_destroy(*arg):
     global cp_is
     bb1.destroy()
     bb2.destroy()
+    bb3.destroy()
+    bb4.destroy()
     cp_is = False
+
+def open_in_browser_btn():
+    try:
+        clipboardData = root.selection_get(selection="CLIPBOARD")
+        done = True
+    except:
+        done = False
+    try:
+        copy_text()
+        webbrowser.open(str(root.selection_get(selection="CLIPBOARD")))
+    except:
+        print 'Nothing in clipboard'
+    if done == True:
+        E.clipboard_clear()
+        E.clipboard_append(clipboardData)    
     
 def copy_paste_buttons(*arg):
-    global bb2, bb1, cp_is, m_x, m_y
+    global bb2, bb1, bb3, bb4, cp_is, m_x, m_y
     if cp_is == False:
-        bb1 = Button(root, text='Copy', width=26,
+        bb1 = Button(root, text='Open in browser', width=50,
+                        command=lambda: {open_in_browser_btn(),cp_destroy()})
+        bb1.place(x=m_x, y=m_y,width=120, height=26)
+        bb2 = Button(root, text='Clear entry', width=50,
+                        command=lambda: {textt.set(''),cp_destroy()})
+        bb2.place(x=m_x, y=m_y+26,width=120, height=26)   
+        bb3 = Button(root, text='Copy', width=50,
                         command=lambda: {copy_text(),cp_destroy()})
-        bb1.place(x=m_x, y=m_y,width=80, height=26)
-        bb2 = Button(root, text='Paste', width=26,
+        bb3.place(x=m_x, y=m_y+52,width=120, height=26)
+        bb4 = Button(root, text='Paste', width=50,
                         command=lambda: {entry_paste(),cp_destroy()})
-        bb2.place(x=m_x, y=m_y+26,width=80, height=26)
+        bb4.place(x=m_x, y=m_y+78,width=120, height=26)
         cp_is = True
     else:
-        bb1.destroy()
-        bb2.destroy()
-        cp_is = False
+        cp_destroy()
 
-def recv_thread(s):
-    global action_time
+def recv_thread():
+    global action_time, s
     while action_time is True:
         data = s.recv(2048)
         if not data:
@@ -237,7 +258,8 @@ def recv_thread(s):
                 T.config(yscrollcommand=S.set,state="normal")
                 war = lenghten_name('WARNING: ',21)
                 T.insert(END, get_cur_time()+war+'Connection lost\n', 'redcol')
-                T.config(yscrollcommand=S.set,state="disabled")    
+                T.config(yscrollcommand=S.set,state="disabled")
+            s.close()
             break
         data_list.append(data+'\n')
         
@@ -320,7 +342,7 @@ def join_server(typing):
         print 'joining',TCP_IP, TCP_PORT
         s.connect((TCP_IP, TCP_PORT))
         action_time = True
-        Thread(target=recv_thread,args=(s,)).start()
+        Thread(target=recv_thread).start()
         sleep(0.3)
         if passwd is '' or autoauth is 0:
             s.send('USRINFO::'+username)
@@ -393,12 +415,6 @@ def attempt_auth(s,authps):
             T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")     
 
-def t_register_window():
-    global s, passwd
-    passwd = t_passwd.get()
-    write_settings('usrauth',passwd)
-    attempt_auth(s,passwd)
-
 def auth_register(auth_reg_var,t_passwd):
     global s, passwd
     passwd = t_passwd.get()
@@ -436,7 +452,7 @@ def t_auth_window(auth_or_register):
                                                                 hhw.destroy()})
     button.pack(side=BOTTOM,pady=10)
     def cmdbind(*arg):
-        t_auth_window(t_passwd)
+        auth_register(auth_or_register,t_passwd)
         hhw.destroy()
     hhw.bind('<Return>', cmdbind)
 
@@ -464,11 +480,16 @@ def enter_text(event):
             textt.set('')
         else:
             if text[0] is '@':
-                b = text.find(' ')
-                if b is not -1:
-                    textt.set(text[:b]+" ")
+                if text[1] is '@':
+                    T.config(yscrollcommand=S.set,state="normal")
+                    T.insert(END, 'Sending private: '+text[1:]+'\n', 'blackcol')
+                    T.config(yscrollcommand=S.set,state="disabled")
                 else:
-                    textt.set(text+" ")
+                    b = text.find(' ')
+                    if b is not -1:
+                        textt.set(text[:b]+" ")
+                    else:
+                        textt.set(text+" ")
             else:
                 textt.set('')
             if sound_settings[1] == 1:
@@ -483,12 +504,12 @@ def enter_text(event):
     T.yview(END)
 
 def leave_server():
-    global s
+    global s,action_time
     war = lenghten_name('WARNING: ',21)
     try:
         s.send('close::')
         action_time = False
-        sleep(0.3)
+        sleep(0.4)
         s.close()
         s = ''
         T.config(yscrollcommand=S.set,state="normal")
@@ -826,7 +847,6 @@ def organise_USRLIST(data):
         cnt+=1
     cnt = 0
     for x in USRLIST:
-        print x[0][:5]
         if x[0][:6] == 'Users:' and x[1] == '':
             usercount = x
             USRLIST.pop(cnt)
@@ -837,9 +857,7 @@ def organise_USRLIST(data):
     for x in USRLIST:
         templist.append(x)
     USRLIST = list(templist)
-    print 'USRLISTE:'                
-    for x in USRLIST:
-        print x
+    print 'USRLIST received'
     if hide_users == 0:
         user_area_insert()
 
@@ -958,8 +976,11 @@ def copy_text(*arg):
         pass
 
 def entry_paste(*arg):
-    text = root.selection_get(selection='CLIPBOARD')
-    E.insert('insert', text)
+    try:
+        text = root.selection_get(selection='CLIPBOARD')
+        E.insert('insert', text)
+    except:
+        print 'Nothing in clipboard'
 
 def motion(event):
     global m_x,m_y
@@ -1078,6 +1099,7 @@ cp_is = False
 cp_focus = False
 ## Tkinter below
 root = Tk()
+##root.configure(background='red')
 root.title("iSPTC - "+username)
 root.minsize(300,300)
 root.geometry('%sx%s' % (X_size,Y_size))
@@ -1134,6 +1156,17 @@ def create_widgets():
     S = Scrollbar(root, width=15)
     S2 = Scrollbar(root, width=15)
     T = Text(root, height=46, width=114,wrap=WORD)
+    ## bordercolors
+##    widliste = [T,E,User_area, S, S2]
+##    for x in widliste:
+##        x.config(background='black')
+##    for x in widliste:
+##        x.config(highlightthickness=0)
+##    for x in widliste:
+##        x.config(highlightbackground='black')
+##    for x in widliste:
+##        x.config(bd=0)
+        
     S.pack(side=RIGHT, fill=Y)
     if hide_users == 0:
         User_area.pack(side=LEFT,fill=Y)
@@ -1263,7 +1296,6 @@ def task():
                     set_winicon(root,'icon2')
                     icon_was_switched = True
             msg_recv +=1
-
     root.after(task_loop_interval, task)  # reschedule event
 
 

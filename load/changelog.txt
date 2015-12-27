@@ -1,3 +1,19 @@
+## Client[0.94b] - 2015-12-28
+### Added
+ - Context menu buttons for entry widget clear and opening in browser
+## Fixed
+ - Client leave button not closing connection
+
+## Server[0.91b] - 2015-12-28
+## Fixed
+ - Thread numbers in connection list were being searched instead of compared, e.g. number 4 could be found in thread 14. This caused wrong users to be dropped
+
+
+## Client[0.94] - 2015-12-27
+## Fixed
+ - Recv thread [errno 9] bug
+
+
 ## Client[0.93] - 2015-12-27
 ### Added
  - Registration  (Plain text)
@@ -13,7 +29,7 @@
 
 ## Client[0.91t] - 2015-12-26
 ### Added
- - Private messages
+ - Private messages (Type @@ + "username" + space + your message)
 ### Changed
  - the way that userlevels get displayed
 
