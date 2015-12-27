@@ -1,3 +1,16 @@
+## Client[0.93] - 2015-12-27
+### Added
+ - Registration  (Plain text)
+ - Password authentication (Plain text)
+## Fixed
+ - A warning is shown when connection to server is lost
+
+## Server[0.91] - 2015-12-27
+### Added
+ - Username registration (Plain text)
+ - Thread count configuration is server.cfg file
+
+
 ## Client[0.91t] - 2015-12-26
 ### Added
  - Private messages
@@ -9,6 +22,7 @@
  - User levels
  - IP address authentification
  - Private messages
+
 
 ## Client[0.91] - 2015-12-26
 ### Added

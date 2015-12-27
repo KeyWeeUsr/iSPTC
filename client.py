@@ -517,7 +517,10 @@ def change_name(t_new_name,t_passwd):
         root.title("iSPTC - "+new_name)
         write_settings('username',username)
         try:
-            s.send('USRINFO::'+username)
+            if passwd is '':
+                s.send('USRINFO::'+username)
+            else:
+                s.send('USRINFO::'+username+']'+passwd)
         except:
             pass
 
