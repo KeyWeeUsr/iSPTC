@@ -2,8 +2,8 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.86t'
-welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver
+ver = '0.91'
+welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat - ver: '+ver+'\nRegistration is now supported'
 
 def read_server_usr_settings():
     text = readf('load/server_users.cfg')
@@ -113,14 +113,15 @@ def check_duplicate(name):
     else:
         return name
 
-def set_threadip(i,addr,username2):
+def set_threadip(i,addr,username2,pass_is_True):
     global iplist
     level = 1
     for levels in iplist:
         for x in levels[1]:
-            print x
             if x[0] == addr or x[0] == username2:
                 if x[1] == 'False':
+                    level = levels[0]
+                elif pass_is_True == True:
                     level = levels[0]
                 else:
                     pass
@@ -146,11 +147,59 @@ def rm_illegal_chr(name):
         name = name+x
     return name
 
+def check_for_illegal_chr(illegal,name):
+    found = False
+    for x in illegal:
+        b = name.find(x)
+        if b is not -1:
+            found = True
+            break
+    return found
+
+def check_if_registered(usrname,addr,return_passlvl):
+    global iplist
+    for levels in iplist:
+        for x in levels[1]:
+##            if x[0] == usrname or x[0] == addr:
+            if x[0] == usrname:
+                if return_passlvl == True:
+                    return True,x[1],levels[0]
+                return True
+    if return_passlvl == True:
+        return False,False,False
+    return False
+
+def register_user(username,usr_pass):
+    global iplist
+    level = -1
+    regwrite = []
+    regwrite.append('## 0 is muted\n## -1 is banned')
+    for levels in iplist:
+        ## Appends level
+        if level == -1:
+            regwrite.append('[[l'+str(level)+'-none]]')
+        else:
+            regwrite.append('[[l0'+str(level)+'-none]]')
+        if level == 2:
+            ## Appends new user with default level 2
+            levels[1].append([username,usr_pass])
+        for x in levels[1]:
+            ## Adds space after each level
+            regwrite.append('['+x[0]+']['+x[1]+']')
+        regwrite.append('')
+        level+=1
+    # Writes file
+    savef('','load/server_users.cfg')
+    for x in regwrite:
+        fh = open('load/server_users.cfg', 'a')
+        fh.write(str(x)+'\n')
+        fh.close()
+
 def send_ulist_only(s):
     ip_sending_enabled = True
     sendlist = ''
+    sendlist+= '[[[Users: '+str(len(threadip))+'/'+str(threads)+'][][-1][ ]]]'
     for x in threadip:
-        print x
         x[2] = rm_illegal_chr(x[2])
         if ip_sending_enabled == True:
             sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']]]'
@@ -159,12 +208,14 @@ def send_ulist_only(s):
     broadcastData(s, 'nav','USRLIST::'+sendlist[:-1])
 
 def send_user_list(s,conn,oldusername,username,addr):
+    global threads
     ip_sending_enabled = True
     if oldusername is not '':
         oldusername = remove_spaces(oldusername)
     if username is not '':
         username = remove_spaces(username)
     sendlist = ''
+    sendlist+= '[[[Users: '+str(len(threadip))+'/'+str(threads)+'][][-1][ ]]]'
     for x in threadip:
         x[2] = rm_illegal_chr(x[2])
         if ip_sending_enabled == True:
@@ -205,9 +256,20 @@ def broadcastData(s, conn, data): # function to send Data
         except:
             print x[1],' NOT AVAILABLE\n'
 
-
+def usrLeaving(s,conn,username2,addr,threadip,i):
+    cnt = 0
+    for x in threadip:
+        b = x[0].find(str(i))
+        if b is not -1:
+           del threadip[cnt]
+        cnt+=1
+    send_user_list(s,conn,'','',addr[0])
+    time.sleep(0.5)
+    broadcastData(s, conn, 'SERVELJ::'+username2+'('+addr[0]+')'+' left')
+    print addr," is now disconnected! \n"
+    
 def clientHandler(i):
-    global s, threadip, threads, msgprint_enabled, logging_enabled, welcome_msg
+    global s, threadip, threads, msgprint_enabled, logging_enabled, welcome_msg, iplist
     username,username_set = '',False
     level = 1
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
@@ -239,34 +301,51 @@ def clientHandler(i):
                 broadcastData(s, conn, 'm:'+sendlevel+username+data[9:])
         ## Leaving
         if not data:
-            cnt = 0
-            for x in threadip:
-                b = x[0].find(str(i))
-                if b is not -1:
-                    del threadip[cnt]
-                cnt+=1
-            send_user_list(s,conn,'','',addr[0])
-            time.sleep(0.7)
-            username2 = remove_spaces(username)
-            broadcastData(s, conn, 'SERVELJ::'+username+'('+addr[0]+')'+' left')
-            print addr," is now disconnected! \n"
+            usrLeaving(s,conn,username2,addr,threadip,i)
             Thread(target=clientHandler,args=(i,)).start()
             break
-        ## Leaving
+        ## Leaving2
         elif data == 'close::':
-            cnt = 0
-            for x in threadip:
-                b = x[0].find(str(i))
-                if b is not -1:
-                   del threadip[cnt]
-                cnt+=1
-            send_user_list(s,conn,'','',addr[0])
-            time.sleep(0.7)
-            username2 = remove_spaces(username)
-            broadcastData(s, conn, 'SERVELJ::'+username2+'('+addr[0]+')'+' left')
-            print addr," is now disconnected! \n"
+            usrLeaving(s,conn,username2,addr,threadip,i)
             Thread(target=clientHandler,args=(i,)).start()
             break
+        ## Registration
+        elif data[0:9] == 'aUSRREG::':
+            registered = check_if_registered(username2,addr[0],False)
+            if registered == True:
+                conn.send('SSERVER::Already registered')
+                time.sleep(0.1)
+            else:
+                usr_pass = data[9:]
+                if len(usr_pass) > 10:
+                    usr_pass = usr_pass[:10]
+                    conn.send('SSERVER::Max length is 10, changed to: '+usr_pass)
+                    time.sleep(0.3)
+                illeg_chk = check_for_illegal_chr([' ','[',']'],usr_pass)
+                if illeg_chk == True:
+                    conn.send('SSERVER::Spaces, "[", "]" are not allowed')
+                else:
+                    conn.send('SSERVER::Registering '+username2+' with '+usr_pass)
+                    register_user(username2,usr_pass)
+        ## User auth with passwd
+        elif data[0:9] == 'USRLOGI::':
+            usr_pass = data[9:]
+            if len(usr_pass) > 15:
+                usr_pass = usr_pass[:15]
+            registered = check_if_registered(username2,addr,True)
+            if registered[0] == True and usr_pass == registered[1]:
+                level = registered[2]
+                broadcastData(s, 'nav','SSERVER::'+remove_spaces(username)+' is level'+str(level))
+                for x in threadip:
+                    b = x[0].find(str(i))
+                    if b is not -1:
+                        x[2] = username2
+                        x[4] = level
+                        break
+                send_ulist_only(s)
+            else:
+                conn.send('SSERVER::Wrong pass')
+        ## AFK
         elif data[0:9] == 'aAFKAFK::':
             for x in threadip:
                 b = x[0].find(str(i))
@@ -280,6 +359,7 @@ def clientHandler(i):
                     x[5] = newval
             time.sleep(0.2)
             send_ulist_only(s)
+        ## Username
         elif data[0:9] == 'USRINFO::':
             oldusername = str(username)
             for x in oldusername:
@@ -287,6 +367,13 @@ def clientHandler(i):
                     oldusername = oldusername[1:]
                 else:
                     pass
+            ## Gets userpass
+            b = data.find(']')
+            if b is not -1 and len(data[b:]) > 2:
+                usr_pass = data[b+1:]
+                data = data[:b]
+            else:
+                usr_pass = False
             if len(data) > 11:
                 username = data[9:]
                 if len(username) > 15:
@@ -301,16 +388,24 @@ def clientHandler(i):
                             x[2] = ''
                             username2 = check_duplicate(username2)
                             username = add_spaces(username2)
-                            x[2] = username2
-                            level = set_threadip(str(i),addr[0],username2)
+                            registered = check_if_registered(username2,addr,True)
+                            if registered[0] == True and usr_pass == registered[1]:
+                                level = set_threadip(str(i),addr[0],username2,True)
+                                x[2] = username2
+                            elif registered[0] == True and usr_pass != registered[1]:
+                                x[2] = oldusername
+                                username2 = oldusername
+                                conn.send('SSERVER::Name is registered, reverting')
+                            else:
+                                x[2] = (username2)
                             if len(str(level)) == 1:
                                 sendlevel = '0'+str(level)
                             else:
                                 sendlevel = str(level)
                             print addr[0],' is level ',level,' !'
-                            broadcastData(s, 'nav','SSERVER::'+remove_spaces(username)+' is level'+str(level))
+                            broadcastData(s, 'nav','SSERVER::'+username2+' is level '+str(level))
                             time.sleep(0.4)
-                            send_user_list(s,conn,oldusername,username2,addr[0])
+                            send_user_list(s,conn,'',username2,addr[0])
                 ## Login username received
                 else:
                     for x in threadip:
@@ -321,8 +416,14 @@ def clientHandler(i):
                             x[2] = ''
                             username2 = check_duplicate(username2)
                             username = add_spaces(username2)
-                            x[2] = (username2)
-                            level = set_threadip(str(i),addr[0],username2)
+                            registered = check_if_registered(username2,addr,True)
+                            if registered[0] == True and usr_pass == registered[1]:
+                                level = set_threadip(str(i),addr[0],username2,True)
+                                x[2] = username2
+                            elif registered[0] == True and usr_pass != registered[1]:
+                                conn.send('SSERVER::Name is registered, waiting for auth')
+                            else:
+                                x[2] = (username2)
                             if len(str(level)) == 1:
                                 sendlevel = '0'+str(level)
                             else:
@@ -333,7 +434,8 @@ def clientHandler(i):
                             send_user_list(s,conn,'',username2,addr[0])
                 username_set = True
 
-threads = 10
+
+threads = int(read_settings('threadcnt='))
 action_time = True
 iplist,chatlog,threadip = [],[],[]
 read_server_usr_settings()
@@ -367,9 +469,11 @@ def main(): # main function
         elif msg == 'thread':
             print threading.active_count()
         elif msg == 'lvluser':
-            lvluser = raw_input('Username:')
-            lvluserlvl = raw_input('level')
-            broadcastData(s, 'nav','SSERVER::'+str(lvluser)+' is now level '+str(lvluserlvl)+' !')
+            print 'disabled'
+##            lvluser = raw_input('Username:')
+##            lvluserlvl = raw_input('level')
+##            broadcastData(s, 'nav','SSERVER::'+str(lvluser)+' is now level '+str(lvluserlvl)+' !')
+            
         elif msg == 'threadip':
             for x in threadip:
                 print x

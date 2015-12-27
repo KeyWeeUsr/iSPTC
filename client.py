@@ -5,7 +5,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
 import tkFont
-ver = '0.91t'
+ver = '0.93'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -233,6 +233,11 @@ def recv_thread(s):
     while action_time is True:
         data = s.recv(2048)
         if not data:
+            if action_time is True:
+                T.config(yscrollcommand=S.set,state="normal")
+                war = lenghten_name('WARNING: ',21)
+                T.insert(END, get_cur_time()+war+'Connection lost\n', 'redcol')
+                T.config(yscrollcommand=S.set,state="disabled")    
             break
         data_list.append(data+'\n')
         
@@ -293,7 +298,7 @@ def join_srv_check(curselection,jaddr):
         join_server(jaddr)
                 
 def join_server(typing):
-    global username, s, action_time
+    global username, s, action_time, passwd, autoauth
     try:
         action_time = False
         s.send('close::')
@@ -317,7 +322,10 @@ def join_server(typing):
         action_time = True
         Thread(target=recv_thread,args=(s,)).start()
         sleep(0.3)
-        s.send('USRINFO::'+username)
+        if passwd is '' or autoauth is 0:
+            s.send('USRINFO::'+username)
+        else:
+            s.send('USRINFO::'+username+']'+passwd)
     except:
         T.config(yscrollcommand=S.set,state="normal")
         war = lenghten_name('WARNING: ',21)
@@ -337,7 +345,8 @@ def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'black')
-    T.insert(END, 'Type: /users for userlist, /log for chatlog\n,/afk to go afk, /link_list to see all links', 'black')
+    T.insert(END, 'Type: /users for userlist, /log for chatlog\n,/afk to go afk, /link_list to see all links'+
+             ',/register [passwd] to register, /auth [passwd] to authenticate', 'black')
     T.config(yscrollcommand=S.set,state="disabled")
 
 def T_ins_log():
@@ -360,6 +369,77 @@ def send_afk():
     except:
         pass
 
+def attempt_registration(s,authps):
+    try:
+        s.send('aUSRREG::'+authps)
+    except Exception as e:
+        T.config(yscrollcommand=S.set,state="normal")
+        war = lenghten_name('WARNING: ',21)
+        if str(e)[:10] == '[Errno 32]':
+            T.insert(END, get_cur_time()+war+'Not connected\n', 'redcol')
+        else:
+            T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
+        T.config(yscrollcommand=S.set,state="disabled")       
+
+def attempt_auth(s,authps):
+    try:
+        s.send('USRLOGI::'+authps)
+    except Exception as e:
+        T.config(yscrollcommand=S.set,state="normal")
+        war = lenghten_name('WARNING: ',21)
+        if str(e)[:10] == '[Errno 32]':
+            T.insert(END, get_cur_time()+war+'Not connected\n', 'redcol')
+        else:
+            T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
+        T.config(yscrollcommand=S.set,state="disabled")     
+
+def t_register_window():
+    global s, passwd
+    passwd = t_passwd.get()
+    write_settings('usrauth',passwd)
+    attempt_auth(s,passwd)
+
+def auth_register(auth_reg_var,t_passwd):
+    global s, passwd
+    passwd = t_passwd.get()
+    write_settings('usrauth',passwd)   
+    if auth_reg_var == 'register':
+        attempt_registration(s,passwd)
+        print 'Register with', passwd
+    elif auth_reg_var == 'auth':
+        attempt_auth(s,passwd)
+        print 'Auth with', passwd
+    
+def t_auth_window(auth_or_register):
+    global passwd
+    try:
+        hhw.destroy()
+    except:
+        pass
+    t_passwd = StringVar()
+    t_passwd.set(passwd)
+    hhw = Toplevel()
+    set_winicon(hhw,'icon')
+    if auth_or_register == 'register':
+        hhw.title("Register")
+    if auth_or_register == 'auth':
+        hhw.title("Auth")
+    hhw.minsize(250,170)
+    hhw.resizable(FALSE,FALSE)
+    
+    Label(hhw, text="Passwd:").pack(anchor=NW,padx=30,pady=10)
+    usrEntry = Entry(hhw,textvariable=t_passwd)
+    usrEntry.pack(side=TOP)
+    usrEntry.focus_set()
+    
+    button = Button(hhw, text='Auth', width=20, command=lambda: {auth_register(auth_or_register,t_passwd),
+                                                                hhw.destroy()})
+    button.pack(side=BOTTOM,pady=10)
+    def cmdbind(*arg):
+        t_auth_window(t_passwd)
+        hhw.destroy()
+    hhw.bind('<Return>', cmdbind)
+
 def enter_text(event):
     global s, USRLIST
 ##    T.config(yscrollcommand=S.set,state="normal")
@@ -377,6 +457,10 @@ def enter_text(event):
                 send_afk()
             elif text == '/link_list':
                 T_ins_linklist()
+            elif text[:10] == '/register ' and len(text) > 11:
+                attempt_registration(s,text[10:])
+            elif text[:6] == '/auth ' and len(text) > 7:
+                attempt_auth(s,text[6:])
             textt.set('')
         else:
             if text[0] is '@':
@@ -418,9 +502,11 @@ def leave_server():
         T.insert(END, get_cur_time()+war+'\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
-def change_name(new_name):
-    global username, s
-    new_name = new_name.get()
+def change_name(t_new_name,t_passwd):
+    global username, s, passwd
+    new_name = t_new_name.get()
+    passwd = t_passwd.get()
+    write_settings('usrauth',passwd)
     if len(new_name) <3:
         T.config(yscrollcommand=S.set,state="normal")
         war = lenghten_name('WARNING: ',21)
@@ -446,19 +532,29 @@ def winf_isnt(vv):
     windowfocus = False
     
 def set_username():
-    new_name = StringVar()
-    new_name.set("")
+    global username, passwd
+    t_new_name = StringVar()
+    t_new_name.set(username)
+    t_passwd = StringVar()
+    t_passwd.set(passwd)
     uw = Toplevel()
     set_winicon(uw,'icon')
     uw.title("New name")
-    uw.minsize(250,100)
+    uw.minsize(250,170)
     uw.resizable(FALSE,FALSE)
-    usrEntry = Entry(uw,textvariable=new_name)
-    usrEntry.pack(pady=25)
+    Label(uw, text="Username:").pack(anchor=NW,padx=30,pady=5)
+    usrEntry = Entry(uw,textvariable=t_new_name)
+    usrEntry.pack(pady=5)
     usrEntry.focus_set()
-    button = Button(uw, text='Done', width=20, command=lambda: {change_name(new_name),
+    
+    Label(uw, text="Pass (leave blank, if unused):").pack(anchor=NW,padx=30)
+    usrEntry = Entry(uw,textvariable=t_passwd)
+    usrEntry.pack(pady=5)
+    usrEntry.focus_set()
+    
+    button = Button(uw, text='Done', width=20, command=lambda: {change_name(t_new_name,t_passwd),
                                                                 uw.destroy()})
-    button.pack()
+    button.pack(side=BOTTOM,pady=10)
     def cmdbind(*arg):
         change_name(new_name)
         uw.destroy()
@@ -586,7 +682,7 @@ def apply_display_font(display_text,font,fontlist,t_font_size):
     display_text.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
     display_text.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
 
-def change_other_settings(a,b,c,d,e,f,g):
+def change_other_settings(a,b,c,d,e,f,g,h):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users
     global User_area, S2, T, S, E, s, username
     autojoin = a
@@ -594,6 +690,7 @@ def change_other_settings(a,b,c,d,e,f,g):
     leave_join = c
     Y_size = d
     nadd_spaces = e
+    autoauth = h
 
     if hide_users is not g:
         hide_users = g
@@ -615,11 +712,12 @@ def change_other_settings(a,b,c,d,e,f,g):
     write_settings('Y_size',d)
     write_settings('nadd_spaces',e)
     write_settings('hide_users',g)
+    write_settings('autoauth',h)
     root.geometry('%sx%s' % (X_size,Y_size))
     
     
 def other_menu():
-    global X_size,Y_size , autojoin, leave_join, nadd_spaces, show_ttime, hide_users
+    global X_size,Y_size , autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth
     sm = Toplevel()
     set_winicon(sm,'icon')
     sm.title("Other options")
@@ -633,13 +731,16 @@ def other_menu():
     frame2.pack(anchor=NE,side=LEFT)
     
     leave_join_enabled = IntVar()
+    autoauth_enabled = IntVar()
     autojoin_enabled = IntVar()
     t_X_size = IntVar()
     t_Y_size = IntVar()
     autojoin_enabled.set(autojoin)
+    autoauth_enabled.set(autoauth)
     leave_join_enabled.set(leave_join)
-    Checkbutton(frame, text="Show leave and join", variable=leave_join_enabled).pack(side=TOP)
-    Checkbutton(frame, text="Enable autojoin", variable=autojoin_enabled).pack(side=TOP)
+    Checkbutton(frame, text="Show leave and join", variable=leave_join_enabled).pack(anchor=NW)
+    Checkbutton(frame, text="Enable autoauthentication", variable=autoauth_enabled).pack(anchor=NW)
+    Checkbutton(frame, text="Enable autojoin", variable=autojoin_enabled).pack(anchor=NW)
     t_X_size = Scale(frame, from_=300, to=2000,length=160, orient=HORIZONTAL)
     t_Y_size = Scale(frame, from_=300, to=1600,length=160, orient=HORIZONTAL)
     Label(frame, text="X_size").pack(side=TOP)
@@ -666,7 +767,7 @@ def other_menu():
                     command=lambda: {change_other_settings(autojoin_enabled.get(),t_X_size.get(),
                                                            leave_join_enabled.get(),t_Y_size.get(),
                                                            lenchspaces.get(),t_box_time.get(),
-                                                           t_hide_users.get())
+                                                           t_hide_users.get(),autoauth_enabled.get())
                                                            ,sm.destroy()})
     button.pack(side=BOTTOM)
 
@@ -720,7 +821,19 @@ def organise_USRLIST(data):
             USRLIST[cnt].append(x[begn:end])
             x = x[end+1:]
         cnt+=1
+    cnt = 0
+    for x in USRLIST:
+        print x[0][:5]
+        if x[0][:6] == 'Users:' and x[1] == '':
+            usercount = x
+            USRLIST.pop(cnt)
+            break
+        cnt+=1
     USRLIST.sort()
+    templist = [usercount]
+    for x in USRLIST:
+        templist.append(x)
+    USRLIST = list(templist)
     print 'USRLISTE:'                
     for x in USRLIST:
         print x
@@ -773,7 +886,7 @@ def get_user_color(col,name,add_zero):
     elif col == addz+'1':
         return 'blackcol',name
     elif col == addz+'2':
-        return 'pinkcol',name
+        return 'blackcol',name
     elif col == addz+'3':
         return 'pinkcol',name
     elif col == addz+'4':
@@ -948,6 +1061,8 @@ Y_size = int(read_settings('Y_size='))
 font_size = int(read_settings('font_size='))
 text_font = (int(read_settings('tfont=')),)
 server_list = []
+passwd = str(read_settings('usrauth='))
+autoauth = int(read_settings('autoauth='))
 
 ## Setting global vars
 sound_interval = 0
@@ -988,6 +1103,9 @@ menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
 
 menu3 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Commands',menu=menu3)
+menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
+menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
+menu3.add_separator()              
 menu3.add_command(label='Go afk', command=send_afk)
 menu3.add_command(label='Print userlist', command=T_ins_userlist)
 menu3.add_command(label='Print log', command=T_ins_log)
