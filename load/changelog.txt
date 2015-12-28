@@ -1,3 +1,12 @@
+## Client[0.94c] - 2015-12-28
+### Added
+ - Brown color for first line of link list, help, log,userlist 
+## Changed
+ - Link_list command from /link_list to /ll
+## Fixed
+ - Some tags were hardcoded to size 10 instead of loading from settings
+
+
 ## Client[0.94b] - 2015-12-28
 ### Added
  - Context menu buttons for entry widget clear and opening in browser
@@ -24,7 +33,7 @@
 ## Server[0.91] - 2015-12-27
 ### Added
  - Username registration (Plain text)
- - Thread count configuration is server.cfg file
+ - Thread count configuration in server.cfg file
 
 
 ## Client[0.91t] - 2015-12-26

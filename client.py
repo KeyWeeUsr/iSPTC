@@ -5,7 +5,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
 import tkFont
-ver = '0.94b'
+ver = '0.94c'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -357,8 +357,8 @@ def join_server(typing):
 def T_ins_userlist():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Userlist]\n', 'black')
-    T.insert(END, '[Name] [IP] [Level] [AFK]\n', 'black')
+    T.insert(END, '[Userlist]\n', 'browncol')
+    T.insert(END, '[Name] [IP] [Level] [AFK]\n', 'blackcol')
     for x in USRLIST:
         T.insert(END, x[0]+', '+x[1]+', '+x[2]+', '+x[3]+'\n', 'black')
     T.config(yscrollcommand=S.set,state="disabled")
@@ -366,21 +366,21 @@ def T_ins_userlist():
 def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Help]\n', 'black')
-    T.insert(END, 'Type: /users for userlist, /log for chatlog\n,/afk to go afk, /link_list to see all links'+
-             ',/register [passwd] to register, /auth [passwd] to authenticate', 'black')
+    T.insert(END, '[Help]\n', 'browncol')
+    T.insert(END, 'Type:\n/users for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
+             '/register [passwd] to register\n/auth [passwd] to authenticate\n', 'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
 
 def T_ins_log():
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Log]\n', 'black')
+    T.insert(END, '[Log]\n', 'browncol')
     for x in data_list:
-        T.insert(END, x,'greycol')
+        T.insert(END, x,'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
     
 def T_ins_linklist():
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Link list]\n', 'black')
+    T.insert(END, '[Link list]\n', 'browncol')
     for x in linklist:
         T.insert(END, x[1]+'\n','bluecol')
     T.config(yscrollcommand=S.set,state="disabled")
@@ -471,7 +471,7 @@ def enter_text(event):
                 T_ins_log()
             elif text == '/afk':
                 send_afk()
-            elif text == '/link_list':
+            elif text == '/ll':
                 T_ins_linklist()
             elif text[:10] == '/register ' and len(text) > 11:
                 attempt_registration(s,text[10:])
@@ -1099,7 +1099,6 @@ cp_is = False
 cp_focus = False
 ## Tkinter below
 root = Tk()
-##root.configure(background='red')
 root.title("iSPTC - "+username)
 root.minsize(300,300)
 root.geometry('%sx%s' % (X_size,Y_size))
@@ -1157,6 +1156,7 @@ def create_widgets():
     S2 = Scrollbar(root, width=15)
     T = Text(root, height=46, width=114,wrap=WORD)
     ## bordercolors
+##root.configure(background='red')
 ##    widliste = [T,E,User_area, S, S2]
 ##    for x in widliste:
 ##        x.config(background='black')
@@ -1193,12 +1193,14 @@ def tag_colors():
     T.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
     T.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
     T.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    T.tag_configure('pinkcol', font=(fontlist[font[0]], 10), foreground='pink')
-    T.tag_configure('blue_link', font=(fontlist[font[0]], 10), foreground='blue')
+    T.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
+    T.tag_configure('blue_link', font=(fontlist[text_font[0]], font_size), foreground='blue')
+    T.tag_configure('timecol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    T.tag_configure('browncol', font=(fontlist[text_font[0]], font_size), foreground='brown')
 
     if hide_users is not 1:
         User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-        User_area.tag_configure('pinkcol', font=(fontlist[font[0]], 10), foreground='pink')
+        User_area.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
         User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
         User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
         User_area.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
