@@ -1,25 +1,44 @@
+## Client[0.95] - 2015-12-30
+### Added
+ - Offline messages
+ - App title changes when username is a duplicate now
+## Changed
+ - Improved private message sending (Type @@ + "username" + "]" + your message)
+ - Added black background and colors for received private messages
+## Fixed
+ - Mistake that caused some tags to switch to size 10 fonts when changing size only
+
+## Server[0.93] - 2015-12-30
+### Added
+ - Offline messages for registered users (Can be switched off bye clients)
+###
+ - Improved replicant protection
+### Fixed
+ - 
+
+
 ## Client[0.94c] - 2015-12-28
 ### Added
  - Brown color for first line of link list, help, log,userlist 
-## Changed
+### Changed
  - Link_list command from /link_list to /ll
-## Fixed
+### Fixed
  - Some tags were hardcoded to size 10 instead of loading from settings
 
 
 ## Client[0.94b] - 2015-12-28
 ### Added
  - Context menu buttons for entry widget clear and opening in browser
-## Fixed
+### Fixed
  - Client leave button not closing connection
 
 ## Server[0.91b] - 2015-12-28
-## Fixed
+### Fixed
  - Thread numbers in connection list were being searched instead of compared, e.g. number 4 could be found in thread 14. This caused wrong users to be dropped
 
 
 ## Client[0.94] - 2015-12-27
-## Fixed
+### Fixed
  - Recv thread [errno 9] bug
 
 
@@ -27,7 +46,7 @@
 ### Added
  - Registration  (Plain text)
  - Password authentication (Plain text)
-## Fixed
+### Fixed
  - A warning is shown when connection to server is lost
 
 ## Server[0.91] - 2015-12-27

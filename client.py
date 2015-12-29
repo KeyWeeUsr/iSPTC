@@ -5,7 +5,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
 import tkFont
-ver = '0.94c'
+ver = '0.95'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -259,7 +259,6 @@ def recv_thread():
                 war = lenghten_name('WARNING: ',21)
                 T.insert(END, get_cur_time()+war+'Connection lost\n', 'redcol')
                 T.config(yscrollcommand=S.set,state="disabled")
-            s.close()
             break
         data_list.append(data+'\n')
         
@@ -320,7 +319,7 @@ def join_srv_check(curselection,jaddr):
         join_server(jaddr)
                 
 def join_server(typing):
-    global username, s, action_time, passwd, autoauth
+    global username, s, action_time, passwd, autoauth, offline_msg
     try:
         action_time = False
         s.send('close::')
@@ -348,20 +347,28 @@ def join_server(typing):
             s.send('USRINFO::'+username)
         else:
             s.send('USRINFO::'+username+']'+passwd)
+        sleep(0.2)
+        s.send('CONFIGR::offmsg='+str(offline_msg))
     except:
         T.config(yscrollcommand=S.set,state="normal")
         war = lenghten_name('WARNING: ',21)
         T.insert(END, get_cur_time()+war+"Can't join\n", 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
+def scroller_to_end():
+    scroller = S.get()
+    if scroller[1] == 1.0:  
+        T.yview(END)
+
 def T_ins_userlist():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Userlist]\n', 'browncol')
-    T.insert(END, '[Name] [IP] [Level] [AFK]\n', 'blackcol')
+    T.insert(END, '[Name] [IP] [Level] [AFK]\n', 'browncol')
     for x in USRLIST:
         T.insert(END, x[0]+', '+x[1]+', '+x[2]+', '+x[3]+'\n', 'black')
     T.config(yscrollcommand=S.set,state="disabled")
+    scroller_to_end()
 
 def T_ins_help():
     global USRLIST
@@ -370,6 +377,7 @@ def T_ins_help():
     T.insert(END, 'Type:\n/users for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
              '/register [passwd] to register\n/auth [passwd] to authenticate\n', 'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
+    scroller_to_end()
 
 def T_ins_log():
     T.config(yscrollcommand=S.set,state="normal")
@@ -377,6 +385,7 @@ def T_ins_log():
     for x in data_list:
         T.insert(END, x,'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
+    scroller_to_end()
     
 def T_ins_linklist():
     T.config(yscrollcommand=S.set,state="normal")
@@ -384,6 +393,7 @@ def T_ins_linklist():
     for x in linklist:
         T.insert(END, x[1]+'\n','bluecol')
     T.config(yscrollcommand=S.set,state="disabled")
+    scroller_to_end()
 
 def send_afk():
     try:
@@ -480,12 +490,18 @@ def enter_text(event):
             textt.set('')
         else:
             if text[0] is '@':
+                b = text.find(' ')
                 if text[1] is '@':
-                    T.config(yscrollcommand=S.set,state="normal")
-                    T.insert(END, 'Sending private: '+text[1:]+'\n', 'blackcol')
-                    T.config(yscrollcommand=S.set,state="disabled")
+                    c = text.find(']')
+                    if c is not -1:
+                        T.config(yscrollcommand=S.set,state="normal")
+                        name = lenghten_name('Sending private: ',21)
+                        T.insert(END, get_cur_time(), 'blackcol')
+                        T.insert(END, name, 'browncol')
+                        T.insert(END, text[1:]+'\n', 'blackcol')
+                        T.config(yscrollcommand=S.set,state="disabled")
+                        textt.set(text[:c+1])
                 else:
-                    b = text.find(' ')
                     if b is not -1:
                         textt.set(text[:b]+" ")
                     else:
@@ -523,28 +539,6 @@ def leave_server():
         T.insert(END, get_cur_time()+war+'\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
-def change_name(t_new_name,t_passwd):
-    global username, s, passwd
-    new_name = t_new_name.get()
-    passwd = t_passwd.get()
-    write_settings('usrauth',passwd)
-    if len(new_name) <3:
-        T.config(yscrollcommand=S.set,state="normal")
-        war = lenghten_name('WARNING: ',21)
-        T.insert(END, get_cur_time()+war+'Name is too short\n', 'redcol')
-        T.config(yscrollcommand=S.set,state="disabled")
-    else:
-        username = new_name
-        root.title("iSPTC - "+new_name)
-        write_settings('username',username)
-        try:
-            if passwd is '':
-                s.send('USRINFO::'+username)
-            else:
-                s.send('USRINFO::'+username+']'+passwd)
-        except:
-            pass
-
 def winf_is(vv):
     global windowfocus,icon_was_switched
     windowfocus = True
@@ -554,33 +548,71 @@ def winf_is(vv):
 def winf_isnt(vv):
     global windowfocus
     windowfocus = False
-    
+
+def change_name(t_new_name,t_passwd,t_offline_msg):
+    global username, s, passwd, offline_msg
+    new_name = t_new_name.get()
+    new_passwd = t_passwd.get()
+    if new_passwd != passwd or new_name != username:
+        passwd = t_passwd.get()
+        write_settings('usrauth',passwd)
+        if len(new_name) <3:
+            T.config(yscrollcommand=S.set,state="normal")
+            war = lenghten_name('WARNING: ',21)
+            T.insert(END, get_cur_time()+war+'Name is too short\n', 'redcol')
+            T.config(yscrollcommand=S.set,state="disabled")
+        else:
+            username = new_name
+            root.title("iSPTC - "+new_name)
+            write_settings('username',username)
+            try:
+                if passwd is '':
+                    s.send('USRINFO::'+username)
+                else:
+                    s.send('USRINFO::'+username+']'+passwd)
+            except:
+                pass
+        
+    new_offline_msg = t_offline_msg.get()
+    if new_offline_msg != offline_msg:
+        offline_msg = new_offline_msg
+        write_settings('offline_msg',offline_msg)
+        sleep(0.2)
+        try:
+            s.send('CONFIGR::offmsg='+str(offline_msg))
+        except:
+            pass
+
 def set_username():
-    global username, passwd
+    global username, passwd, offline_msg
+    uw = Toplevel()
     t_new_name = StringVar()
     t_new_name.set(username)
     t_passwd = StringVar()
     t_passwd.set(passwd)
-    uw = Toplevel()
+    t_offline_msg = IntVar()
+    t_offline_msg.set(offline_msg)
     set_winicon(uw,'icon')
-    uw.title("New name")
+    uw.title("User")
     uw.minsize(250,170)
     uw.resizable(FALSE,FALSE)
-    Label(uw, text="Username:").pack(anchor=NW,padx=30,pady=5)
+    
+    Label(uw, text="Username:").pack(anchor=NW,padx=35,pady=5)
     usrEntry = Entry(uw,textvariable=t_new_name)
     usrEntry.pack(pady=5)
     usrEntry.focus_set()
-    
-    Label(uw, text="Pass (leave blank, if unused):").pack(anchor=NW,padx=30)
+
+    Label(uw, text="Pass (leave blank, if unused):").pack(anchor=NW,padx=35)
     usrEntry = Entry(uw,textvariable=t_passwd)
     usrEntry.pack(pady=5)
     usrEntry.focus_set()
-    
-    button = Button(uw, text='Done', width=20, command=lambda: {change_name(t_new_name,t_passwd),
+    Checkbutton(uw, text="Enable offline messages", variable=t_offline_msg).pack(anchor=NW,padx=35)
+    button = Button(uw, text='Save', width=20, command=lambda: {change_name(t_new_name,t_passwd,
+                                                                            t_offline_msg),
                                                                 uw.destroy()})
     button.pack(side=BOTTOM,pady=10)
     def cmdbind(*arg):
-        change_name(new_name)
+        change_name(t_new_name,t_passwd,t_offline_msg)
         uw.destroy()
     uw.bind('<Return>', cmdbind)
     
@@ -617,24 +649,21 @@ def sound_menu():
     Label(sw, text="Sound min interval").grid(row=1,padx=160)
     snd_interval.grid(row=2,padx=160)
     snd_interval.set(int(dsound_interval))
-    button = Button(sw, text='Done', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
+    button = Button(sw, text='Save', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
     button.grid(row=6, padx=60,pady=30)
 
 def set_font(font,fontlist,t_font_size):
     global T,E,User_area, text_font, font_size
     global font_size, text_font
-    try: 
-        if len(font) > 0:
-            text_font = font
-    except:
-        pass
+    if font is not ():
+        text_font = font
+        write_settings('tfont',text_font[0])
     try:
         font_size = t_font_size
     except:
         pass
     tag_colors()
     hyperlink = HyperlinkManager(T)
-    write_settings('tfont',text_font[0])
     write_settings('font_size',font_size)
     
 def font_menu():
@@ -686,7 +715,7 @@ def font_menu():
                                      fom.destroy()})
     button.place(x=200,y=360)
     button2.place(x=40,y=360)
-    apply_display_font(display_text,(10,),fonts,font_size)
+    apply_display_font(display_text,text_font,fonts,font_size)
 
 def apply_display_font(display_text,font,fontlist,t_font_size):
     global font_size, text_font
@@ -868,8 +897,12 @@ def user_area_insert():
     for x in USRLIST:
         try:
             usercol = get_user_color(x[2],x[0],False)
-            if x[3] == '0':
+            ##AFK color
+            if x[1] == 'Offline':
+                User_area.insert(END, x[0]+'\n','offcol')               
+            elif x[3] == '0':
                 User_area.insert(END, x[0]+'\n','greycol')
+            ## Normal user color
             else:
                 User_area.insert(END, x[0]+'\n',usercol)
         except:
@@ -1087,6 +1120,7 @@ text_font = (int(read_settings('tfont=')),)
 server_list = []
 passwd = str(read_settings('usrauth='))
 autoauth = int(read_settings('autoauth='))
+offline_msg = int(read_settings('offline_msg='))
 
 ## Setting global vars
 sound_interval = 0
@@ -1137,7 +1171,7 @@ menu3.add_command(label='Print link list', command=T_ins_linklist)
 
 menu4 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Settings',menu=menu4)
-menu4.add_command(label='Set username', command=set_username)
+menu4.add_command(label='Set user', command=set_username)
 menu4.add_command(label='Set font', command=font_menu)
 menu4.add_command(label='Sound options', command=sound_menu)
 menu4.add_command(label='Other options', command=other_menu)
@@ -1184,7 +1218,6 @@ def create_widgets():
 
 def tag_colors():
     global font_size, text_font, hide_users
-    font = text_font
     fontlist=list(tkFont.families())
     fontlist.sort()
     T.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
@@ -1197,6 +1230,9 @@ def tag_colors():
     T.tag_configure('blue_link', font=(fontlist[text_font[0]], font_size), foreground='blue')
     T.tag_configure('timecol', font=(fontlist[text_font[0]], font_size), foreground='black')
     T.tag_configure('browncol', font=(fontlist[text_font[0]], font_size), foreground='brown')
+    T.tag_configure('privatecol', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='white')
+    T.tag_configure('privatgreen', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='#009900')
+    T.tag_configure('privatlink', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='blue')
 
     if hide_users is not 1:
         User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
@@ -1204,6 +1240,7 @@ def tag_colors():
         User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
         User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
         User_area.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
+        User_area.tag_configure('offcol', font=(fontlist[text_font[0]], font_size), foreground='#66CCFF')
     E.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
 
 create_widgets()
@@ -1221,13 +1258,10 @@ root.bind('<Button-3>', copy_paste_buttons)
 
 
 def task():
-    
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join
     global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink
     if sound_interval > 0:
         sound_interval-=float(task_loop_interval)/1000
-        
-
     if msg_recv < len(data_list):
         for x in range(msg_recv,len(data_list)):
 ##            print data_list[x]
@@ -1258,14 +1292,24 @@ def task():
                 T.config(yscrollcommand=S.set,state="disabled")
             elif data_list[x][:9] == 'USRLIST::':
                 organise_USRLIST(data_list[x][9:])
+            elif data_list[x][:9] == 'DUPLICT::':
+                root.title("iSPTC - "+data_list[x][9:])
             else:
                 global linkk
+                mgreen = 'greencol'
+                mblack = 'blackcol'
+                mlink = 'bluecol'
                 T.config(yscrollcommand=S.set,state="normal")
                 nfind = find_2name(data_list[x][23:],username)
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
 
+                ##Separates words
                 temp_list = []
                 dat = data_list[x][23:]
+                b = dat.find('@@')
+                c = dat.find(']')
+                if b is not -1 and c is not -1:
+                    dat = dat[:c]+' '+dat[c+1:]
                 while True:
                     b = dat.find(' ')
                     temp_list.append(dat[:b]+' ')
@@ -1273,11 +1317,17 @@ def task():
                     if b is -1:
                         break
 
-                T.insert(END, get_cur_time()+uname+': ',usercol)
+                ## Tags words
+                T.insert(END, get_cur_time(),'blackcol')
+                T.insert(END, uname+': ',usercol)
+                if temp_list[0][0:2] == '@@':
+                    mgreen = 'privatgreen'
+                    mblack = 'privatecol'
+                    mlink = 'privatlink'
                 for x in temp_list:
                     nfind = find_2name(x,username)
                     if nfind is True:
-                        T.insert(END, x,'greencol')
+                        T.insert(END, x,mgreen)
                     elif nfind is False:
                         global linkk
                         linkk = find_link(x)
@@ -1285,7 +1335,7 @@ def task():
                             T.insert(END, linkk, hyperlink.add(click1))
                             T.insert(END,' ')
                     if linkk is False and nfind is False:
-                        T.insert(END, x,'blackcol')       
+                        T.insert(END, x,mblack)       
                 T.insert(END,'\n')
                     
                       
