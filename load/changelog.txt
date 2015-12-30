@@ -1,6 +1,21 @@
+## Client[0.95b] - 2015-12-31
+### Added
+ - Commands after @Username
+### Changed
+ - Different colortag for private server warnings
+### Fix
+ - Won't crash when can't read settings file or find a value in it
+
+## Server[0.93b] - 2015-12-31
+### Added
+ - Warning when private message target user does not exist
+### Fix
+ - Threads won't crash when user is disconnecting with no username set
+
+
 ## Client[0.95] - 2015-12-30
 ### Added
- - Offline messages
+ - Offline messages (Offline users are tagged with light blue color)
  - App title changes when username is a duplicate now
 ## Changed
  - Improved private message sending (Type @@ + "username" + "]" + your message)
@@ -12,9 +27,8 @@
 ### Added
  - Offline messages for registered users (Can be switched off bye clients)
 ###
+Changed
  - Improved replicant protection
-### Fixed
- - 
 
 
 ## Client[0.94c] - 2015-12-28

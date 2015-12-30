@@ -1,11 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from Tkinter import *
 from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
 import socket,os,platform,webbrowser
 import tkFont
-ver = '0.95'
+ver = '0.95b'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -39,7 +40,11 @@ def set_winicon(window,name):
 
 def readf(filename):
     file = filename
-    f = open(file, 'rU')
+    try:
+        f = open(file, 'rU')
+    except:
+        savef('',filename)
+        f = open(file, 'rU')
     a = f.read()
     a = str.splitlines(a)
     f.close()
@@ -78,6 +83,16 @@ def get_settings(text,text_find):
         b = lines.find(text_find)
         if b is not -1:
             c = lines[len(text_find):]
+    ## Checks if it exists and appends something, if not
+    try:
+        if c == '':
+            c = str(1)
+            write_settings(text_find[:-1],c)
+    except:
+        c = str(1)
+        fh = open('load/settings.cfg', 'a')
+        fh.write(text_find+c+'\n')
+        fh.close()
     return c
 
 def write_settings(text_find,new_value):
@@ -91,7 +106,7 @@ def write_settings(text_find,new_value):
         a = readf('load/settings.cfg')
         a = edit_settings(a,text_find,new_value)
         text = a = '\n'.join(str(e) for e in a)
-        savef(text,'load/settings.cfg')
+        savef(text,'load/settings.cfg')      
 
 def play_sound(name,ignore):
     if sound_settings[0] == 1:
@@ -349,6 +364,8 @@ def join_server(typing):
             s.send('USRINFO::'+username+']'+passwd)
         sleep(0.2)
         s.send('CONFIGR::offmsg='+str(offline_msg))
+        global connected_server
+        connected_server = joinaddr
     except:
         T.config(yscrollcommand=S.set,state="normal")
         war = lenghten_name('WARNING: ',21)
@@ -466,29 +483,46 @@ def t_auth_window(auth_or_register):
         hhw.destroy()
     hhw.bind('<Return>', cmdbind)
 
+def T_ins_warning(T,S,text):
+    T.config(yscrollcommand=S.set,state="normal")
+    war = lenghten_name('WARNING: ',21)
+    T.insert(END, get_cur_time()+war+text+'\n', 'redcol')
+    T.config(yscrollcommand=S.set,state="disabled")
+
+def chat_commands(text):
+    if text == '/users':
+        T_ins_userlist()
+    elif text == '/help':
+        T_ins_help()
+    elif text == '/log':
+        T_ins_log()
+    elif text == '/afk':
+        send_afk()
+    elif text == '/ll':
+        T_ins_linklist()
+    elif text[:10] == '/register ' and len(text) > 11:
+        attempt_registration(s,text[10:])
+    elif text[:6] == '/auth ' and len(text) > 7:
+        attempt_auth(s,text[6:])
+    else:
+        return True
+    return False
+                
 def enter_text(event):
     global s, USRLIST
-##    T.config(yscrollcommand=S.set,state="normal")
-##    T.config(yscrollcommand=S.set,state="disabled")
     text = textt.get()
+    check = True
     if len(text) > 0:
         if text[0] == '/':
-            if text == '/users':
-                T_ins_userlist()
-            elif text == '/help':
-                T_ins_help()
-            elif text == '/log':
-                T_ins_log()
-            elif text == '/afk':
-                send_afk()
-            elif text == '/ll':
-                T_ins_linklist()
-            elif text[:10] == '/register ' and len(text) > 11:
-                attempt_registration(s,text[10:])
-            elif text[:6] == '/auth ' and len(text) > 7:
-                attempt_auth(s,text[6:])
+            chat_commands(text)
             textt.set('')
-        else:
+        elif text[0] is '@':
+            b = text.find('/')
+            if b is not -1:
+                check = chat_commands(text[b:])
+                if check == False:
+                    textt.set(text[:b])
+        if check == True:
             if text[0] is '@':
                 b = text.find(' ')
                 if text[1] is '@':
@@ -511,12 +545,13 @@ def enter_text(event):
             if sound_settings[1] == 1:
                 play_sound('beep1.wav',True)
             try:
+##            Just trying out some unicoding
+##            will Activate Soon(TM)
+##            mesig = unicode('MESSAGE::'+text)
+##            mesig = mesig.encode('utf-8')
                 s.send('MESSAGE::'+text)
             except Exception as ee:
-                T.config(yscrollcommand=S.set,state="normal")
-                war = lenghten_name('WARNING: ',21)
-                T.insert(END, get_cur_time()+war+str(ee)+'\n', 'redcol')
-                T.config(yscrollcommand=S.set,state="disabled")
+                T_ins_warning(T,S,str(ee))
     T.yview(END)
 
 def leave_server():
@@ -1121,6 +1156,7 @@ server_list = []
 passwd = str(read_settings('usrauth='))
 autoauth = int(read_settings('autoauth='))
 offline_msg = int(read_settings('offline_msg='))
+write_log = 1
 
 ## Setting global vars
 sound_interval = 0
@@ -1131,6 +1167,7 @@ windowfocus = True
 icon_was_switched = False
 cp_is = False
 cp_focus = False
+connected_server = ''
 ## Tkinter below
 root = Tk()
 root.title("iSPTC - "+username)
@@ -1259,7 +1296,7 @@ root.bind('<Button-3>', copy_paste_buttons)
 
 def task():
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join
-    global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink
+    global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server
     if sound_interval > 0:
         sound_interval-=float(task_loop_interval)/1000
     if msg_recv < len(data_list):
@@ -1269,6 +1306,14 @@ def task():
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
                 T.insert(END, get_cur_time()+name+data_list[x][9:],'bluecol')
+                scroller = S.get()
+                if scroller[1] == 1.0:  
+                    T.yview(END)
+                T.config(yscrollcommand=S.set,state="disabled")
+            elif data_list[x][:9] == 'WSERVER::':
+                T.config(yscrollcommand=S.set,state="normal")
+                name = lenghten_name('SERVER: ',21)
+                T.insert(END, get_cur_time()+name+data_list[x][9:],'browncol')
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
@@ -1295,7 +1340,7 @@ def task():
             elif data_list[x][:9] == 'DUPLICT::':
                 root.title("iSPTC - "+data_list[x][9:])
             else:
-                global linkk
+                global linkk, write_log
                 mgreen = 'greencol'
                 mblack = 'blackcol'
                 mlink = 'bluecol'
@@ -1303,7 +1348,13 @@ def task():
                 nfind = find_2name(data_list[x][23:],username)
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
 
-                ##Separates words
+##                ## Writes log
+##                if write_log == 1:
+##                    fh = open('load/'+connected_server, 'a')
+##                    fh.write(data_list[x][4:]+'\n')
+##                    fh.close()
+
+                ## Separates words
                 temp_list = []
                 dat = data_list[x][23:]
                 b = dat.find('@@')
