@@ -25,7 +25,7 @@
 
 ## Server[0.93] - 2015-12-30
 ### Added
- - Offline messages for registered users (Can be switched off bye clients)
+ - Offline messages for registered users (Can be switched off by clients)
 ###
 Changed
  - Improved replicant protection
