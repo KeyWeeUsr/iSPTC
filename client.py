@@ -4,9 +4,9 @@ from Tkinter import *
 from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep
-import socket,os,platform,webbrowser
-import tkFont
-ver = '0.95b'
+from subprocess import *
+import socket,os,platform,webbrowser, tkFont, urllib, urllib2
+ver = '0.96'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -584,6 +584,112 @@ def winf_isnt(vv):
     global windowfocus
     windowfocus = False
 
+def start_update(update_list):
+    global OS
+    upd_str = ""
+    savef('','load/upd_filelist')
+    for x in update_list:
+        fh = open('load/upd_filelist', 'a')
+        fh.write(x)
+        fh.close()
+    if OS == 'Windows':
+        if os.path.exists('updater.exe') == True:
+            INPUT = 'updater.exe'
+    else:
+        INPUT = 'python updater.py'
+    Popen([INPUT], shell=True,
+             stdin=None, stdout=None, stderr=None, close_fds=True)
+    root.destroy() 
+
+def autojoiner():
+    global autojoin
+    if autojoin == 1:
+            join_server(False)
+
+def update_checker(update_link):
+    global ver
+    strver = str(ver)
+    update = False
+    strver = '0'+str(ver)
+
+    if update_link[-1:] == '/':
+        update_link = update_link[:-1]
+    update_link = update_link+'/latest'
+    filehandle = urllib.urlopen(update_link)
+
+    temp = []
+    for x in filehandle:
+        temp.append(x)
+        
+    upd_ver = temp[0][:5]
+    if upd_ver != strver:
+        update = True
+    if update == True:
+        update_window(update_link,strver,update,temp,upd_ver)
+    else:
+        autojoiner()
+
+def update_window(update_link,strver,update,temp,upd_ver):
+    global ver
+    topwin = Toplevel()
+    set_winicon(topwin,'icon')
+    topwin.title("Updater")
+    topwin.minsize(700,600)
+    topwin.resizable(FALSE,FALSE)
+
+    Label(topwin, text="Update link is "+update_link).pack()
+    Label(topwin, text="Current version is "+strver).pack()
+    Label(topwin, text="New version is "+upd_ver).pack()
+    Label(topwin, text="Update file:").pack(pady=10)
+
+    frame = Frame(topwin, height=210,width=680, relief=SUNKEN)
+    frame.pack_propagate(0)
+    frame.pack(anchor=NE,side=TOP,padx=20)
+    frame2 = Frame(topwin, height=210,width=680, relief=SUNKEN)
+    frame2.pack_propagate(0)
+    frame2.pack(anchor=NE,side=TOP,padx=20)
+
+    Label(frame, text="Comment:").pack(side=BOTTOM)
+    Tbox2 = Text(frame, height=12, width=50,wrap=WORD)
+    S11 = Scrollbar(frame, width=15)
+    S11.pack(side=RIGHT, fill=Y)
+    Tbox2.pack(side=BOTTOM,fill=BOTH,expand=1)
+    Tbox2.config(yscrollcommand=S11.set,state="normal")
+    S11.config(command=Tbox2.yview)
+    for x in temp:
+        Tbox2.insert(END, x,'blackcol')
+    Tbox2.config(yscrollcommand=S11.set,state="disabled")
+
+    Tbox = Text(frame2, height=12, width=50,wrap=WORD)
+    S1 = Scrollbar(frame2, width=15)
+    S1.pack(side=RIGHT, fill=Y)
+    Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
+    Tbox.config(yscrollcommand=S1.set,state="normal")
+    S1.config(command=Tbox.yview)
+
+    downlist= []
+    if update == True:
+         for x in temp:
+            b = x.find('comment,')
+            if b is not -1:
+                commentlink = x[len('comment')+1:]
+                if commentlink.find('http://') is -1:
+                    commentlink = 'http://'+commentlink
+                filer = urllib2.urlopen(commentlink)
+                for x in filer:
+                    Tbox.insert(END, x+'\n','blackcol')
+            else:
+                b = x.find('download,')
+                if b is not -1:
+                    downlist.append(x)
+    Tbox.config(yscrollcommand=S1.set,state="disabled")
+    
+    button = Button(topwin, text='Update', height=2, width=18,command=lambda: {start_update(downlist)})
+    button.place(x=180,y=540)
+    button2 = Button(topwin, text='Close', height=2, width=18,command=lambda: {autojoiner(),topwin.destroy()})
+    button2.place(x=360,y=540)
+    topwin.lift() 
+
 def change_name(t_new_name,t_passwd,t_offline_msg):
     global username, s, passwd, offline_msg
     new_name = t_new_name.get()
@@ -666,7 +772,7 @@ def sound_menu():
     global dsound_interval
     sw = Toplevel()
     set_winicon(sw,'icon')
-    sw.title("Sound options")
+    sw.title("Sound settings")
     sw.minsize(280,180)
     sw.resizable(FALSE,FALSE)
     ### 0all_sound, 1entry, 2user textbox
@@ -705,7 +811,7 @@ def font_menu():
     global font_size, text_font
     fom = Toplevel()
     set_winicon(fom,'icon')
-    fom.title("Font options")
+    fom.title("Font settings")
     fom.minsize(700,400)
     fom.resizable(FALSE,FALSE)
 
@@ -770,6 +876,42 @@ def apply_display_font(display_text,font,fontlist,t_font_size):
     display_text.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
     display_text.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
 
+def save_update_settings(a,b):
+    global update_enabled,update_link
+    update_enabled = a
+    update_link = b
+    write_settings('update_enabled',a)
+    write_settings('update_link',b)
+
+def update_menu():
+    global update_enabled,update_link
+    upd = Toplevel()
+    t_update_enabled = IntVar()
+    t_update_link = StringVar()
+    t_update_enabled.set(update_enabled)
+    t_update_link.set(update_link)
+    set_winicon(upd,'icon')
+    upd.title("Update settings")
+    upd.minsize(500,200)
+    upd.resizable(FALSE,FALSE)
+    frame = Frame(upd, height=150,width=460, relief=SUNKEN)
+    frame.pack(side=TOP,pady=20)
+    frame.pack_propagate(0)
+    
+    Checkbutton(frame, text="Check at launch", variable=t_update_enabled).pack(anchor=NW,pady=5)
+    Label(frame, text="Update webserver folder:").pack(anchor=NW)
+    linkEntry = Entry(frame,textvariable=t_update_link)
+    linkEntry.pack(pady=5,fill=BOTH)
+    linkEntry.focus_set()
+    
+    button = Button(upd, text='Save', width=20, command=lambda: {save_update_settings(t_update_enabled.get(),t_update_link.get()),
+                                                                upd.destroy()})
+    button.pack(side=BOTTOM,pady=20)
+    def cmdbind(*arg):
+        save_update_settings(t_update_enabled.get(),t_update_link.get())
+        upd.destroy()
+    upd.bind('<Return>', cmdbind)
+
 def change_other_settings(a,b,c,d,e,f,g,h):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users
     global User_area, S2, T, S, E, s, username
@@ -808,7 +950,7 @@ def other_menu():
     global X_size,Y_size , autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth
     sm = Toplevel()
     set_winicon(sm,'icon')
-    sm.title("Other options")
+    sm.title("Other settings")
     sm.minsize(500,200)
     sm.resizable(FALSE,FALSE)
     frame = Frame(sm, height=210,width=210, relief=SUNKEN)
@@ -1156,6 +1298,8 @@ server_list = []
 passwd = str(read_settings('usrauth='))
 autoauth = int(read_settings('autoauth='))
 offline_msg = int(read_settings('offline_msg='))
+update_enabled = int(read_settings('update_enabled='))
+update_link = str(read_settings('update_link='))
 write_log = 1
 
 ## Setting global vars
@@ -1210,8 +1354,9 @@ menu4 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Settings',menu=menu4)
 menu4.add_command(label='Set user', command=set_username)
 menu4.add_command(label='Set font', command=font_menu)
-menu4.add_command(label='Sound options', command=sound_menu)
-menu4.add_command(label='Other options', command=other_menu)
+menu4.add_command(label='Update settings', command=update_menu)
+menu4.add_command(label='Sound settings', command=sound_menu)
+menu4.add_command(label='Other settings', command=other_menu)
 
 helpmenu = Menu(menu,tearoff=0)
 menu.add_cascade(label='Help', menu=helpmenu)
@@ -1406,8 +1551,12 @@ def task():
 set_winicon(root,'icon')
 
 root.protocol('WM_DELETE_WINDOW', closewin)
-root.after(task_loop_interval, task)
-if autojoin == 1:
-    join_server(False)
+def update_task():
+    if update_enabled == 1:
+        update_checker(update_link)
+    else:
+        autojoiner()
+    root.after(task_loop_interval, task)
+root.after(50, update_task)
 root.mainloop()
 

@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.93b'
+ver = '0.93c'
 welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
 
@@ -273,9 +273,9 @@ def broadcastPrivate(conn,user, data):
             if x.lower() == user.lower():
                 is_registered = True
                 off_messages.append([user,data])
-    if is_registered == False:
-        conn.send('WSERVER::User not found')
-        time.sleep(0.2)
+        if is_registered == False:
+            conn.send('WSERVER::User not found')
+            time.sleep(0.2)
 
 def broadcastData(data): # function to send Data
     ## Send data to everyone connected
@@ -406,7 +406,7 @@ def clientHandler(i):
                 usr_pass = usr_pass[:15]
             registered = check_if_registered(username2,addr,True)
             if registered[0] == True and usr_pass == registered[1]:
-                level = registered[2]
+                level = set_threadip(str(i),addr[0],username2,True)
                 broadcastData('SSERVER::'+remove_spaces(username)+' is level'+str(level))
                 for x in threadip:
                     if x[0] == str(i):
@@ -423,6 +423,7 @@ def clientHandler(i):
                 conn.send('DUPLICT::'+username2)
                 time.sleep(0.2)
             else:
+                time.sleep(0.1)
                 conn.send('WSERVER::Wrong pass')
         ## Configure offline msg
         elif data[0:9] == 'CONFIGR::':
@@ -435,9 +436,13 @@ def clientHandler(i):
                             if x[0] == username2:
                                 x[2] = off_msg
                     register_user('a','a',False)
+                    time.sleep(0.1)
                     conn.send('WSERVER::off_msg set to: '+off_msg)
+                    time.sleep(0.1)
             else:
+                time.sleep(0.1)
                 conn.send('WSERVER::You have no power here')
+                time.sleep(0.1)
         ## AFK
         elif data[0:9] == 'aAFKAFK::':
             for x in threadip:
@@ -615,7 +620,7 @@ def main(): # main function
             reset_offmsg_list()
         elif msg == 'help':
             print """ Type: quit, lvluser, threadip, iplist, iplist-reload, log, mlog, log-toggle,
-            log-save, say, msgprint, msgprint-toggle """
+            log-save, say, msgprint, msgprint-toggle, welcm """
         elif msg == 'log-toggle':
             if log_enabled == 1:
                 log_enabled = 0
@@ -660,6 +665,10 @@ def main(): # main function
             x = raw_input(':::Say what? ')
             print 'Sending "'+x+'" to all'
             broadcastData('SSERVER::'+x)
+        elif msg == 'welcm':
+            x = raw_input(':::message ')
+            global welcome_comment
+            welcome_comment = '\n '+x
         else:
             print msg
 

@@ -1,3 +1,12 @@
+## Client[0.96] - 2016-1-5
+### Added
+ - Updater (server not included)
+
+## Server[0.93c] - 2016-1-5
+### Fix
+ - broadcastPrivate function was looking for unregistered users when variable was not set and crashed a thread
+
+
 ## Client[0.95b] - 2015-12-31
 ### Added
  - Commands after @Username
