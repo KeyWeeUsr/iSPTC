@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.93c'
+ver = '0.93d'
 welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
 
@@ -407,6 +407,10 @@ def clientHandler(i):
             registered = check_if_registered(username2,addr,True)
             if registered[0] == True and usr_pass == registered[1]:
                 level = set_threadip(str(i),addr[0],username2,True)
+                if len(str(level)) == 1:
+                        sendlevel = '0'+str(level)
+                else:
+                    sendlevel = str(level)
                 broadcastData('SSERVER::'+remove_spaces(username)+' is level'+str(level))
                 for x in threadip:
                     if x[0] == str(i):
