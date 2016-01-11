@@ -3,7 +3,7 @@
 from Tkinter import *
 from time import strftime,gmtime,sleep
 from subprocess import *
-import platform, urllib, urllib2
+import platform, urllib, urllib2, os
 from threading import Thread
 v = 1.00
 
@@ -30,7 +30,7 @@ def set_winicon(window,name):
     global OS
     if OS is 'Windows':
         try:
-            window.iconbitmap(sys_path+"\\"+"load\\"+name+".ico")
+            window.iconbitmap("load\\"+name+".ico")
         except:
             print "Couldn't load windows icon"
     else:
@@ -41,8 +41,14 @@ def set_winicon(window,name):
             print "Couldn't load Linux icon"
 
 def restart_client():
-    cmd_str = 'python /home/atis/Desktop/Pitoni_Bash/sokets/client.py'
-    Popen([cmd_str], shell=True,
+    global OS
+    INPUT = 'client.py'
+    if OS == 'Windows':
+        if os.path.exists('client.exe') == True:
+            INPUT = 'client.exe'
+        else:
+            INPUT = 'client.py'
+    Popen([INPUT], shell=True,
              stdin=None, stdout=None, stderr=None, close_fds=True)
 
 def download(filelink):
