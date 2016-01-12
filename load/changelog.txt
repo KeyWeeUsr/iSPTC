@@ -1,6 +1,10 @@
-## Server[0.93d] - 2016-1-10
-### Fix
- - Manual auth function wasnt setting a client sendlevel string causing all messages to show user as lvl 0
+## Client[0.97] - 2016-1-11
+### Added
+ - Enabled unicode for sent text messages
+ - Auto rejoin after losing connection
+### Changed
+ - Shortened "/users" command to "/u"
+ - Shortened "/register" command to "/reg"
 
 
 ## Client[0.96] - 2016-1-5

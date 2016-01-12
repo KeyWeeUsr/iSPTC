@@ -407,6 +407,7 @@ def clientHandler(i):
             registered = check_if_registered(username2,addr,True)
             if registered[0] == True and usr_pass == registered[1]:
                 level = set_threadip(str(i),addr[0],username2,True)
+                ## Sendlevel string is used by clients to color the username in messages
                 if len(str(level)) == 1:
                         sendlevel = '0'+str(level)
                 else:
@@ -505,11 +506,11 @@ def clientHandler(i):
                                 level = 1
                                 x[4] = level
                                 username_set, authed_user = True, False
+                            ## Sendlevel string is used by clients to color the username in messages
                             if len(str(level)) == 1:
                                 sendlevel = '0'+str(level)
                             else:
                                 sendlevel = str(level)
-##                            print addr[0],' is level ',level,' !'
                             if username_set is True:
                                 chatlog.append([get_cur_time(),addr[0],' is level ',level,' !'])
                                 
@@ -543,11 +544,11 @@ def clientHandler(i):
                                 level = 1
                                 x[4] = level
                                 username_set, authed_user = True, False
+                            ## Sendlevel string is used by clients to color the username in messages
                             if len(str(level)) == 1:
                                 sendlevel = '0'+str(level)
                             else:
                                 sendlevel = str(level)
-##                            print addr[0],' is level ',level,' !'
                             if username_set is True:
                                 chatlog.append([get_cur_time(),addr[0],' is level ',level,' !'])
                                 if authed_user is True:
@@ -676,4 +677,4 @@ def main(): # main function
         else:
             print msg
 
-main() # calls up out main function
+main()

@@ -6,7 +6,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.96'
+ver = '0.97'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -265,17 +265,33 @@ def copy_paste_buttons(*arg):
         cp_destroy()
 
 def recv_thread():
-    global action_time, s
+    global action_time, s, connected_server
     while action_time is True:
-        data = s.recv(2048)
-        if not data:
-            if action_time is True:
-                T.config(yscrollcommand=S.set,state="normal")
-                war = lenghten_name('WARNING: ',21)
-                T.insert(END, get_cur_time()+war+'Connection lost\n', 'redcol')
-                T.config(yscrollcommand=S.set,state="disabled")
-            break
-        data_list.append(data+'\n')
+        try:
+            data = s.recv(2048)
+            if not data:
+                if action_time is True:
+                    Thread(target=jlost_reconnect).start()
+                break
+            data_list.append(data+'\n')
+        except:
+            action_time = False
+            Thread(target=jlost_reconnect).start()
+
+def jlost_reconnect():
+    global connected_server,kill_reconnect,User_area
+    T_ins_warning(T,S,'Connection lost, attempting reconnect')
+    clear_textbox(User_area,True)
+    kill_reconnect = False
+    cnt = 1
+    while kill_reconnect is False:
+        if cnt > 1:
+            T_ins_warning(T,S,'attempting reconnect '+str(cnt)+'. time')
+        join_server(connected_server)
+        cnt += 1
+        sleep(15)
+        if cnt == 50:
+            kill_reconnect = True
         
 def join_typing():
     global server_list
@@ -334,7 +350,7 @@ def join_srv_check(curselection,jaddr):
         join_server(jaddr)
                 
 def join_server(typing):
-    global username, s, action_time, passwd, autoauth, offline_msg
+    global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect
     try:
         action_time = False
         s.send('close::')
@@ -365,6 +381,7 @@ def join_server(typing):
         sleep(0.2)
         s.send('CONFIGR::offmsg='+str(offline_msg))
         global connected_server
+        kill_reconnect = True
         connected_server = joinaddr
     except:
         T.config(yscrollcommand=S.set,state="normal")
@@ -391,8 +408,8 @@ def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'browncol')
-    T.insert(END, 'Type:\n/users for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
-             '/register [passwd] to register\n/auth [passwd] to authenticate\n', 'blackcol')
+    T.insert(END, 'Type:\n/u for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
+             '/reg [passwd] to register\n/auth [passwd] to authenticate\n', 'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
     scroller_to_end()
 
@@ -490,7 +507,7 @@ def T_ins_warning(T,S,text):
     T.config(yscrollcommand=S.set,state="disabled")
 
 def chat_commands(text):
-    if text == '/users':
+    if text == '/u':
         T_ins_userlist()
     elif text == '/help':
         T_ins_help()
@@ -500,7 +517,7 @@ def chat_commands(text):
         send_afk()
     elif text == '/ll':
         T_ins_linklist()
-    elif text[:10] == '/register ' and len(text) > 11:
+    elif text[:10] == '/reg ' and len(text) > 11:
         attempt_registration(s,text[10:])
     elif text[:6] == '/auth ' and len(text) > 7:
         attempt_auth(s,text[6:])
@@ -512,8 +529,10 @@ def enter_text(event):
     global s, USRLIST
     text = textt.get()
     check = True
+    sending = True
     if len(text) > 0:
         if text[0] == '/':
+            sending = False
             chat_commands(text)
             textt.set('')
         elif text[0] is '@':
@@ -521,6 +540,7 @@ def enter_text(event):
             if b is not -1:
                 check = chat_commands(text[b:])
                 if check == False:
+                    sending = False
                     textt.set(text[:b])
         if check == True:
             if text[0] is '@':
@@ -544,15 +564,20 @@ def enter_text(event):
                 textt.set('')
             if sound_settings[1] == 1:
                 play_sound('beep1.wav',True)
-            try:
-##            Just trying out some unicoding
-##            will Activate Soon(TM)
-##            mesig = unicode('MESSAGE::'+text)
-##            mesig = mesig.encode('utf-8')
-                s.send('MESSAGE::'+text)
-            except Exception as ee:
-                T_ins_warning(T,S,str(ee))
+            if sending is True:
+                try:
+                    mesig = unicode('MESSAGE::'+text)
+                    mesig = mesig.encode('utf-8')
+                    s.send(mesig)
+                except Exception as ee:
+                    T_ins_warning(T,S,str(ee))
     T.yview(END)
+
+def clear_textbox(clt,disable):
+    clt.config(yscrollcommand=S.set,state="normal")
+    clt.delete(1.0,END)
+    if disable == True:
+        User_area.config(yscrollcommand=S.set,state="disabled")
 
 def leave_server():
     global s,action_time
@@ -793,6 +818,22 @@ def sound_menu():
     button = Button(sw, text='Save', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
     button.grid(row=6, padx=60,pady=30)
 
+def color_menu():
+    global font_size, text_font
+    colm = Toplevel()
+    set_winicon(colm,'icon')
+    colm.title("Color settings")
+    colm.minsize(700,400)
+    colm.resizable(FALSE,FALSE)
+
+    frame = Frame(colm, height=380,width=300, relief=SUNKEN)
+    frame2 = Frame(colm, height=400,width=400, relief=SUNKEN)
+    frame.pack_propagate(0)
+    frame2.pack_propagate(0)
+    frame.pack(anchor=NE,side=LEFT)
+    frame2.pack(anchor=NE,side=LEFT)
+    
+
 def set_font(font,fontlist,t_font_size):
     global T,E,User_area, text_font, font_size
     global font_size, text_font
@@ -871,7 +912,7 @@ def apply_display_font(display_text,font,fontlist,t_font_size):
         pass
     display_text.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
     display_text.tag_configure('bluecol', font=(fontlist[text_font[0]], font_size), foreground='blue')
-    display_text.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='green')
+    display_text.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='#009900')
     display_text.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
     display_text.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
     display_text.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
@@ -1311,6 +1352,7 @@ windowfocus = True
 icon_was_switched = False
 cp_is = False
 cp_focus = False
+kill_reconnect = False
 connected_server = ''
 ## Tkinter below
 root = Tk()
@@ -1354,6 +1396,7 @@ menu4 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Settings',menu=menu4)
 menu4.add_command(label='Set user', command=set_username)
 menu4.add_command(label='Set font', command=font_menu)
+menu4.add_command(label='Color settings', command=color_menu)
 menu4.add_command(label='Update settings', command=update_menu)
 menu4.add_command(label='Sound settings', command=sound_menu)
 menu4.add_command(label='Other settings', command=other_menu)

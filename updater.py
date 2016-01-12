@@ -42,7 +42,7 @@ def set_winicon(window,name):
 
 def restart_client():
     global OS
-    INPUT = 'client.py'
+    INPUT = 'python client.py'
     if OS == 'Windows':
         if os.path.exists('client.exe') == True:
             INPUT = 'client.exe'
