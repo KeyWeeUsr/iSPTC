@@ -6,7 +6,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.97'
+ver = '0.97b'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -408,7 +408,7 @@ def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'browncol')
-    T.insert(END, 'Type:\n/u for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
+    T.insert(END, 'Type:\n/help to see this message \n/u for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
              '/reg [passwd] to register\n/auth [passwd] to authenticate\n', 'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
     scroller_to_end()
@@ -436,16 +436,20 @@ def send_afk():
         pass
 
 def attempt_registration(s,authps):
-    try:
-        s.send('aUSRREG::'+authps)
-    except Exception as e:
-        T.config(yscrollcommand=S.set,state="normal")
-        war = lenghten_name('WARNING: ',21)
-        if str(e)[:10] == '[Errno 32]':
-            T.insert(END, get_cur_time()+war+'Not connected\n', 'redcol')
-        else:
-            T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
-        T.config(yscrollcommand=S.set,state="disabled")       
+    print authps
+    if len(authps) < 4:
+        T_ins_warning(T,S,'Too short')
+    else:
+        try:
+            s.send('aUSRREG::'+authps)
+        except Exception as e:
+            T.config(yscrollcommand=S.set,state="normal")
+            war = lenghten_name('WARNING: ',21)
+            if str(e)[:10] == '[Errno 32]':
+                T.insert(END, get_cur_time()+war+'Not connected\n', 'redcol')
+            else:
+                T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
+            T.config(yscrollcommand=S.set,state="disabled")       
 
 def attempt_auth(s,authps):
     try:
@@ -507,6 +511,7 @@ def T_ins_warning(T,S,text):
     T.config(yscrollcommand=S.set,state="disabled")
 
 def chat_commands(text):
+    print text
     if text == '/u':
         T_ins_userlist()
     elif text == '/help':
@@ -517,9 +522,9 @@ def chat_commands(text):
         send_afk()
     elif text == '/ll':
         T_ins_linklist()
-    elif text[:10] == '/reg ' and len(text) > 11:
-        attempt_registration(s,text[10:])
-    elif text[:6] == '/auth ' and len(text) > 7:
+    elif text[:len('reg')+2] == '/reg ':
+        attempt_registration(s,text[5:])
+    elif text[:6] == '/auth ':
         attempt_auth(s,text[6:])
     else:
         return True
@@ -543,9 +548,9 @@ def enter_text(event):
                     sending = False
                     textt.set(text[:b])
         if check == True:
-            if text[0] is '@':
+            if text[0] == '@':
                 b = text.find(' ')
-                if text[1] is '@':
+                if text[1] == '@':
                     c = text.find(']')
                     if c is not -1:
                         T.config(yscrollcommand=S.set,state="normal")
@@ -1388,6 +1393,7 @@ menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
 menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
 menu3.add_separator()              
 menu3.add_command(label='Go afk', command=send_afk)
+menu3.add_command(label='Print help', command=T_ins_help)
 menu3.add_command(label='Print userlist', command=T_ins_userlist)
 menu3.add_command(label='Print log', command=T_ins_log)
 menu3.add_command(label='Print link list', command=T_ins_linklist)
