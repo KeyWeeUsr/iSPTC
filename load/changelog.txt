@@ -1,3 +1,28 @@
+## Client[0.98] - 2016-1-14
+### Added
+ - Message sender thread
+ - 'kpALIVE' automessage every 7 sec (Server autokicks after 30 sec of no communication now)
+ - "/users" command is back and also added "/usr". Now 3 commands show the user list, the first 2 and "/u"
+ - Server address is shown in title now
+
+## Server[0.95] - 2016-1-14
+### Added
+ - Time outs for user threads (set to every 8 sec currently)
+ - Users get kicked after 30 sec of no communication and reason is shown as TIMEOUT
+ - Welcome message can be changed from server console now with "welcm" command
+### Fix
+ - New lines get stripped from usernames
+
+
+## Client[0.97] - 2016-1-11
+### Added
+ - Enabled unicode for sent text messages
+ - Auto rejoin after losing connection
+### Changed
+ - Shortened "/users" command to "/u"
+ - Shortened "/register" command to "/reg"
+
+
 ## Client[0.97] - 2016-1-11
 ### Added
  - Enabled unicode for sent text messages

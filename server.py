@@ -2,8 +2,9 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.93d'
-welcome_comment = '\n Private offline messages enabled for registered users'
+ver = '0.95'
+##welcome_comment = '\n Private offline messages enabled for registered users'
+welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
 
 def read_server_usr_settings():
@@ -246,11 +247,16 @@ def send_user_list(s,conn,oldusername,username,addr,level):
     time.sleep(0.4)
     broadcastData('USRLIST::'+sendlist[:-1])
 
-def recieveData(s, conn):# function to recieve data
+def recieveData(conn):# function to recieve data
+    conn.settimeout(8)
     try:
         data = conn.recv(2048) # conn.recv(2048) waits for data of 2048 or less bytes and stores it in data
-    except:
-        data = 'close::'
+    except Exception as e:
+        e = str(e)
+        if e == 'timed out':
+            return 'TIMEOUT::'
+        else:
+            data = 'close::'
     return data; # returns the contents of data
 
 def broadcastPrivate(conn,user, data):
@@ -318,13 +324,16 @@ def send_offline_msg(username_set,authed_user,username2,conn):
             for x in deletlist:
                 off_messages.pop(x)
 
-def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg):
+def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,reason):
     cnt = 0
     for x in threadip:
         if x[0] == str(i):
            del threadip[cnt]
         cnt+=1
-    broadcastData('SERVELJ::'+username2+'('+addr[0]+')'+' left')
+    if reason == 'TIMEOUT::':
+        broadcastData('SERVELJ::'+username2+'('+addr[0]+')'+' was kicked, reason: TIMEOUT')
+    else:
+        broadcastData('SERVELJ::'+username2+'('+addr[0]+')'+' left')
     time.sleep(0.2)
     print get_cur_time(),addr[0]," ",username2," is now disconnected!"
     chatlog.append([get_cur_time(),addr," is now disconnected!"])
@@ -342,7 +351,7 @@ def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg):
 def clientHandler(i):
     global threadip, threads, msgprint_enabled, logging_enabled, welcome_msg, iplist, action_time
     username,username2,username_set,authed_user,off_msg = '','', False, True, '0'
-    level = 1
+    level, timeouts = 1, 0
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
     print get_cur_time(),addr," is now connected!"
     chatlog.append([get_cur_time(),addr[0]," is now connected!"])
@@ -350,10 +359,14 @@ def clientHandler(i):
     threadip.append([str(i),conn,'',[addr[0],addr[1]],1,'1'])
     conn.sendall(welcome_msg)
     while 1:
-        data = recieveData(s, conn)
-        chatmlog.append([get_cur_time(),username,data])
+        data = recieveData(conn)
+        if data == 'kpALIVE::':
+            timeouts = 0
+        else:
+            chatmlog.append([get_cur_time(),username,data])
         ##Normal messages
         if data[0:9] == 'MESSAGE::' and username_set is True:
+            timeouts = 0
             b = data[9:].find('MESSAGE::')
             if b is not -1:
                 conn.send('WSERVER::Removed')
@@ -371,13 +384,13 @@ def clientHandler(i):
                     broadcastData('m:'+sendlevel+username+data[9:])
         ## Leaving
         elif not data:
-            usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg)
+            usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no')
             conn.close()
             Thread(target=clientHandler,args=(i,)).start()
             break
         ## Leaving2
         elif data == 'close::':
-            usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg)
+            usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no')
             conn.close()
             Thread(target=clientHandler,args=(i,)).start()
             break
@@ -463,6 +476,7 @@ def clientHandler(i):
             send_ulist_only()
         ## Username
         elif data[0:9] == 'USRINFO::':
+            data = data.rstrip()
             oldusername = str(username)
             for x in oldusername:
                 if x == ' ':
@@ -559,8 +573,18 @@ def clientHandler(i):
                 send_offline_msg(username_set,authed_user,username2,conn)
     
         else:
-            time.sleep(0.1)
-            conn.send("WSERVER::We don't accept this")
+            if data == 'TIMEOUT::':
+                timeouts += 1
+                if timeouts > 3:
+                    usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::')
+                    conn.close()
+                    Thread(target=clientHandler,args=(i,)).start()
+                    break
+            elif data == 'kpALIVE::':
+                pass
+            else:
+                time.sleep(0.1)
+                conn.send("WSERVER::We don't accept this")
     
 
 def reset_offmsg_list():
@@ -672,8 +696,9 @@ def main(): # main function
             broadcastData('SSERVER::'+x)
         elif msg == 'welcm':
             x = raw_input(':::message ')
-            global welcome_comment
-            welcome_comment = '\n '+x
+            global welcome_msg
+            welcome_msg = 'SSERVER::'+x
+            broadcastData('SSERVER::Welcome message is now: '+x)
         else:
             print msg
 

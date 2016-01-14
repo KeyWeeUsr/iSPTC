@@ -6,7 +6,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.97b'
+ver = '0.98'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -203,9 +203,10 @@ def lenghten_name(name,symbols):
 def closewin():
     global s, action_time
     print 'Goodbye'
-    action_time = False
     try:
-        s.send('close::')
+        sender_thread_list.append('close::')
+        action_time = False
+##        s.send('close::')
         sleep(0.3)
         s.close()
         root.destroy()
@@ -264,6 +265,26 @@ def copy_paste_buttons(*arg):
     else:
         cp_destroy()
 
+def sender_thread():
+    global sender_thread_list, s, action_time
+    tim = 0
+    while True:
+        if len(sender_thread_list) > 0:
+            try:
+                s.send(sender_thread_list[0])
+                sender_thread_list.pop(0)
+            except Exception as e:
+                print str(e)
+                action_time = False
+        else:
+            if action_time == False:
+                break
+        tim+=(0.05)
+        if tim > 7:
+            sender_thread_list.append('kpALIVE::')
+            tim = 0
+        sleep(0.05)
+        
 def recv_thread():
     global action_time, s, connected_server
     while action_time is True:
@@ -271,6 +292,7 @@ def recv_thread():
             data = s.recv(2048)
             if not data:
                 if action_time is True:
+                    action_time = False
                     Thread(target=jlost_reconnect).start()
                 break
             data_list.append(data+'\n')
@@ -350,7 +372,7 @@ def join_srv_check(curselection,jaddr):
         join_server(jaddr)
                 
 def join_server(typing):
-    global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect
+    global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server
     try:
         action_time = False
         s.send('close::')
@@ -362,31 +384,33 @@ def join_server(typing):
         if typing is not False:
             TCP_IP = typing
             TCP_PORT = 44671
-            write_settings('joinaddr',TCP_IP) 
+            write_settings('joinaddr',TCP_IP)
+            connected_server = typing
         else:
             joinaddr = str(read_settings('joinaddr='))
             TCP_IP = joinaddr
             TCP_PORT = 44671
+            connected_server = joinaddr
         BUFFER_SIZE = 2048
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print 'joining',TCP_IP, TCP_PORT
         s.connect((TCP_IP, TCP_PORT))
         action_time = True
         Thread(target=recv_thread).start()
-        sleep(0.3)
+        Thread(target=sender_thread).start()
+        sleep(0.2)
         if passwd is '' or autoauth is 0:
             s.send('USRINFO::'+username)
         else:
             s.send('USRINFO::'+username+']'+passwd)
         sleep(0.2)
         s.send('CONFIGR::offmsg='+str(offline_msg))
-        global connected_server
         kill_reconnect = True
-        connected_server = joinaddr
-    except:
+    except Exception as e:
+        e = str(e)
         T.config(yscrollcommand=S.set,state="normal")
         war = lenghten_name('WARNING: ',21)
-        T.insert(END, get_cur_time()+war+"Can't join\n", 'redcol')
+        T.insert(END, get_cur_time()+war+e+"\n", 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
 def scroller_to_end():
@@ -512,7 +536,7 @@ def T_ins_warning(T,S,text):
 
 def chat_commands(text):
     print text
-    if text == '/u':
+    if text == '/u' or text == '/usr' or text == '/users':
         T_ins_userlist()
     elif text == '/help':
         T_ins_help()
@@ -573,7 +597,8 @@ def enter_text(event):
                 try:
                     mesig = unicode('MESSAGE::'+text)
                     mesig = mesig.encode('utf-8')
-                    s.send(mesig)
+                    sender_thread_list.append(mesig)
+##                    s.send(mesig)
                 except Exception as ee:
                     T_ins_warning(T,S,str(ee))
     T.yview(END)
@@ -588,9 +613,10 @@ def leave_server():
     global s,action_time
     war = lenghten_name('WARNING: ',21)
     try:
-        s.send('close::')
+        sender_thread_list.append('close::')
+##        s.send('close::')
         action_time = False
-        sleep(0.4)
+        sleep(0.3)
         s.close()
         s = ''
         T.config(yscrollcommand=S.set,state="normal")
@@ -599,9 +625,9 @@ def leave_server():
         User_area.config(yscrollcommand=S.set,state="normal")
         User_area.delete(1.0,END)
         User_area.config(yscrollcommand=S.set,state="disabled")
-    except:
+    except Exception as e:
         T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, get_cur_time()+war+'\n', 'redcol')
+        T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
 
 def winf_is(vv):
@@ -738,9 +764,11 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
             write_settings('username',username)
             try:
                 if passwd is '':
-                    s.send('USRINFO::'+username)
+                    sender_thread_list.append('USRINFO::'+username)
+##                    s.send('USRINFO::'+username)
                 else:
-                    s.send('USRINFO::'+username+']'+passwd)
+                    sender_thread_list.append('USRINFO::'+username+']'+passwd)
+##                    s.send('USRINFO::'+username+']'+passwd)
             except:
                 pass
         
@@ -750,7 +778,8 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
         write_settings('offline_msg',offline_msg)
         sleep(0.2)
         try:
-            s.send('CONFIGR::offmsg='+str(offline_msg))
+            sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg))
+##            s.send('CONFIGR::offmsg='+str(offline_msg))
         except:
             pass
 
@@ -1359,6 +1388,7 @@ cp_is = False
 cp_focus = False
 kill_reconnect = False
 connected_server = ''
+sender_thread_list = []
 ## Tkinter below
 root = Tk()
 root.title("iSPTC - "+username)
@@ -1532,7 +1562,9 @@ def task():
             elif data_list[x][:9] == 'USRLIST::':
                 organise_USRLIST(data_list[x][9:])
             elif data_list[x][:9] == 'DUPLICT::':
-                root.title("iSPTC - "+data_list[x][9:])
+                data_list[x] = data_list[x].rstrip()
+                print "iSPTC - "+data_list[x][9:]+' on '+connected_server
+                root.title("iSPTC - "+data_list[x][9:]+' on '+connected_server)
             else:
                 global linkk, write_log
                 mgreen = 'greencol'
