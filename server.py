@@ -363,7 +363,8 @@ def clientHandler(i):
         if data == 'kpALIVE::':
             timeouts = 0
         else:
-            chatmlog.append([get_cur_time(),username,data])
+            if data is not 'TIMEOUT::':
+                chatmlog.append([get_cur_time(),username,data])
         ##Normal messages
         if data[0:9] == 'MESSAGE::' and username_set is True:
             timeouts = 0
