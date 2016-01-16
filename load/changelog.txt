@@ -1,3 +1,10 @@
+## Server[0.95b] - 2016-1-14
+### Added
+ - Server can take commands from clients now. Added 3 - s/log, s/mlog, s/threadip.
+### Fix
+ - No chatlog.append on thread timeout
+
+
 ## Client[0.98] - 2016-1-14
 ### Added
  - Message sender thread

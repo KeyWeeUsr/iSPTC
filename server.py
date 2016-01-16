@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.95'
+ver = '0.95b'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -373,7 +373,24 @@ def clientHandler(i):
             else:
                 if msgprint_enabled == 1:
                     print get_cur_time(),username2,data[9:]
-                if data[9:11] == '@@' and data[11] is not " ":
+                if data[9:11] == 's/' and level > 7:
+                    if data == 'MESSAGE::s/log':
+                        conn.send('WSERVER::Sending '+str(len(chatlog))+' lines')
+                        time.sleep(0.1)
+                        for x in chatlog:
+                            conn.send('WSERVER::'+str(x))
+                            time.sleep(0.1)
+                    elif data == 'MESSAGE::s/mlog':
+                        conn.send('WSERVER::Sending '+str(len(chatmlog))+' lines')
+                        time.sleep(0.1)
+                        for x in chatmlog:
+                            conn.send('WSERVER::'+str(x))
+                            time.sleep(0.1)
+                    elif data == 'MESSAGE::s/threadip':
+                        for x in threadip:
+                            conn.send('WSERVER::'+str(x))
+                            time.sleep(0.1)
+                elif data[9:11] == '@@' and data[11] is not " ":
                     b = data[:].find(']')
                     if b is -1:
                         conn.send('WSERVER::] has to be at the end of username')
