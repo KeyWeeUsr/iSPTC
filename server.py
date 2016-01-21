@@ -682,18 +682,17 @@ def main(): # main function
                 print x    
         elif msg == 'log-save':
             chat_len = len(chatmlog)
+            print 'Writing ',str(chat_len),' lines'
             for cnt in range(0,chat_len):
-                print cnt
                 fh = open('load/chatlog.txt', 'a')
                 x = chatmlog[cnt]
                 if len(x) < 1:
                     x = ' '
-                print 'Writing ',str(x)
                 fh.write(str(x)+'\n')
                 fh.close()
-            print chatmlog
             for cnt in range(0,chat_len):
                 chatmlog.pop(0)
+            print 'Done'
         elif msg == 'msgprint':
             global msgprint_enabled
             print 'msgprint is: ',msgprint_enabled
