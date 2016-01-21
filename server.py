@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.95b'
+ver = '0.95c'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -248,7 +248,7 @@ def send_user_list(s,conn,oldusername,username,addr,level):
     broadcastData('USRLIST::'+sendlist[:-1])
 
 def recieveData(conn):# function to recieve data
-    conn.settimeout(8)
+    conn.settimeout(30)
     try:
         data = conn.recv(2048) # conn.recv(2048) waits for data of 2048 or less bytes and stores it in data
     except Exception as e:
@@ -363,8 +363,7 @@ def clientHandler(i):
         if data == 'kpALIVE::':
             timeouts = 0
         else:
-            if data is not 'TIMEOUT::':
-                chatmlog.append([get_cur_time(),username,data])
+            chatmlog.append([get_cur_time(),username,data])
         ##Normal messages
         if data[0:9] == 'MESSAGE::' and username_set is True:
             timeouts = 0
@@ -407,8 +406,11 @@ def clientHandler(i):
             Thread(target=clientHandler,args=(i,)).start()
             break
         ## Leaving2
-        elif data == 'close::':
-            usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no')
+        elif data == 'close::' or data == 'TIMEOUT::':
+            if data == 'close::':
+                usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no')
+            else:
+                usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::')
             conn.close()
             Thread(target=clientHandler,args=(i,)).start()
             break
@@ -591,14 +593,7 @@ def clientHandler(i):
                 send_offline_msg(username_set,authed_user,username2,conn)
     
         else:
-            if data == 'TIMEOUT::':
-                timeouts += 1
-                if timeouts > 3:
-                    usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::')
-                    conn.close()
-                    Thread(target=clientHandler,args=(i,)).start()
-                    break
-            elif data == 'kpALIVE::':
+            if data == 'kpALIVE::':
                 pass
             else:
                 time.sleep(0.1)

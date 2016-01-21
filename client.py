@@ -6,7 +6,7 @@ from random import randrange
 from time import strftime,gmtime,sleep
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.98'
+ver = '0.98b'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -209,10 +209,10 @@ def closewin():
 ##        s.send('close::')
         sleep(0.3)
         s.close()
-        root.destroy()
+        root.quit()
     except:
         sleep(0.3)
-        root.destroy()
+        root.quit()
 
 def get_cur_time():
     global show_ttime
@@ -302,6 +302,7 @@ def recv_thread():
 
 def jlost_reconnect():
     global connected_server,kill_reconnect,User_area
+    scroller = S.get()
     T_ins_warning(T,S,'Connection lost, attempting reconnect')
     clear_textbox(User_area,True)
     kill_reconnect = False
@@ -309,6 +310,8 @@ def jlost_reconnect():
     while kill_reconnect is False:
         if cnt > 1:
             T_ins_warning(T,S,'attempting reconnect '+str(cnt)+'. time')
+            if scroller[1] == 1.0:  
+                T.yview(END)
         join_server(connected_server)
         cnt += 1
         sleep(15)
@@ -373,6 +376,7 @@ def join_srv_check(curselection,jaddr):
                 
 def join_server(typing):
     global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server
+    scroller = S.get()
     try:
         action_time = False
         s.send('close::')
@@ -412,6 +416,8 @@ def join_server(typing):
         war = lenghten_name('WARNING: ',21)
         T.insert(END, get_cur_time()+war+e+"\n", 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
+    if scroller[1] == 1.0:  
+        T.yview(END)
 
 def scroller_to_end():
     scroller = S.get()
@@ -460,7 +466,6 @@ def send_afk():
         pass
 
 def attempt_registration(s,authps):
-    print authps
     if len(authps) < 4:
         T_ins_warning(T,S,'Too short')
     else:
@@ -655,7 +660,7 @@ def start_update(update_list):
         INPUT = 'python updater.py'
     Popen([INPUT], shell=True,
              stdin=None, stdout=None, stderr=None, close_fds=True)
-    root.destroy() 
+    root.quit() 
 
 def autojoiner():
     global autojoin
@@ -948,7 +953,7 @@ def apply_display_font(display_text,font,fontlist,t_font_size):
     display_text.tag_configure('bluecol', font=(fontlist[text_font[0]], font_size), foreground='blue')
     display_text.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='#009900')
     display_text.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
-    display_text.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
+    display_text.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
     display_text.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
 
 def save_update_settings(a,b):
@@ -1281,7 +1286,7 @@ def Changelog():
     topwin.title("Changelog")
     topwin.minsize(750,550)
     topwin.resizable(FALSE,FALSE)
-    frame = Frame(topwin, height=510,width=730, relief=SUNKEN,bg='grey')
+    frame = Frame(topwin, height=510,width=730, relief=SUNKEN,bg='#7F7F7F')
     frame.pack_propagate(0)
     frame.pack(side=TOP,padx=10,pady=10)
     
@@ -1311,28 +1316,28 @@ def About():
     set_winicon(aboutwin,'icon')
     aboutwin.title("About..")
     aboutwin.config()
-    frame = Frame(aboutwin, height=280,width=winwi, relief=SUNKEN,bg='grey')
+    frame = Frame(aboutwin, height=280,width=winwi, relief=SUNKEN,bg='#7F7F7F')
     frame.pack_propagate(0)
     frame.pack(side=TOP)
     
     Text = ("iSPTC ver%s" % (ver))
     msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='grey',fg='white',width=winwi,font=('system', 26))
+    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('system', 26))
     msg.pack(anchor=NW)
 
     Text = ("inSecure Plain Text Chat")
     msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='grey',fg='white',width=winwi,font=('system', 14))
+    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('system', 14))
     msg.pack(anchor=NW)
 
     Text = (" ")
     msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='grey',width=winwi,font=('system', 54))
+    msg.config(bg='#7F7F7F',width=winwi,font=('system', 54))
     msg.pack(anchor=NW)
 
     Text = ("Github page: github.com/Bakterija")
     msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='grey',fg='white',width=winwi,font=('system', 9))
+    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('system', 9))
     msg.pack(anchor=NW)
 
 
@@ -1485,7 +1490,7 @@ def tag_colors():
     T.tag_configure('bluecol', font=(fontlist[text_font[0]], font_size), foreground='blue')
     T.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='#009900')
     T.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
-    T.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
+    T.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
     T.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
     T.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
     T.tag_configure('blue_link', font=(fontlist[text_font[0]], font_size), foreground='blue')
@@ -1499,7 +1504,7 @@ def tag_colors():
         User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
         User_area.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
         User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
-        User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='grey')
+        User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
         User_area.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
         User_area.tag_configure('offcol', font=(fontlist[text_font[0]], font_size), foreground='#66CCFF')
     E.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
@@ -1617,9 +1622,7 @@ def task():
                     
                       
                 nfind = False
-                scroller = S.get()
-                if scroller[1] == 1.0:  
-                    T.yview(END)
+                scroller_to_end()
                 T.config(yscrollcommand=S.set,state="disabled")
                 if windowfocus is False:
                     set_winicon(root,'icon2')
