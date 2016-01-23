@@ -3,10 +3,11 @@
 from Tkinter import *
 from threading import Thread
 from random import randrange
-from time import strftime,gmtime,sleep
+from time import strftime,gmtime,sleep,time
+from tkFileDialog import askopenfilename
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.98b'
+ver = '0.99'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -210,9 +211,19 @@ def closewin():
         sleep(0.3)
         s.close()
         root.quit()
+        try:
+            root.destroy()
+            quit
+        except:
+            pass
     except:
         sleep(0.3)
         root.quit()
+        try:
+            root.destroy()
+            quit
+        except:
+            pass
 
 def get_cur_time():
     global show_ttime
@@ -555,6 +566,8 @@ def chat_commands(text):
         attempt_registration(s,text[5:])
     elif text[:6] == '/auth ':
         attempt_auth(s,text[6:])
+    elif text[:4] == '/dl ':
+        Thread(target=fldownloader_thread,args=(text[4:],)).start()
     else:
         return True
     return False
@@ -1276,6 +1289,131 @@ def motion(event):
     global m_x,m_y
     m_x, m_y = event.x, event.y
 
+def file_recvd(conn):
+##    conn.settimeout(30)
+##    try:
+    data = conn.recv(8192)
+##    except Exception as e:
+##        e = str(e)
+##        print e
+##        if e == 'timed out':
+##            return 'TIMEOUT::'
+##        else:
+##            data = 'close::'
+    return data; # returns the contents of data
+
+def TCPconnect(ip,port):
+    contcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    contcp.connect((ip, port))
+    return contcp
+
+def fldownloader_thread(name):
+    global connected_server
+    buflen = 0
+    try:
+        os.makedirs('downloads')
+    except:
+        pass
+    print 'File download thread started - ',name
+    T.config(yscrollcommand=S.set,state="normal")
+    tim = time()
+    T.insert(END, str(tim)+' Downloading '+name+'\n', 'blackcol')
+    T.config(yscrollcommand=S.set,state="disabled")
+    sf = TCPconnect(connected_server,44672)
+    
+    data = file_recvd(sf)
+    if data == 'READY::':
+        sf.send('DOWNLOAD::'+name)
+    data = file_recvd(sf)
+    sf.send('READY::')
+    while True:
+        data = file_recvd(sf)
+        if data == 'ENDING::':
+            print 'ending'
+            break
+        fh = open('downloads/'+name, 'a')
+        fh.write(data)
+        fh.close()
+        buflen+=1
+        sf.send('READY::')
+        
+    print 'File download thread stopped - ',name
+    T.config(yscrollcommand=S.set,state="normal")
+    tim2 = time() - tim
+    T.insert(END, 'File downloaded in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
+    T.config(yscrollcommand=S.set,state="disabled")
+    try:
+        sf.close()
+    except:
+        pass
+        
+
+def share_file_thread(path,name):
+    print name
+    global connected_server, username, action_time, passwd
+    print 'File share thread started - ',name
+    scroller = S.get()
+##    try:
+    sf = TCPconnect(connected_server,44672)
+    state = 'connected'
+    T.config(yscrollcommand=S.set,state="normal")
+    tim = time()
+    T.insert(END, str(tim)+' Sending'+name+'\n', 'blackcol')
+    T.config(yscrollcommand=S.set,state="disabled")
+
+    data = file_recvd(sf)
+    if data == 'READY::':
+        sf.send('UPLOAD::')
+    data = file_recvd(sf)
+    if data == 'READY::':
+        if passwd is '':
+            registered = False
+        else:
+            registered = True
+            sf.send('USRINFO::'+username+']'+passwd)
+    data = file_recvd(sf)
+    sf.send('SENDFIL::'+name)
+    buflen = 0
+    if registered == True:
+        with open(path, "rb") as fi:
+            data = file_recvd(sf)
+            buf = fi.read(8192)
+            while (buf):
+                sf.send(buf)
+                data = file_recvd(sf)
+                if data != 'READY::':
+                    print data,'vis'
+                    break
+                buf = fi.read(8192)
+                buflen += 1
+        data = file_recvd(sf)
+        sf.send('ENDING::')
+        print 'File share thread stopped - ',name
+        T.config(yscrollcommand=S.set,state="normal")
+        tim2 = time() - tim
+        T.insert(END, 'File sent in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
+        T.config(yscrollcommand=S.set,state="disabled")
+##    except Exception as e:
+##        e = str(e)
+##        T_ins_warning(T,S,e)
+    if scroller[1] == 1.0:  
+            T.yview(END)
+
+def share_file():
+    path= askopenfilename()
+    name = str(path)
+    while True:
+        b = name.find('/')
+        if b is not -1:
+            name = name[b+1:]
+        c = name.find('\\')
+        if c is not -1:
+            name = name[c+1:]
+        elif b is -1 and c is -1:
+            break
+        print name
+    Thread(target=share_file_thread,args=(path,name,)).start()
+
 def Changelog():
     global font_size, text_font
     font = text_font
@@ -1434,13 +1572,17 @@ menu3.add_command(label='Print log', command=T_ins_log)
 menu3.add_command(label='Print link list', command=T_ins_linklist)
 
 menu4 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Settings',menu=menu4)
-menu4.add_command(label='Set user', command=set_username)
-menu4.add_command(label='Set font', command=font_menu)
-menu4.add_command(label='Color settings', command=color_menu)
-menu4.add_command(label='Update settings', command=update_menu)
-menu4.add_command(label='Sound settings', command=sound_menu)
-menu4.add_command(label='Other settings', command=other_menu)
+menu.add_cascade(label='Share',menu=menu4)
+menu4.add_command(label='File', command=share_file)
+
+menu5 = Menu(menu,tearoff=0)
+menu.add_cascade(label='Settings',menu=menu5)
+menu5.add_command(label='Set user', command=set_username)
+menu5.add_command(label='Set font', command=font_menu)
+menu5.add_command(label='Color settings', command=color_menu)
+menu5.add_command(label='Update settings', command=update_menu)
+menu5.add_command(label='Sound settings', command=sound_menu)
+menu5.add_command(label='Other settings', command=other_menu)
 
 helpmenu = Menu(menu,tearoff=0)
 menu.add_cascade(label='Help', menu=helpmenu)
@@ -1568,8 +1710,8 @@ def task():
                 organise_USRLIST(data_list[x][9:])
             elif data_list[x][:9] == 'DUPLICT::':
                 data_list[x] = data_list[x].rstrip()
-                print "iSPTC - "+data_list[x][9:]+' on '+connected_server
-                root.title("iSPTC - "+data_list[x][9:]+' on '+connected_server)
+                print "iSPTC - "+data_list[x][9:]+' - '+connected_server
+                root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
             else:
                 global linkk, write_log
                 mgreen = 'greencol'

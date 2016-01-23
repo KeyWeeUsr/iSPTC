@@ -1,3 +1,8 @@
+## Client[0.99] and Server[0.97] - 2016-1-23
+### Added
+ - File sharing
+
+
 ## Server[0.95b] - 2016-1-14
 ### Added
  - Server can take commands from clients now. Added 3 - s/log, s/mlog, s/threadip.

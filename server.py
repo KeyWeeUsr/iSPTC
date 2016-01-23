@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.95c'
+ver = '0.97'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -166,6 +166,7 @@ def check_for_illegal_chr(illegal,name):
 
 def check_if_registered(usrname,addr,return_passlvl):
     global iplist
+    ## Returns 0Reg True/False, passwd, level, [username, passwd, offline_msg 1/0]
     for levels in iplist:
         for x in levels[1]:
 ##            if x[0] == usrname or x[0] == addr:
@@ -247,10 +248,10 @@ def send_user_list(s,conn,oldusername,username,addr,level):
     time.sleep(0.4)
     broadcastData('USRLIST::'+sendlist[:-1])
 
-def recieveData(conn):# function to recieve data
+def recieveData(conn,bitr):# function to recieve data
     conn.settimeout(30)
     try:
-        data = conn.recv(2048) # conn.recv(2048) waits for data of 2048 or less bytes and stores it in data
+        data = conn.recv(bitr) # conn.recv(2048) waits for data of 2048 or less bytes and stores it in data
     except Exception as e:
         e = str(e)
         if e == 'timed out':
@@ -279,8 +280,11 @@ def broadcastPrivate(conn,user, data):
             if x.lower() == user.lower():
                 is_registered = True
                 off_messages.append([user,data])
-        if is_registered == False:
-            conn.send('WSERVER::User not found')
+        if is_registered == False and conn != '':
+            try:
+                conn.send('WSERVER::User not found')
+            except:
+                pass
             time.sleep(0.2)
 
 def broadcastData(data): # function to send Data
@@ -359,10 +363,8 @@ def clientHandler(i):
     threadip.append([str(i),conn,'',[addr[0],addr[1]],1,'1'])
     conn.sendall(welcome_msg)
     while 1:
-        data = recieveData(conn)
-        if data == 'kpALIVE::':
-            timeouts = 0
-        else:
+        data = recieveData(conn,4096)
+        if data != 'kpALIVE::' and data != 'TIMEOUT::':
             chatmlog.append([get_cur_time(),username,data])
         ##Normal messages
         if data[0:9] == 'MESSAGE::' and username_set is True:
@@ -382,7 +384,7 @@ def clientHandler(i):
                             time.sleep(0.1)
                     elif data == 'MESSAGE::s/mlog':
                         conn.send('WSERVER::Sending '+str(len(chatmlog))+' lines')
-                        time.sleep(0.1)
+                        time.sleep(0.05)
                         for x in chatmlog:
                             conn.send('WSERVER::'+str(x))
                             time.sleep(0.1)
@@ -599,6 +601,125 @@ def clientHandler(i):
                 time.sleep(0.1)
                 conn.send("WSERVER::We don't accept this")
     
+def fileserv_thread(i):
+    global threadip, msgprint_enabled, logging_enabled, iplist, action_time
+    conn, addr = sf.accept() # awaits for a client to connect and then accepts 
+    print get_cur_time(),addr," is now connected to fileserver!"
+    chatlog.append([get_cur_time(),addr[0]," is now connected to fileserver!"])
+    ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk
+    state = 'auth'
+    try:
+        ## Sets DL/UL mode
+        conn.send('READY::')
+        data = recieveData(conn,8192)
+        ## DL
+        if data[:10] == 'DOWNLOAD::':
+            filename = data[10:]
+            conn.send('READY::')
+            data = recieveData(conn,8192)
+            if data == 'READY::':
+                found_file = False
+                cnt = -1
+                for x in shared_filelist:
+                    cnt+=1
+                    if x[0] == filename:
+                        found_file = True
+                if found_file == True:
+                    pos = 0
+                    filelen = len(shared_filelist[cnt][1])
+                    while True:
+                        try:
+                            conn.send(shared_filelist[cnt][1][pos:pos+8192])
+                        except:
+                            conn.send(shared_filelist[cnt][1][pos:])
+                        data = recieveData(conn,8192)
+                        if data == 'READY::':
+                            pos+=8192
+                            if pos > filelen:
+                                conn.send('ENDING::')
+                                print 'ending'
+                                break
+
+        ## UL
+        elif data == 'UPLOAD::':
+            ## Gets username and password
+            conn.send('READY::')
+            data = recieveData(conn,8192)
+            if data[0:9] == 'USRINFO::':
+                b = data.find(']')
+                if b is not -1 and len(data[b:]) > 2:
+                    usr_pass = data[b+1:]
+                    username = data[9:b]
+                else:
+                    usr_pass = ''
+            else:
+                usr_pass = ''
+            registered = check_if_registered(username,addr,True)
+            if registered[0] == True and registered[1] == usr_pass:
+                state = 'filename'
+            else:
+                broadcastPrivate('',username,'password is wrong')
+                conn.close()
+            conn.send('READY::')
+            ## Get filename
+            if state == 'filename':
+                data = recieveData(conn,8192)
+                if data[0:9] == 'SENDFIL::' and len(data[9:]) > 0:
+                    b = data.find('name=')
+                    if len(data) > 30:
+                        filename = data[9:30]+'...'
+                    else:
+                        filename = data[9:]
+                    state = 'receiving'
+                    conn.send('READY::')
+                    print 'receiving'
+                else:
+                    conn.send('Wrong command, bye')
+                    sf.close()
+            ## Receive file
+            if state == 'receiving':
+                file_str = ''
+                print 'connected'
+                conn.send('READY::')
+                while 1:
+                    data = recieveData(conn,8192)
+                    if data == 'ENDING::':
+                        print 'DONE'
+                        break
+                    else:
+                        file_str = file_str+data
+                        conn.send('READY::')
+                    cnt = 0
+                ## Check if duplicate
+                again = False
+                for x in shared_filelist:
+                    if x[0] == filename:
+                        cnt += 2
+                if cnt > 0:
+                    name_without_cnt = filename
+                    while True:
+                        again = False
+                        filename = name_without_cnt+'('+str(cnt)+')'
+                        for x in shared_filelist:
+                            if x[0] == filename:
+                                again = True
+                        if again == False:
+                            break
+                        cnt += 1
+                ## List and broadcast
+                shared_filelist.append([filename,file_str])
+                Thread(target=fileserv_thread,args=(i,)).start()
+                broadcastData('SSERVER::'+username+' shared a file, type /dl '+filename+' to download')
+    except Exception as e:
+        e = str(e)
+        print 'File server thread crashed'
+        print e
+        Thread(target=fileserv_thread,args=(i,)).start()
+    try:
+        conn.close()
+    except:
+        pass
+
 
 def reset_offmsg_list():
     global off_users
@@ -610,14 +731,15 @@ def reset_offmsg_list():
 
 threads = int(read_settings('threadcnt='))
 action_time = True
-iplist,chatlog,chatmlog,threadip,off_users,off_messages = [],[],[],[],[],[]
+iplist,chatlog,chatmlog,threadip,off_users,off_messages,shared_filelist = [],[],[],[],[],[],[]
 read_server_usr_settings()
 log_enabled = int(read_settings('logging='))
 msgprint_enabled = 0
 msgprint_enabled = int(read_settings('msgprint='))
 reset_offmsg_list()
 def main(): # main function
-    global s, action_time, msgprint_enabled, log_enabled, iplist
+    global s,sf, action_time, msgprint_enabled, log_enabled, iplist
+    ## Chat server
     s = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
     try:
         s.bind(('', 44671)) # tells the socket to bind to localhost on port 44671
@@ -626,12 +748,26 @@ def main(): # main function
         time.sleep(2)
         quit()
     s.listen(threads) # number of connections listening for
-    print "Server is running...... \n"
+    print "Chat server is running......"
 
     for i in range(1,1+threads):
         Thread(target=clientHandler,args=(i,)).start()
-    time.sleep(1)
-    print str(threading.active_count()-1)+' threads started'
+    print str(threading.active_count()-1)+' threads started\n'
+    
+    ## File server
+    sf = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
+    try:
+        sf.bind(('', 44672)) # tells the socket to bind to localhost on port 44672
+    except:
+        print "Can't bind address 2"
+        time.sleep(2)
+        quit()
+    sf.listen(5) # number of connections listening for
+    print "File server is running......"
+
+    for i in range(1,6):
+        Thread(target=fileserv_thread,args=(i,)).start()
+    print '5 threads started\n'
     
     while action_time is True:
         msg = raw_input('::: ')
@@ -662,7 +798,7 @@ def main(): # main function
             reset_offmsg_list()
         elif msg == 'help':
             print """ Type: quit, lvluser, threadip, iplist, iplist-reload, log, mlog, log-toggle,
-            log-save, say, msgprint, msgprint-toggle, welcm """
+            log-save, say, msgprint, msgprint-toggle, welcm, filelist"""
         elif msg == 'log-toggle':
             if log_enabled == 1:
                 log_enabled = 0
@@ -696,6 +832,13 @@ def main(): # main function
         elif msg == 'msgprint':
             global msgprint_enabled
             print 'msgprint is: ',msgprint_enabled
+        elif msg == 'filelist':
+            print 'Count ',len(shared_filelist)
+            flsize = 0
+            for x in shared_filelist:
+                flsize += len(x[1])
+                print x[0]
+            print 'Total size ',flsize
         elif msg == 'msgprint-toggle':
             if msgprint_enabled is 1:
                 msgprint_enabled = 0
