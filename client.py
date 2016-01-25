@@ -7,7 +7,7 @@ from time import strftime,gmtime,sleep,time
 from tkFileDialog import askopenfilename
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.99'
+ver = '0.991'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -1290,17 +1290,18 @@ def motion(event):
     m_x, m_y = event.x, event.y
 
 def file_recvd(conn):
-##    conn.settimeout(30)
-##    try:
-    data = conn.recv(8192)
-##    except Exception as e:
-##        e = str(e)
-##        print e
-##        if e == 'timed out':
-##            return 'TIMEOUT::'
-##        else:
-##            data = 'close::'
-    return data; # returns the contents of data
+    conn.settimeout(10)
+    try:
+        data = conn.recv(8192)
+    except Exception as e:
+        e = str(e)
+        scroller = S.get()
+        T_ins_warning(T,S,e)
+        if scroller[1] == 1.0:  
+            T.yview(END)
+        if e == 'timed out':
+            return 'TIMEOUT::'
+    return data
 
 def TCPconnect(ip,port):
     contcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -1309,100 +1310,113 @@ def TCPconnect(ip,port):
 
 def fldownloader_thread(name):
     global connected_server
-    buflen = 0
+    print 'File download thread started - ',name
+    buflen, flstring = 0, ''
+    scroller = S.get()
     try:
         os.makedirs('downloads')
     except:
         pass
-    print 'File download thread started - ',name
     T.config(yscrollcommand=S.set,state="normal")
     tim = time()
-    T.insert(END, str(tim)+' Downloading '+name+'\n', 'blackcol')
+    T.insert(END, str(tim)+' Downloading '+name+'\n', 'bluecol')
     T.config(yscrollcommand=S.set,state="disabled")
+    if scroller[1] == 1.0:  
+            T.yview(END)
     sf = TCPconnect(connected_server,44672)
     
     data = file_recvd(sf)
+    sleep(0.05)
     if data == 'READY::':
         sf.send('DOWNLOAD::'+name)
     data = file_recvd(sf)
+    sleep(0.05)
     sf.send('SENDR::')
-    flstring = ''
-    while True:
-        data = file_recvd(sf)
-        if len(data) < 50:
-            print data
-        if data == 'ENDING::':
-            print 'ending'
-            break
-        flstring= flstring + data
-    fh = open('downloads/'+name, 'ab')
-    print 'saving in ',name
-    fh.write(flstring)
-    fh.close()
-    buflen+=1
-    print buflen
-    
+    data = file_recvd(sf)
+    if data != 'WrongName::':
+        while True:
+            flstring= flstring + data
+            data = file_recvd(sf)
+            if data == 'ENDING::' or data == 'TIMEOUT::':
+                break
+            elif not data:
+                break
+        fh = open('downloads/'+name, 'ab')
+        fh.write(flstring)
+        fh.close()
+        T.config(yscrollcommand=S.set,state="normal")
+        tim2 = time() - tim
+        T.insert(END, 'File downloaded in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'bluecol')
+        T.config(yscrollcommand=S.set,state="disabled")
+    else:
+        T_ins_warning(T,S,'File does not exist')
         
-    print 'File download thread stopped - ',name
-    T.config(yscrollcommand=S.set,state="normal")
-    tim2 = time() - tim
-    T.insert(END, 'File downloaded in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
-    T.config(yscrollcommand=S.set,state="disabled")
     try:
         sf.close()
     except:
         pass
+    if scroller[1] == 1.0:  
+            T.yview(END)
+    print 'File download thread stopped - ',name
         
 
 def share_file_thread(path,name):
-    print name
     global connected_server, username, action_time, passwd
     print 'File share thread started - ',name
     scroller = S.get()
-##    try:
-    sf = TCPconnect(connected_server,44672)
-    state = 'connected'
-    T.config(yscrollcommand=S.set,state="normal")
-    tim = time()
-    T.insert(END, str(tim)+' Sending '+name+'\n', 'blackcol')
-    T.config(yscrollcommand=S.set,state="disabled")
+    registered = False
+    try:
+        sf = TCPconnect(connected_server,44672)
+        state = 'connected'
+        T.config(yscrollcommand=S.set,state="normal")
+        tim = time()
+        T.insert(END, str(tim)+' Sending '+name+'\n', 'bluecol')
+        T.config(yscrollcommand=S.set,state="disabled")
+        if scroller[1] == 1.0:  
+                T.yview(END)
 
-    data = file_recvd(sf)
-    if data == 'READY::':
-        sf.send('UPLOAD::')
-    data = file_recvd(sf)
-    if data == 'READY::':
-        if passwd is '':
-            registered = False
-        else:
-            registered = True
-            sf.send('USRINFO::'+username+']'+passwd)
-    data = file_recvd(sf)
-    sf.send('SENDFIL::'+name)
-    buflen = 0
-    if registered == True:
         data = file_recvd(sf)
-        print data
-        if data == 'SENDR::':
-            print 'ir sendr'
-            with open(path, "rb") as fi:
-                buf = fi.read(8192)
-                while (buf):
-                    sf.send(buf)
+        sleep(0.05)
+        if data == 'READY::':
+            sf.send('UPLOAD::')
+        data = file_recvd(sf)
+        sleep(0.05)
+        if data == 'READY::':
+            if passwd is '':
+                registered = False
+            else:
+                registered = True
+                sf.send('USRINFO::'+username+']'+passwd)
+        data = file_recvd(sf)
+        sleep(0.05)
+        sf.send('SENDFIL::'+name)
+        buflen = 0
+        if registered == True:
+            data = file_recvd(sf)
+            sleep(0.05)
+            if data == 'SENDR::':
+                with open(path, "rb") as fi:
                     buf = fi.read(8192)
-                    buflen += 1
-            sleep(0.6)
-            sf.send('ENDING::')
-            print 'File share thread stopped - ',name
-            T.config(yscrollcommand=S.set,state="normal")
-            tim2 = time() - tim
-    ##        T.insert(END, 'File sent in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
-            T.config(yscrollcommand=S.set,state="disabled")
-##    except Exception as e:
-##        e = str(e)
-##        T_ins_warning(T,S,e)
+                    while (buf):
+                        sf.send(buf)
+                        buf = fi.read(8192)
+                        buflen += 1
+                sleep(1.3)
+                sf.send('ENDING::')
+                print 'File share thread stopped - ',name
+                T.config(yscrollcommand=S.set,state="normal")
+                tim2 = time() - tim
+        ##        T.insert(END, 'File sent in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
+                T.config(yscrollcommand=S.set,state="disabled")
+    except Exception as e:
+        e = str(e)
+        T_ins_warning(T,S,e)
     if scroller[1] == 1.0:  
             T.yview(END)
+    try:
+        sf.close
+    except:
+        pass
 
 def share_file():
     path= askopenfilename()
@@ -1416,8 +1430,8 @@ def share_file():
             name = name[c+1:]
         elif b is -1 and c is -1:
             break
-        print name
-    Thread(target=share_file_thread,args=(path,name,)).start()
+    if len(name) > 0:
+        Thread(target=share_file_thread,args=(path,name,)).start()
 
 def Changelog():
     global font_size, text_font
@@ -1793,4 +1807,3 @@ def update_task():
     root.after(task_loop_interval, task)
 root.after(50, update_task)
 root.mainloop()
-
