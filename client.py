@@ -1305,7 +1305,7 @@ def file_recvd(conn):
 def TCPconnect(ip,port):
     contcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     contcp.connect((ip, port))
-    return contcp
+    return contcp   
 
 def fldownloader_thread(name):
     global connected_server
@@ -1325,17 +1325,23 @@ def fldownloader_thread(name):
     if data == 'READY::':
         sf.send('DOWNLOAD::'+name)
     data = file_recvd(sf)
-    sf.send('READY::')
+    sf.send('SENDR::')
+    flstring = ''
     while True:
         data = file_recvd(sf)
+        if len(data) < 50:
+            print data
         if data == 'ENDING::':
             print 'ending'
             break
-        fh = open('downloads/'+name, 'a')
-        fh.write(data)
-        fh.close()
-        buflen+=1
-        sf.send('READY::')
+        flstring= flstring + data
+    fh = open('downloads/'+name, 'ab')
+    print 'saving in ',name
+    fh.write(flstring)
+    fh.close()
+    buflen+=1
+    print buflen
+    
         
     print 'File download thread stopped - ',name
     T.config(yscrollcommand=S.set,state="normal")
@@ -1358,7 +1364,7 @@ def share_file_thread(path,name):
     state = 'connected'
     T.config(yscrollcommand=S.set,state="normal")
     tim = time()
-    T.insert(END, str(tim)+' Sending'+name+'\n', 'blackcol')
+    T.insert(END, str(tim)+' Sending '+name+'\n', 'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
 
     data = file_recvd(sf)
@@ -1375,24 +1381,23 @@ def share_file_thread(path,name):
     sf.send('SENDFIL::'+name)
     buflen = 0
     if registered == True:
-        with open(path, "rb") as fi:
-            data = file_recvd(sf)
-            buf = fi.read(8192)
-            while (buf):
-                sf.send(buf)
-                data = file_recvd(sf)
-                if data != 'READY::':
-                    print data,'vis'
-                    break
-                buf = fi.read(8192)
-                buflen += 1
         data = file_recvd(sf)
-        sf.send('ENDING::')
-        print 'File share thread stopped - ',name
-        T.config(yscrollcommand=S.set,state="normal")
-        tim2 = time() - tim
-        T.insert(END, 'File sent in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
-        T.config(yscrollcommand=S.set,state="disabled")
+        print data
+        if data == 'SENDR::':
+            print 'ir sendr'
+            with open(path, "rb") as fi:
+                buf = fi.read(8192)
+                while (buf):
+                    sf.send(buf)
+                    buf = fi.read(8192)
+                    buflen += 1
+            sleep(0.6)
+            sf.send('ENDING::')
+            print 'File share thread stopped - ',name
+            T.config(yscrollcommand=S.set,state="normal")
+            tim2 = time() - tim
+    ##        T.insert(END, 'File sent in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
+            T.config(yscrollcommand=S.set,state="disabled")
 ##    except Exception as e:
 ##        e = str(e)
 ##        T_ins_warning(T,S,e)
@@ -1598,8 +1603,9 @@ def create_widgets():
     S2 = Scrollbar(root, width=15)
     T = Text(root, height=46, width=114,wrap=WORD)
     ## bordercolors
-##root.configure(background='red')
+##    root.configure(background='red')
 ##    widliste = [T,E,User_area, S, S2]
+##    widliste = [S,S2]
 ##    for x in widliste:
 ##        x.config(background='black')
 ##    for x in widliste:
@@ -1608,6 +1614,8 @@ def create_widgets():
 ##        x.config(highlightbackground='black')
 ##    for x in widliste:
 ##        x.config(bd=0)
+##    for x in widliste:
+##        x.config(troughcolor='black')
         
     S.pack(side=RIGHT, fill=Y)
     if hide_users == 0:
