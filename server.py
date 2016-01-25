@@ -617,28 +617,32 @@ def fileserv_thread(i):
             filename = data[10:]
             conn.send('READY::')
             data = recieveData(conn,8192)
-            if data == 'READY::':
+            if data == 'SENDR::':
                 found_file = False
                 cnt = -1
                 for x in shared_filelist:
                     cnt+=1
                     if x[0] == filename:
+                        file_to_send = x[1] 
                         found_file = True
                 if found_file == True:
                     pos = 0
                     filelen = len(shared_filelist[cnt][1])
+                    time.sleep(0.1)
                     while True:
                         try:
-                            conn.send(shared_filelist[cnt][1][pos:pos+8192])
+                            conn.send(file_to_send[pos:pos+8192])
                         except:
-                            conn.send(shared_filelist[cnt][1][pos:])
-                        data = recieveData(conn,8192)
-                        if data == 'READY::':
-                            pos+=8192
-                            if pos > filelen:
-                                conn.send('ENDING::')
-                                print 'ending'
-                                break
+                            conn.send(file_to_send[pos:])
+                        pos+=8192
+                        time.sleep(0.005)
+                        if pos > filelen:
+                            time.sleep(1)
+                            conn.send('ENDING::')
+                            break
+##                    conn.send(shared_filelist[cnt][1])
+##                    time.sleep(1)
+##                    conn.send('ENDING::')        
 
         ## UL
         elif data == 'UPLOAD::':
@@ -666,30 +670,26 @@ def fileserv_thread(i):
                 data = recieveData(conn,8192)
                 if data[0:9] == 'SENDFIL::' and len(data[9:]) > 0:
                     b = data.find('name=')
-                    if len(data) > 30:
-                        filename = data[9:30]+'...'
+                    if len(data) > 70:
+                        filename = data[9:70]+'...'
                     else:
                         filename = data[9:]
                     state = 'receiving'
-                    conn.send('READY::')
-                    print 'receiving'
                 else:
                     conn.send('Wrong command, bye')
                     sf.close()
             ## Receive file
             if state == 'receiving':
                 file_str = ''
-                print 'connected'
-                conn.send('READY::')
+                time.sleep(0.1)
+                conn.send('SENDR::')
                 while 1:
                     data = recieveData(conn,8192)
                     if data == 'ENDING::':
-                        print 'DONE'
                         break
                     else:
                         file_str = file_str+data
-                        conn.send('READY::')
-                    cnt = 0
+                cnt = 0
                 ## Check if duplicate
                 again = False
                 for x in shared_filelist:
@@ -699,7 +699,7 @@ def fileserv_thread(i):
                     name_without_cnt = filename
                     while True:
                         again = False
-                        filename = name_without_cnt+'('+str(cnt)+')'
+                        filename = '('+str(cnt)+')'+name_without_cnt
                         for x in shared_filelist:
                             if x[0] == filename:
                                 again = True
@@ -717,6 +717,7 @@ def fileserv_thread(i):
         Thread(target=fileserv_thread,args=(i,)).start()
     try:
         conn.close()
+        Thread(target=fileserv_thread,args=(i,)).start()
     except:
         pass
 
@@ -837,8 +838,13 @@ def main(): # main function
             flsize = 0
             for x in shared_filelist:
                 flsize += len(x[1])
-                print x[0]
+                print x[0],'  ', len(x[1])
             print 'Total size ',flsize
+        elif msg == 'fld':
+            for x in shared_filelist:
+                fh = open(x[0], 'a')
+                fh.write(x[1])
+                fh.close()
         elif msg == 'msgprint-toggle':
             if msgprint_enabled is 1:
                 msgprint_enabled = 0
