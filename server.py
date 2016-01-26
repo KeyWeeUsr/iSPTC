@@ -663,7 +663,6 @@ def fileserv_thread(i):
                         except:
                             conn.send(file_to_send[pos:])
                         pos+=8192
-                        time.sleep(0.005)
                         if pos > filelen:
                             time.sleep(1)
                             conn.send('ENDING::')

@@ -1,3 +1,20 @@
+## Client[0.99b] - 2016-1-26
+### Added
+ - Chat colors
+### Change
+ - Lvl 4 color
+### Fix
+ - Infinite loop when wrong file name is entered in /dl
+
+
+## Server[0.98] - 2016-1-25
+### Added
+ - New client commands - s/help, s/filelist, s/clear files, s/fld(server stores files in server folder)
+ - New server commands - filelist, clear files, fld(server stores files in server folder)
+### Fix
+ - Infinite loop when wrong file name is entered in /dl
+
+
 ## Client[0.99] and Server[0.97] - 2016-1-23
 ### Added
  - File sharing

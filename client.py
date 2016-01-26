@@ -7,7 +7,7 @@ from time import strftime,gmtime,sleep,time
 from tkFileDialog import askopenfilename
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.991'
+ver = '0.99b'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -574,6 +574,7 @@ def chat_commands(text):
                 
 def enter_text(event):
     global s, USRLIST
+    E.focus_set()
     text = textt.get()
     check = True
     sending = True
@@ -695,7 +696,8 @@ def update_checker(update_link):
     for x in filehandle:
         temp.append(x)
         
-    upd_ver = temp[0][:5]
+    upd_ver = temp[0]
+    print upd_ver
     if upd_ver != strver:
         update = True
     if update == True:
@@ -704,6 +706,9 @@ def update_checker(update_link):
         autojoiner()
 
 def update_window(update_link,strver,update,temp,upd_ver):
+    global font_size, text_font, hide_users
+    fontlist=list(tkFont.families())
+    fontlist.sort()
     global ver
     topwin = Toplevel()
     set_winicon(topwin,'icon')
@@ -733,8 +738,10 @@ def update_window(update_link,strver,update,temp,upd_ver):
     for x in temp:
         Tbox2.insert(END, x,'blackcol')
     Tbox2.config(yscrollcommand=S11.set,state="disabled")
-
+    
     Tbox = Text(frame2, height=12, width=50,wrap=WORD)
+    Tbox2.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
     S1 = Scrollbar(frame2, width=15)
     S1.pack(side=RIGHT, fill=Y)
     Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
@@ -751,7 +758,7 @@ def update_window(update_link,strver,update,temp,upd_ver):
                     commentlink = 'http://'+commentlink
                 filer = urllib2.urlopen(commentlink)
                 for x in filer:
-                    Tbox.insert(END, x+'\n','blackcol')
+                    Tbox.insert(END, x,'blackcol')
             else:
                 b = x.find('download,')
                 if b is not -1:
@@ -1212,7 +1219,7 @@ def get_user_color(col,name,add_zero):
     elif col == addz+'2':
         return 'blackcol',name
     elif col == addz+'3':
-        return 'pinkcol',name
+        return 'orangecol',name
     elif col == addz+'4':
         return 'pinkcol',name
     elif col == addz+'5':
@@ -1319,7 +1326,7 @@ def fldownloader_thread(name):
         pass
     T.config(yscrollcommand=S.set,state="normal")
     tim = time()
-    T.insert(END, str(tim)+' Downloading '+name+'\n', 'bluecol')
+    T.insert(END, get_cur_time()+' Downloading "'+name+'"\n', 'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
     if scroller[1] == 1.0:  
             T.yview(END)
@@ -1345,8 +1352,9 @@ def fldownloader_thread(name):
         fh.write(flstring)
         fh.close()
         T.config(yscrollcommand=S.set,state="normal")
-        tim2 = time() - tim
-        T.insert(END, 'File downloaded in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'bluecol')
+        tim2 = round(time() - tim,2)
+        buflen = len(flstring)
+        T.insert(END, get_cur_time()+' File downloaded in '+str(tim2)+'sec. - '+str(round(buflen/tim2/1000/1024,2))+' MB/s\n', 'blackcol')
         T.config(yscrollcommand=S.set,state="disabled")
     else:
         T_ins_warning(T,S,'File does not exist')
@@ -1370,7 +1378,7 @@ def share_file_thread(path,name):
         state = 'connected'
         T.config(yscrollcommand=S.set,state="normal")
         tim = time()
-        T.insert(END, str(tim)+' Sending '+name+'\n', 'bluecol')
+        T.insert(END, get_cur_time()+' Sending "'+name+'"\n', 'blackcol')
         T.config(yscrollcommand=S.set,state="disabled")
         if scroller[1] == 1.0:  
                 T.yview(END)
@@ -1401,13 +1409,13 @@ def share_file_thread(path,name):
                         sf.send(buf)
                         buf = fi.read(8192)
                         buflen += 1
-                sleep(1.3)
+                T.config(yscrollcommand=S.set,state="normal")
+                tim2 = round(time() - tim,2)
+                T.insert(END, get_cur_time()+' File sent in '+str(tim2)+'sec. - '+str(round(buflen/tim2*8/1024,2))+' MB/s\n', 'blackcol')
+                T.config(yscrollcommand=S.set,state="disabled")
+                sleep(1)
                 sf.send('ENDING::')
                 print 'File share thread stopped - ',name
-                T.config(yscrollcommand=S.set,state="normal")
-                tim2 = time() - tim
-        ##        T.insert(END, 'File sent in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
-                T.config(yscrollcommand=S.set,state="disabled")
     except Exception as e:
         e = str(e)
         T_ins_warning(T,S,e)
@@ -1581,10 +1589,10 @@ menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
 
 menu3 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Commands',menu=menu3)
+menu3.add_command(label='Go afk', command=send_afk)
 menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
 menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
 menu3.add_separator()              
-menu3.add_command(label='Go afk', command=send_afk)
 menu3.add_command(label='Print help', command=T_ins_help)
 menu3.add_command(label='Print userlist', command=T_ins_userlist)
 menu3.add_command(label='Print log', command=T_ins_log)
@@ -1657,14 +1665,18 @@ def tag_colors():
     T.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
     T.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
     T.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
+    T.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
     T.tag_configure('blue_link', font=(fontlist[text_font[0]], font_size), foreground='blue')
     T.tag_configure('timecol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    T.tag_configure('browncol', font=(fontlist[text_font[0]], font_size), foreground='brown')
+    T.tag_configure('browncol', font=(fontlist[text_font[0]], font_size), foreground='#862d2d')
+    T.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
     T.tag_configure('privatecol', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='white')
     T.tag_configure('privatgreen', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='#009900')
     T.tag_configure('privatlink', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='blue')
 
     if hide_users is not 1:
+        User_area.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
+        User_area.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
         User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
         User_area.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
         User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
@@ -1807,3 +1819,4 @@ def update_task():
     root.after(task_loop_interval, task)
 root.after(50, update_task)
 root.mainloop()
+
