@@ -2,11 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-<<<<<<< HEAD
 ver = '0.98b'
-=======
-ver = '0.98'
->>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -400,7 +396,6 @@ def clientHandler(i):
                 if data[9:11] == 's/' and level > 7:
                     if data == 'MESSAGE::s/log':
                         conn.send('WSERVER::Sending '+str(len(chatlog))+' lines')
-<<<<<<< HEAD
                         time.sleep(0.03)
                         Thread(target=list_sender_thread,args=(conn,chatlog,'',)).start()
                     elif data == 'MESSAGE::s/mlog':
@@ -409,31 +404,12 @@ def clientHandler(i):
                         Thread(target=list_sender_thread,args=(conn,chatmlog,'',)).start()
                     elif data == 'MESSAGE::s/threadip':
                         Thread(target=list_sender_thread,args=(conn,threadip,'',)).start()
-=======
-                        time.sleep(0.05)
-                        for x in chatlog:
-                            conn.send('WSERVER::'+str(x))
-                            time.sleep(0.05)
-                    elif data == 'MESSAGE::s/mlog':
-                        conn.send('WSERVER::Sending '+str(len(chatmlog))+' lines')
-                        time.sleep(0.05)
-                        for x in chatmlog:
-                            conn.send('WSERVER::'+str(x))
-                            time.sleep(0.05)
-                    elif data == 'MESSAGE::s/threadip':
-                        for x in threadip:
-                            conn.send('WSERVER::'+str(x))
-                            time.sleep(0.05)
->>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
                     elif data == 'MESSAGE::s/fld':
                         for x in shared_filelist:
                             fh = open(x[0], 'a')
                             fh.write(x[1])
                             fh.close()
-<<<<<<< HEAD
                         conn.send('WSERVER::Saved')
-=======
->>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
                 if data[9:11] == 's/' and level > 3:
                     if data == 'MESSAGE::s/help':
                         conn.send('WSERVER::Available commands to lvl 4+\ns/log - log\ns/mlog - message log\ns/threadip - thread list\ns/fld - save all files to disk\ns/clear files - clear all shared files from RAM\ns/filelist - returns list of shared files')
@@ -441,21 +417,7 @@ def clientHandler(i):
                         shared_filelist = []
                         broadcastData('SSERVER::'+username2+' cleared all shared files')
                     elif data == 'MESSAGE::s/filelist':
-<<<<<<< HEAD
                         Thread(target=list_sender_thread,args=(conn,threadip,'filelist',)).start()
-=======
-                        conn.send('WSERVER::File count - '+str(len(shared_filelist)))
-                        time.sleep(0.05)
-                        tflsize = 0
-                        for x in shared_filelist:
-                            tflsize += len(x[1])
-                            flsizemb = float(len(x[1]))/float(1052291)
-                            flsizemb =  round(flsizemb,2)
-                            conn.send('WSERVER::'+x[0]+'  MB['+str(flsizemb)+'] '+' B['+str(len(x[1]))+']')
-                            time.sleep(0.05)
-                        conn.send('WSERVER::Total size '+str(tflsize))
-                        time.sleep(0.05)
->>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
                 elif data[9:11] == 's/' and level < 4:
                     conn.send('WSERVER::Level too low')
                     time.sleep(0.05)
@@ -739,13 +701,8 @@ def fileserv_thread(i):
             if state == 'filename':
                 data = recieveData(conn,8192)
                 if data[0:9] == 'SENDFIL::' and len(data[9:]) > 0:
-<<<<<<< HEAD
                     if len(data) > 140:
                         filename = data[9:140]+'...'
-=======
-                    if len(data) > 70:
-                        filename = data[9:70]+'...'
->>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
                     else:
                         filename = data[9:]
                     state = 'receiving'
