@@ -6,6 +6,7 @@ from random import randrange
 from time import strftime,gmtime,sleep,time
 from tkFileDialog import askopenfilename
 from tkFileDialog import askdirectory
+from tkColorChooser import askcolor
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
 ver = '0.99c'
@@ -201,10 +202,12 @@ def lenghten_name(name,symbols):
         while len(name) < symbols:
             name = " " + name
     return name
-    
+
 def closewin():
     global s, action_time
     print 'Goodbye'
+    write_settings('X_size',root.winfo_width())
+    write_settings('Y_size',root.winfo_height())
     try:
         sender_thread_list.append('close::')
         action_time = False
@@ -236,12 +239,11 @@ def get_cur_time():
         return strftime("%H:%M:%S")+' '
 
 def cp_destroy(*arg):
-    global cp_is
     bb1.destroy()
     bb2.destroy()
     bb3.destroy()
     bb4.destroy()
-    cp_is = False
+    bb5.destroy()
 
 def open_in_browser_btn():
     try:
@@ -257,25 +259,51 @@ def open_in_browser_btn():
     if done == True:
         E.clipboard_clear()
         E.clipboard_append(clipboardData)    
-    
-def copy_paste_buttons(*arg):
-    global bb2, bb1, bb3, bb4, cp_is, m_x, m_y
-    if cp_is == False:
-        bb1 = Button(root, text='Open in browser', width=50,
-                        command=lambda: {open_in_browser_btn(),cp_destroy()})
-        bb1.place(x=m_x, y=m_y,width=120, height=26)
-        bb2 = Button(root, text='Clear entry', width=50,
-                        command=lambda: {textt.set(''),cp_destroy()})
-        bb2.place(x=m_x, y=m_y+26,width=120, height=26)   
-        bb3 = Button(root, text='Copy', width=50,
-                        command=lambda: {copy_text(),cp_destroy()})
-        bb3.place(x=m_x, y=m_y+52,width=120, height=26)
-        bb4 = Button(root, text='Paste', width=50,
-                        command=lambda: {entry_paste(),cp_destroy()})
-        bb4.place(x=m_x, y=m_y+78,width=120, height=26)
-        cp_is = True
-    else:
+
+def copy_paste_buttons_del_thread():
+    sleep(0.07)
+    try:
         cp_destroy()
+    except:
+        pass
+
+def copy_paste_buttons_del(*arg):
+    Thread(target=copy_paste_buttons_del_thread).start()
+
+def copy_paste_buttons(*arg):
+    global bb2, bb1, bb3, bb4, bb5, m_x, m_y, activated_widget, usra_len, X_size, Y_size, hide_users
+    if activated_widget == 'T' and hide_users == 0:
+        m_x += usra_len*8
+    elif activated_widget == 'E':
+        m_y += Y_size-130
+        if hide_users == 0:
+            m_x += usra_len*8
+    elif activated_widget == 'S2' and hide_users == 0:
+        m_x += usra_len*7
+        
+    if m_x > X_size-130:
+        m_x = X_size-130
+    if m_y > Y_size - 130:
+        m_y = Y_size - 130
+    try:
+        cp_destroy()
+    except:
+        pass
+    bb1 = Button(root, text='Open in browser', width=50,
+                    command=lambda: {open_in_browser_btn(),cp_destroy()})
+    bb1.place(x=m_x, y=m_y,width=120, height=26)
+    bb2 = Button(root, text='Command window', width=50,
+                    command=lambda: {command_window(),cp_destroy()})
+    bb2.place(x=m_x, y=m_y+26,width=120, height=26)
+    bb3 = Button(root, text='Clear', width=50,
+                    command=lambda: {textt.set(''),cp_destroy()})
+    bb3.place(x=m_x, y=m_y+52,width=120, height=26)   
+    bb4 = Button(root, text='Copy', width=50,
+                    command=lambda: {copy_text(),cp_destroy()})
+    bb4.place(x=m_x, y=m_y+78,width=120, height=26)
+    bb5 = Button(root, text='Paste', width=50,
+                    command=lambda: {entry_paste(),cp_destroy()})
+    bb5.place(x=m_x, y=m_y+104,width=120, height=26)
 
 def sender_thread():
     global sender_thread_list, s, action_time
@@ -342,34 +370,39 @@ def join_typing():
     jsrv = Toplevel()
     set_winicon(jsrv,'icon')
     jsrv.title("Server address")
-    jsrv.minsize(320,360)
+    jsrv.minsize(340,410)
     jsrv.resizable(FALSE,FALSE)
 
     frame = Frame(jsrv, height=260,width=300, relief=SUNKEN)
     frame.pack_propagate(0)
-    frame.pack(padx=10,pady=10,anchor=NE,side=TOP)
+    frame.pack(padx=10,side=TOP)
 
+    Label(frame, text="").pack(anchor=NW)
     Label(frame, text="Select from list:").pack(anchor=NW)
     display = Listbox(frame)
     scroll = Scrollbar(frame)
     scroll.pack(side=RIGHT, fill=Y, expand=NO)
     display.pack(fill=BOTH, expand=YES, side=TOP)
-    scroll.configure(command=display.yview)
+    scroll.configure(command=display.yview,width=15)
     display.configure(yscrollcommand=scroll.set)
     for item in server_list:
         display.insert(END, item)
 
+    Label(jsrv, text="").pack(side=TOP)
     Label(jsrv, text="Or type manually:").pack(side=TOP)
     usrEntry = Entry(jsrv,textvariable=jaddr)
-    usrEntry.pack(side=TOP,pady=10,)
+    usrEntry.pack(side=TOP)
     usrEntry.focus_set()
-    button = Button(jsrv, text='Join',pady=10, width=10,height=1, command=lambda: {join_srv_check(display.curselection(),jaddr.get()),
+    button = Button(jsrv, text='Join',width=20,height=2, command=lambda: {join_srv_check(display.curselection(),jaddr.get()),
                                                                 jsrv.destroy()})
-    button.pack(side=TOP)
+    button.place(x=75,y=350)
     def cmdbind(*arg):
         join_srv_check(display.curselection(),jaddr.get())
         jsrv.destroy()
     jsrv.bind('<Return>', cmdbind)
+    def close_func(*arg):
+        jsrv.destroy()
+    jsrv.bind('<Escape>', close_func)
 
 def join_srv_check(curselection,jaddr):
     global server_list
@@ -436,6 +469,9 @@ def scroller_to_end():
     if scroller[1] == 1.0:  
         T.yview(END)
 
+def open_address_in_webbrowser(address):
+    webbrowser.open(address)
+
 def T_ins_userlist():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
@@ -459,7 +495,7 @@ def T_ins_help():
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'light-grey-bg')
     T.insert(END, 'Type:\n/help to see this message \n/u for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
-             '/reg [passwd] to register\n/auth [passwd] to authenticate\n', 'blackcol')
+             '/reg [passwd] to register\n/auth [passwd] to authenticate\n/clear to clear textbox\n', 'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
@@ -467,7 +503,7 @@ def T_ins_log():
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Log]\n', 'light-grey-bg')
     for x in userlog_list:
-        T.insert(END, x,'blackcol')
+        T.insert(END, x,'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
@@ -475,7 +511,7 @@ def T_ins_datalist():
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[data_list]\n', 'light-grey-bg')
     for x in data_list:
-        T.insert(END, x,'blackcol')
+        T.insert(END, x,'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
     
@@ -571,7 +607,6 @@ def T_ins_warning(T,S,text):
     T.config(yscrollcommand=S.set,state="disabled")
 
 def chat_commands(text):
-    print text
     if text == '/u' or text == '/usr' or text == '/users':
         T_ins_userlist()
     elif text == '/help':
@@ -590,17 +625,29 @@ def chat_commands(text):
         attempt_auth(s,text[6:])
     elif text[:4] == '/dl ':
         Thread(target=fldownloader_thread,args=(text[4:],)).start()
+    elif text[:6] == '/clear':
+        reset_textbox()
     else:
         return True
     return False
                 
-def enter_text(event):
-    global s, USRLIST
+def enter_text(*arg):
+    global s, USRLIST, entry_message_arch
     E.focus_set()
-    text = textt.get()
+    text_from_commandwin = False
+    try:
+        if arg[0] == 'command_window':
+            text = arg[1]
+            text_from_commandwin = True
+    except:
+        pass
+    if text_from_commandwin == False:
+        text = textt.get()
     check = True
     sending = True
     if len(text) > 0:
+        entry_mlist.append(text)
+        entry_message_arch = 0
         if text[0] == '/':
             sending = False
             chat_commands(text)
@@ -711,6 +758,9 @@ def update_checker(update_link):
 
     if update_link[-1:] == '/':
         update_link = update_link[:-1]
+    b = update_link.find('http://')
+    if b is -1:
+        update_link = 'http://'+update_link
     update_link = update_link+'/latest'
     filehandle = urllib.urlopen(update_link)
 
@@ -759,11 +809,14 @@ def update_window(update_link,strver,update,temp,upd_ver):
     S11.config(command=Tbox2.yview)
     for x in temp:
         Tbox2.insert(END, x,'blackcol')
+        
     Tbox2.config(yscrollcommand=S11.set,state="disabled")
-    
     Tbox = Text(frame2, height=12, width=50,wrap=WORD)
-    Tbox2.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
     Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    Tbox.tag_configure('CL-bg', font=(fontlist[text_font[0]], font_size), background='#80ccff',foreground='black')
+    Tbox.tag_configure('SE-bg', font=(fontlist[text_font[0]], font_size), background='#66cc66',foreground='black')
+    Tbox.tag_configure('light-bg', font=(fontlist[text_font[0]], font_size), background='#f3f3f3',foreground='black')
+    Tbox2.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
     S1 = Scrollbar(frame2, width=15)
     S1.pack(side=RIGHT, fill=Y)
     Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
@@ -780,7 +833,14 @@ def update_window(update_link,strver,update,temp,upd_ver):
                     commentlink = 'http://'+commentlink
                 filer = urllib2.urlopen(commentlink)
                 for x in filer:
-                    Tbox.insert(END, x,'blackcol')
+                    if x[:5] == '## Cl':
+                        Tbox.insert(END, x,'CL-bg')
+                    elif x[:5] == '## Se':
+                        Tbox.insert(END, x,'SE-bg')
+                    elif x[:3] == '###':
+                        Tbox.insert(END, x,'light-bg')
+                    else:
+                        Tbox.insert(END, x,'blackcol')
             else:
                 b = x.find('download,')
                 if b is not -1:
@@ -791,7 +851,40 @@ def update_window(update_link,strver,update,temp,upd_ver):
     button.place(x=180,y=540)
     button2 = Button(topwin, text='Close', height=2, width=18,command=lambda: {autojoiner(),topwin.destroy()})
     button2.place(x=360,y=540)
-    topwin.lift() 
+    topwin.lift()
+
+def command_window(*arg):
+    global font_size, text_font
+    font = text_font
+    fontlist=list(tkFont.families())
+    fontlist.sort()
+    cww = Toplevel()
+    set_winicon(cww,'icon')
+    cww.title("Command..")
+    cww.minsize(500,70)
+    cww.resizable(FALSE,FALSE)
+    frame = Frame(cww, height=70,width=460, relief=SUNKEN)
+    frame.pack(side=TOP,pady=20)
+    frame.pack_propagate(0)
+
+    t_encommand = StringVar()
+    Label(frame, text="Enter command:").pack(anchor=NW)
+    tEntry = Entry(frame,textvariable=t_encommand)
+    tEntry.pack(pady=5,fill=BOTH)
+    tEntry.focus_set()
+    tEntry.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
+    button = Button(cww, text='Close', width=16, command=lambda: {enter_text('command_window',t_encommand.get()),
+                                                                  cww.destroy()})
+    button2 = Button(cww, text='Run', width=16, command=lambda: {enter_text('command_window',t_encommand.get()),
+                                                                  cww.destroy()})
+    button.pack(side=LEFT,padx=60,pady=20)
+    button2.pack(side=LEFT,padx=60,pady=20)
+    def run_func(*arg):
+        enter_text('command_window',t_encommand.get())
+        cww.destroy()
+    def close_func(*arg):
+        cww.destroy()
+    cww.bind('<Escape>', close_func)
 
 def change_name(t_new_name,t_passwd,t_offline_msg):
     global username, s, passwd, offline_msg
@@ -823,7 +916,6 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
     if new_offline_msg != offline_msg:
         offline_msg = new_offline_msg
         write_settings('offline_msg',offline_msg)
-        sleep(0.2)
         try:
             sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg))
 ##            s.send('CONFIGR::offmsg='+str(offline_msg))
@@ -862,6 +954,9 @@ def set_username():
         change_name(t_new_name,t_passwd,t_offline_msg)
         uw.destroy()
     uw.bind('<Return>', cmdbind)
+    def close_func(*arg):
+        uw.destroy()
+    uw.bind('<Escape>', close_func)
     
 def change_sound_set(a,b,c,d):
     global dsound_interval
@@ -898,6 +993,10 @@ def sound_menu():
     snd_interval.set(int(dsound_interval))
     button = Button(sw, text='Save', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
     button.grid(row=6, padx=60,pady=30)
+    def close_func(*arg):
+        sw.destroy()
+    sw.bind('<Escape>', close_func)
+    
 
 def color_menu():
     global font_size, text_font
@@ -907,17 +1006,47 @@ def color_menu():
     colm.minsize(700,400)
     colm.resizable(FALSE,FALSE)
 
-    frame = Frame(colm, height=380,width=300, relief=SUNKEN)
-    frame2 = Frame(colm, height=400,width=400, relief=SUNKEN)
-    frame.pack_propagate(0)
-    frame2.pack_propagate(0)
-    frame.pack(anchor=NE,side=LEFT)
-    frame2.pack(anchor=NE,side=LEFT)
+##    frame = Frame(colm, height=380,width=300, relief=SUNKEN)
+##    frame2 = Frame(colm, height=400,width=400, relief=SUNKEN)
+##    frame.pack_propagate(0)
+##    frame2.pack_propagate(0)
+##    frame.pack(anchor=NE,side=LEFT)
+##    frame2.pack(anchor=NE,side=LEFT)
+    def callback(*arg):
+        print arg
+        gotcol = askcolor()
+##        print gotcol
+    colorbutton_list = []
+    colorbutton_list2 = [['red','red','white'],['Blue','blue','white'],['Green','#009900','white'],
+                         ['Purple','purple','white'],['Grey','#7F7F7F','white'],['Black','black','white'],
+                         ['Pink','pink','white'],['Orange','orange','white'],['Link','blue','white'],
+                         ['Time','black','white'],['Brown','#862d2d','white'],['Cyocol','#007f80','white'],
+                         ['Private','white','#262626'],['Private green','#00cc00','#262626'],
+                         ['Private link','#4d93ff','#262626'],['Dark background','black','#c8d9ea'],
+                         ['Light background','black','#eaeefa']]
+    for x in colorbutton_list2:
+        colorbutton_list.append(x)
+    cnt = 0
+    col = 0
+    for x in colorbutton_list:
+        if x[2] is not '':
+            Button(colm, text=x[0], fg=x[1], bg=x[2],width=11,
+                   command=lambda: callback(str(x[1]),str(x[2]))).place(x=20+col*116,y=20+cnt*30)
+        else:
+            Button(colm, text=x[0], fg=x[1],width=11,
+                   command=lambda: callback(x[1])).place(x=20+col*116,y=20+cnt*30)
+        cnt += 1
+        if cnt == 4:
+            col += 1
+            cnt = 0
+            
+    def close_func(*arg):
+        colm.destroy()
+    colm.bind('<Escape>', close_func)
     
 
-def set_font(font,fontlist,t_font_size):
-    global T,E,User_area, text_font, font_size
-    global font_size, text_font
+def set_font(font,fontlist,t_font_size,t_usra_len):
+    global T,E,User_area, text_font, font_size, usra_len
     if font is not ():
         text_font = font
         write_settings('tfont',text_font[0])
@@ -925,12 +1054,16 @@ def set_font(font,fontlist,t_font_size):
         font_size = t_font_size
     except:
         pass
+    
+    User_area.config(width=t_usra_len)
     tag_colors()
     hyperlink = HyperlinkManager(T)
+    usra_len = t_usra_len
     write_settings('font_size',font_size)
+    write_settings('usra_len',usra_len)
     
 def font_menu():
-    global font_size, text_font
+    global font_size, text_font, usra_len
     fom = Toplevel()
     set_winicon(fom,'icon')
     fom.title("Font settings")
@@ -958,8 +1091,13 @@ def font_menu():
 
     t_font_size = IntVar()
     t_font_size.set(font_size)
+    t_usra_len = IntVar()
+    t_usra_len.set(usra_len)
     Label(frame2, text="Font size:",justify = LEFT).place(x=20,y=300)
     Efont_size = Entry(frame2,textvariable=t_font_size,width=3).place(x=100,y=300)
+    Label(frame2, text="User_area length:",justify = LEFT).place(x=140,y=300)
+    User_area_length = Entry(frame2,textvariable=t_usra_len,width=3).place(x=260,y=300)
+    
     display_text = Text(frame2, height=12, width=50,wrap=WORD)
     display_text.place(x=20,y=80)
     display_text.insert(END, get_cur_time()+' SERVER: Hello human\n','bluecol')
@@ -967,18 +1105,24 @@ def font_menu():
     display_text.insert(END, get_cur_time()+' Human: Hello\n','greencol')
     display_text.insert(END, get_cur_time()+' SERVER: human is afk\n','greycol')
     display_text.insert(END, get_cur_time()+' Admin: /kick human\n','purplecol')
-    display_text.insert(END, get_cur_time()+' Cat: hello ','blackcol')       
+    display_text.insert(END, get_cur_time()+' Cat: hello\n','blackcol')
+    display_text.insert(END, get_cur_time()+' Orange: the new color\n','orangecol')
+    display_text.insert(END, get_cur_time()+' Mouse: hello cat\n','privatecol')
+    display_text.insert(END, get_cur_time()+' Twitterbot: Falcon has landed\n','olfo-backgr')
 
     button2 = Button(frame2, text='Apply', width=12,
                     command=lambda: {apply_display_font(display_text,display.curselection(),fonts,
                                                         t_font_size.get())})
     button = Button(frame2, text='Save', width=12,
-                    command=lambda: {set_font(display.curselection(),fonts,
-                                                        t_font_size.get()),
+                    command=lambda: {set_font(display.curselection(),fonts,t_font_size.get(),
+                                              t_usra_len.get()),
                                      fom.destroy()})
     button.place(x=200,y=360)
     button2.place(x=40,y=360)
     apply_display_font(display_text,text_font,fonts,font_size)
+    def close_func(*arg):
+        fom.destroy()
+    fom.bind('<Escape>', close_func)
 
 def apply_display_font(display_text,font,fontlist,t_font_size):
     global font_size, text_font
@@ -997,6 +1141,10 @@ def apply_display_font(display_text,font,fontlist,t_font_size):
     display_text.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
     display_text.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
     display_text.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    display_text.tag_configure('privatecol', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='white')
+    display_text.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
+    display_text.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
+    
 
 def save_update_settings(a,b):
     global update_enabled,update_link
@@ -1014,9 +1162,9 @@ def update_menu():
     t_update_link.set(update_link)
     set_winicon(upd,'icon')
     upd.title("Update settings")
-    upd.minsize(500,200)
+    upd.minsize(500,100)
     upd.resizable(FALSE,FALSE)
-    frame = Frame(upd, height=150,width=460, relief=SUNKEN)
+    frame = Frame(upd, height=80,width=460, relief=SUNKEN)
     frame.pack(side=TOP,pady=20)
     frame.pack_propagate(0)
     
@@ -1033,6 +1181,9 @@ def update_menu():
         save_update_settings(t_update_enabled.get(),t_update_link.get())
         upd.destroy()
     upd.bind('<Return>', cmdbind)
+    def close_func(*arg):
+        upd.destroy()
+    upd.bind('<Escape>', close_func)
 
 def save_download_settings(a):
     global fdl_path
@@ -1040,15 +1191,15 @@ def save_download_settings(a):
     write_settings('fdl_path',a)
 
 def download_menu():
-    global fdl_path
+    global fdl_path, OS
     dwlw = Toplevel()
     t_fdl_path = StringVar()
     t_fdl_path.set(fdl_path)
     set_winicon(dwlw,'icon')
     dwlw.title("Download path")
-    dwlw.minsize(500,100)
+    dwlw.minsize(500,70)
     dwlw.resizable(FALSE,FALSE)
-    frame = Frame(dwlw, height=100,width=460, relief=SUNKEN)
+    frame = Frame(dwlw, height=70,width=460, relief=SUNKEN)
     frame.pack(side=TOP,pady=20)
     frame.pack_propagate(0)
     
@@ -1060,14 +1211,16 @@ def download_menu():
         t_fdl_path.set('downloads/')
     def select_folder(*arg):
         t_fdl_path.set(askdirectory()+'/')
-        dwlw.lift()
     button = Button(dwlw, text='Default', width=16, command=set_default)
     button2 = Button(dwlw, text='Browse', width=16, command=select_folder)  
     button3 = Button(dwlw, text='Save', width=16, command=lambda: {save_download_settings(t_fdl_path.get()),
                                                                 dwlw.destroy()})
-    button.pack(side=LEFT,padx=20,pady=10)
-    button2.pack(side=LEFT,padx=20,pady=10)
-    button3.pack(side=LEFT,padx=20,pady=10)
+    button.pack(side=LEFT,padx=20,pady=20)
+    button2.pack(side=LEFT,padx=20,pady=20)
+    button3.pack(side=LEFT,padx=20,pady=20)
+    def close_func(*arg):
+        dwlw.destroy()
+    dwlw.bind('<Escape>', close_func)
 
 def change_other_settings(a,b,c,d,e,f,g,h,i):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users
@@ -1163,6 +1316,9 @@ def other_menu():
                                                            t_write_log.get())
                                                            ,sm.destroy()})
     button.pack(side=BOTTOM)
+    def close_func(*arg):
+        sm.destroy()
+    sm.bind('<Escape>', close_func)
 
     
 def find_2name(text,name):
@@ -1178,13 +1334,7 @@ def find_2name(text,name):
         return False
 
 def reset_entry(var):
-    global cp_is, bb1, bb2
-    if cp_is == True:
-        bb1.destroy()
-        bb2.destroy()
-        cp_is = False
-    else:
-        textt.set('')
+    textt.set('')
 
 def reset_textbox():
     T.config(yscrollcommand=S.set,state="normal")
@@ -1233,9 +1383,9 @@ def organise_USRLIST(data):
     off_usr.sort()  
     on_usr.sort()
     ## Inserts Online and usercount at the beginning, and inserts Offline after the last online user
-    on_usr.insert(0,usercount)
-    on_usr.insert(0,['Online','olfo-','1','1'])
-    off_usr.insert(0,['Offline','olfo-','1','1'])
+##    on_usr.insert(0,usercount)
+    on_usr.insert(0,['Online'+str(usercount[0][6:]),'olfo-','1','1'])
+    off_usr.insert(0,['Offline '+str(len(off_usr)),'olfo-','1','1'])
     off_usr.insert(0,[])
     ## Combines online and offline users into one list for the user_area_insert() function
     USRLIST = []
@@ -1379,6 +1529,24 @@ def entry_paste(*arg):
         E.insert('insert', text)
     except:
         print 'Nothing in clipboard'
+
+def entrym_FORWARD(*arg):
+    global entry_message_arch
+    if len(entry_mlist) > 0:
+        if entry_message_arch == -1:
+            textt.set('')
+            entry_message_arch += 1
+        elif entry_message_arch < 0:
+            entry_message_arch += 1
+            textt.set(entry_mlist[entry_message_arch])
+    
+def entrym_BACK(*arg):
+    global entry_message_arch
+    entrilen = len(entry_mlist)
+    if entrilen > 0:
+        if entry_message_arch*-1 < entrilen:
+            entry_message_arch -= 1
+            textt.set(entry_mlist[entry_message_arch])        
 
 def motion(event):
     global m_x,m_y
@@ -1553,7 +1721,12 @@ def write_logfile(dirpath,filename,text):
         fh.close()
 
 def Changelog():
-    global font_size, text_font
+    global font_size, text_font, window_sizes
+    def closethis():
+        write_settings('win_changelog_x',topwin.winfo_width())
+        write_settings('win_changelog_y',topwin.winfo_height())
+        window_sizes[0][0], window_sizes[0][1] = str(topwin.winfo_width()),str(topwin.winfo_height())
+        topwin.destroy()
     font = text_font
     fontlist=list(tkFont.families())
     fontlist.sort()
@@ -1561,28 +1734,47 @@ def Changelog():
     set_winicon(topwin,'icon')
     topwin.title("Changelog")
     topwin.minsize(750,550)
-    topwin.resizable(FALSE,FALSE)
-    frame = Frame(topwin, height=510,width=730, relief=SUNKEN,bg='#7F7F7F')
-    frame.pack_propagate(0)
-    frame.pack(side=TOP,padx=10,pady=10)
+    try:
+        if window_sizes[0][0] > 500 and window_sizes[0][1] > 300:
+            win_sizeX = ''.join(window_sizes[0][0])
+            win_sizeY = ''.join(window_sizes[0][1])
+            topwin.geometry(win_sizeX+'x'+win_sizeY)
+    except Exception as e:
+        e = str(e)
+        T_ins_warning(T, S, e)
     
-    Tbox = Text(frame, height=12, width=50,wrap=WORD)
-    Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    S1 = Scrollbar(frame, width=15)
-    S1.pack(side=RIGHT, fill=Y)
-    Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
+    Tbox = Text(topwin, height=12, width=50,wrap=WORD)
+    Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size+2, 'normal'), foreground='black')
+    Tbox.tag_configure('CL-bg', font=(fontlist[text_font[0]], font_size+2), background='#80ccff',foreground='black')
+    Tbox.tag_configure('SE-bg', font=(fontlist[text_font[0]], font_size+2), background='#66cc66',foreground='black')
+    Tbox.tag_configure('dark-bg', font=(fontlist[text_font[0]], font_size+2), background='#cccccc',foreground='black')
+    Tbox.tag_configure('light-bg', font=(fontlist[text_font[0]], font_size+2), background='#f3f3f3',foreground='black')
+    S1 = Scrollbar(topwin, width=15)
     Tbox.focus_set()
     Tbox.config(yscrollcommand=S1.set,state="normal")
     S1.config(command=Tbox.yview)
 
     bb1 = Button(topwin, text='Close', width=26,
-                        command=lambda: {topwin.destroy()})
-    
+                        command=closethis)
     bb1.pack(side=BOTTOM,pady=10)
-    changelogfile = readf('load/changelog.txt')
+    S1.pack(side=RIGHT, fill=Y)
+    Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
+    
+    changelogfile = readf('changelog.txt')
     for x in changelogfile:
-        Tbox.insert(END, x+'\n','blackcol')
+        if x[:5] == '## Cl':
+            Tbox.insert(END, x+'\n','CL-bg')
+        elif x[:5] == '## Se':
+            Tbox.insert(END, x+'\n','SE-bg')
+        elif x[:3] == '###':
+            Tbox.insert(END, x+'\n','light-bg')
+        else:
+            Tbox.insert(END, x+'\n','blackcol')
     Tbox.config(yscrollcommand=S1.set,state="normal")
+    topwin.protocol('WM_DELETE_WINDOW', closethis)
+    def close_func(*arg):
+        topwin.destroy()
+    topwin.bind('<Escape>', close_func)
      
 def About():
     global ver
@@ -1615,8 +1807,25 @@ def About():
     msg = Message(frame, text = Text,width=winwi)
     msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('system', 9))
     msg.pack(anchor=NW)
+    def close_func(*arg):
+        aboutwin.destroy()
+    aboutwin.bind('<Escape>', close_func)
 
-
+def set_activated_T(*arg):
+    global activated_widget
+    activated_widget = 'T'
+def set_activated_U(*arg):
+    global activated_widget
+    activated_widget = 'U'
+def set_activated_E(*arg):
+    global activated_widget
+    activated_widget = 'E'
+def set_activated_S(*arg):
+    global activated_widget
+    activated_widget = 'S'
+def set_activated_S2(*arg):
+    global activated_widget
+    activated_widget = 'S2'
 
 ## Loading from settings file
 ### 0all_sound, 1entry, 2user textbox
@@ -1658,6 +1867,10 @@ update_enabled = int(read_settings('update_enabled='))
 update_link = str(read_settings('update_link='))
 fdl_path = str(read_settings('fdl_path='))
 write_log = int(read_settings('chlog='))
+usra_len = int(read_settings('usra_len='))
+day_number_old = str(read_settings('day_number='))
+window_sizes = []
+window_sizes.append([[str(read_settings('win_changelog_x='))],[str(read_settings('win_changelog_y='))]])
 
 ## Setting global vars
 sound_interval = 0
@@ -1666,13 +1879,13 @@ data_list = []
 msg_recv = 0
 windowfocus = True
 icon_was_switched = False
-cp_is = False
-cp_focus = False
 kill_reconnect = False
 connected_server = ''
 sender_thread_list,userlog_list = [], []
+entry_mlist = []
 day_number = strftime("%d")
-print 'day is ',day_number
+entry_message_arch = 0
+activated_widget = 'E'
 ## Tkinter below
 root = Tk()
 root.title("iSPTC - "+username)
@@ -1706,7 +1919,8 @@ menu.add_cascade(label='Commands',menu=menu3)
 menu3.add_command(label='Go afk', command=send_afk)
 menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
 menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
-menu3.add_separator()              
+menu3.add_separator()
+menu3.add_command(label='Cm window', command=command_window)
 menu3.add_command(label='Print help', command=T_ins_help)
 menu3.add_command(label='Print userlist', command=T_ins_userlist)
 menu3.add_command(label='Print log', command=T_ins_log)
@@ -1714,6 +1928,7 @@ menu3.add_command(label='Print link list', command=T_ins_linklist)
 
 menu4 = Menu(menu,tearoff=0)
 menu.add_cascade(label='File',menu=menu4)
+menu4.add_command(label='Open folder', command=lambda: open_address_in_webbrowser(fdl_path))
 menu4.add_command(label='Share', command=share_file)
 
 menu5 = Menu(menu,tearoff=0)
@@ -1733,9 +1948,9 @@ helpmenu.add_command(label='About..', command=About)
 
 ### Window widgets
 def create_widgets():
-    global T,E,User_area,S,S2,hyperlink
+    global T,E,User_area,S,S2,hyperlink, usra_len
     E = Entry(textvariable=textt)
-    User_area = Text(root, height=44, width=20)
+    User_area = Text(root, height=44, width=usra_len)
     S = Scrollbar(root, width=15)
     S2 = Scrollbar(root, width=15)
     T = Text(root, height=46, width=114,wrap=WORD)
@@ -1762,13 +1977,12 @@ def create_widgets():
     T.pack(side=BOTTOM,fill=BOTH,expand=1)
     S.config(command=T.yview)
     S2.config(command=User_area.yview)
-    User_area.config(yscrollcommand=S2.set,state="disabled")
+    User_area.config(yscrollcommand=S2.set,state="disabled",wrap='none')
     User_area.bind( '<Configure>', maxsize )
     T.config(yscrollcommand=S.set,state="disabled")
     E.focus_set()
     hyperlink = HyperlinkManager(T)
     tag_colors()
-
 def tag_colors():
     global font_size, text_font, hide_users
     fontlist=list(tkFont.families())
@@ -1785,11 +1999,12 @@ def tag_colors():
     T.tag_configure('timecol', font=(fontlist[text_font[0]], font_size), foreground='black')
     T.tag_configure('browncol', font=(fontlist[text_font[0]], font_size), foreground='#862d2d')
     T.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
-    T.tag_configure('privatecol', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='white')
-    T.tag_configure('privatgreen', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='#009900')
-    T.tag_configure('privatlink', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='blue')
+    T.tag_configure('privatecol', font=(fontlist[text_font[0]], font_size), background='#262626',foreground='white')
+    T.tag_configure('privatgreen', font=(fontlist[text_font[0]], font_size), background='#262626',foreground='#00cc00')
+    T.tag_configure('privatlink', font=(fontlist[text_font[0]], font_size), background='#4d93ff',foreground='blue')
     T.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
     T.tag_configure('light-grey-bg', font=(fontlist[text_font[0]], font_size), background='#eaeefa',foreground='black')
+##    T.configure(selectbackground="red", inactiveselectbackground="green")
     if hide_users is not 1:
         User_area.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
         User_area.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
@@ -1803,19 +2018,32 @@ def tag_colors():
     E.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
 
 create_widgets()
-
+    
+def focusT(*arg):
+    T.focus_set() 
 def click1():
     print "nothing"
     
 root.bind('<Return>', enter_text)
-root.bind('<Escape>', reset_entry)
+root.bind('<KP_Enter>', enter_text)
+E.bind('<Escape>', reset_entry)
 root.bind('<FocusIn>', winf_is)
 root.bind('<FocusOut>', winf_isnt)
 root.bind('<Control-c>', copy_text)
+root.bind('<Control-g>', command_window)
 root.bind('<Motion>', motion)
 root.bind('<Button-3>', copy_paste_buttons)
-
-
+root.bind('<Button-1>', copy_paste_buttons_del)
+root.bind('<Button-4>', focusT)
+root.bind('<Button-5>', focusT)
+E.bind('<Up>', entrym_BACK)
+E.bind('<Down>', entrym_FORWARD)
+User_area.bind('<Enter>', set_activated_U)
+T.bind('<Enter>', set_activated_T)
+E.bind('<Enter>', set_activated_E)
+S.bind('<Enter>', set_activated_S)
+S2.bind('<Enter>', set_activated_S2)
+       
 def task():
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
     global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
@@ -1899,11 +2127,12 @@ def task():
                 ## Tags words
                 T.insert(END, get_cur_time(),'blackcol')
                 T.insert(END, uname+': ',usercol)
-                    ## Detects private messages
+                ## Detects private messages
                 if temp_list[0][0:2] == '@@':
                     mgreen = 'privatgreen'
                     mblack = 'privatecol'
                     mlink = 'privatlink'
+                    del temp_list[0]
                 for x in temp_list:
                     nfind = find_2name(x,username)
                     if nfind is True:
@@ -1930,7 +2159,6 @@ def task():
                     icon_was_switched = True
             msg_recv +=1
     root.after(task_loop_interval, task)  # reschedule event
-
 
 ##te = Test(root)
 set_winicon(root,'icon')
