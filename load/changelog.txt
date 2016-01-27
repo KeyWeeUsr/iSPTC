@@ -1,3 +1,45 @@
+## Client[0.99c] - 2016-1-27
+### Added
+ - Downloader target folder path selection
+ - Chat message logging in log folder (Toggleable in other options)
+ - Light grey background tag, used in every first line of a / command
+ - Command /datal - prints data_list
+### Change
+ - Separated online users from offline users in User_area
+ - /log command no longer prints the data_list, instead it prints a new userlog list that  is clearer and excludes unnecessary information, data_list can still be printed with /datal
+ - Commands /u /usr /users format, online and offline users are separated and background color tagged like in User_area. Changed value order for clarity
+ - Offline users are no longer light blue, instead they are grey
+### Fix
+ - Space was not inserted between time and usernames in chat when name length was not forced to 19chr
+ - Average upload and download speed is shown again
+
+## Server[0.98b] - 2016-1-27
+### Added
+ - List printer thread for s/** commands
+### Change
+ - Increased max shared file name length from 61 to 131
+ - Removed annoying "You have no power here" message
+### Fix
+ - Infinite loop when wrong file name is entered in /dl
+
+
+## Client[0.99b] - 2016-1-26
+### Added
+ - Chat colors
+### Change
+ - Lvl 4 color changed from pink to orange
+### Fix
+ - Infinite loop when wrong file name is entered in /dl
+
+
+## Server[0.98] - 2016-1-25
+### Added
+ - New client commands - s/help, s/filelist, s/clear files, s/fld(server stores files in server folder)
+ - New server commands - filelist, clear files, fld(server stores files in server folder)
+### Fix
+ - Infinite loop when wrong file name is entered in /dl
+
+
 ## Client[0.99] and Server[0.97] - 2016-1-23
 ### Added
  - File sharing

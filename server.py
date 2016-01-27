@@ -2,7 +2,7 @@
 from socket import *
 from threading import Thread
 import threading, time
-ver = '0.97'
+ver = '0.98b'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -299,6 +299,24 @@ def broadcastData(data): # function to send Data
             threadip.remove(x)
             send_ulist_only()
 
+def list_sender_thread(conn,lisst,typ):
+    if typ == 'filelist':
+        global shared_filelist
+        conn.send('WSERVER::File count - '+str(len(shared_filelist)))
+        time.sleep(0.05)
+        tflsize = 0
+        for x in shared_filelist:
+            tflsize += len(x[1])
+            flsizemb = float(len(x[1]))/float(1052291)
+            flsizemb =  round(flsizemb,2)
+            conn.send('WSERVER::'+x[0]+'  MB['+str(flsizemb)+'] '+' B['+str(len(x[1]))+']')
+            time.sleep(0.05)
+        conn.send('WSERVER::Total size '+str(tflsize))
+    else:
+        for x in lisst:
+            conn.send('WSERVER::'+str(x))
+            time.sleep(0.03)
+
 def remove_offline_usr(username2):
     cnt = 0
     for x in off_users:
@@ -353,7 +371,7 @@ def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,r
     send_ulist_only()
 
 def clientHandler(i):
-    global threadip, threads, msgprint_enabled, logging_enabled, welcome_msg, iplist, action_time
+    global threadip, threads, msgprint_enabled, logging_enabled, welcome_msg, iplist, action_time, shared_filelist
     username,username2,username_set,authed_user,off_msg = '','', False, True, '0'
     level, timeouts = 1, 0
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
@@ -378,20 +396,32 @@ def clientHandler(i):
                 if data[9:11] == 's/' and level > 7:
                     if data == 'MESSAGE::s/log':
                         conn.send('WSERVER::Sending '+str(len(chatlog))+' lines')
-                        time.sleep(0.1)
-                        for x in chatlog:
-                            conn.send('WSERVER::'+str(x))
-                            time.sleep(0.1)
+                        time.sleep(0.03)
+                        Thread(target=list_sender_thread,args=(conn,chatlog,'',)).start()
                     elif data == 'MESSAGE::s/mlog':
                         conn.send('WSERVER::Sending '+str(len(chatmlog))+' lines')
-                        time.sleep(0.05)
-                        for x in chatmlog:
-                            conn.send('WSERVER::'+str(x))
-                            time.sleep(0.1)
+                        time.sleep(0.03)
+                        Thread(target=list_sender_thread,args=(conn,chatmlog,'',)).start()
                     elif data == 'MESSAGE::s/threadip':
-                        for x in threadip:
-                            conn.send('WSERVER::'+str(x))
-                            time.sleep(0.1)
+                        Thread(target=list_sender_thread,args=(conn,threadip,'',)).start()
+                    elif data == 'MESSAGE::s/fld':
+                        for x in shared_filelist:
+                            fh = open(x[0], 'a')
+                            fh.write(x[1])
+                            fh.close()
+                        conn.send('WSERVER::Saved')
+                if data[9:11] == 's/' and level > 3:
+                    if data == 'MESSAGE::s/help':
+                        conn.send('WSERVER::Available commands to lvl 4+\ns/log - log\ns/mlog - message log\ns/threadip - thread list\ns/fld - save all files to disk\ns/clear files - clear all shared files from RAM\ns/filelist - returns list of shared files')
+                    elif data == 'MESSAGE::s/clear files':
+                        shared_filelist = []
+                        broadcastData('SSERVER::'+username2+' cleared all shared files')
+                    elif data == 'MESSAGE::s/filelist':
+                        Thread(target=list_sender_thread,args=(conn,threadip,'filelist',)).start()
+                elif data[9:11] == 's/' and level < 4:
+                    conn.send('WSERVER::Level too low')
+                    time.sleep(0.05)
+                    
                 elif data[9:11] == '@@' and data[11] is not " ":
                     b = data[:].find(']')
                     if b is -1:
@@ -480,8 +510,8 @@ def clientHandler(i):
                     conn.send('WSERVER::off_msg set to: '+off_msg)
                     time.sleep(0.1)
             else:
-                time.sleep(0.1)
-                conn.send('WSERVER::You have no power here')
+##                time.sleep(0.1)
+##                conn.send('WSERVER::You have no power here')
                 time.sleep(0.1)
         ## AFK
         elif data[0:9] == 'aAFKAFK::':
@@ -518,6 +548,8 @@ def clientHandler(i):
                 username = data[9:]
                 if len(username) > 15:
                     username = username[:15]
+                    conn.send('WSERVER::Name too long, shortened to 15 characters')
+                    time.sleep(0.05)
                 ## Username gets changed
                 if username_set is True:
                     for x in threadip:
@@ -602,43 +634,47 @@ def clientHandler(i):
                 conn.send("WSERVER::We don't accept this")
     
 def fileserv_thread(i):
-    global threadip, msgprint_enabled, logging_enabled, iplist, action_time
+    global threadip, msgprint_enabled, logging_enabled, iplist, action_time, sf
     conn, addr = sf.accept() # awaits for a client to connect and then accepts 
-    print get_cur_time(),addr," is now connected to fileserver!"
+    print get_cur_time(),addr," started a fileserver thread!"
     chatlog.append([get_cur_time(),addr[0]," is now connected to fileserver!"])
     ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk
     state = 'auth'
     try:
-        ## Sets DL/UL mode
+        ## Sets client DL/UL mode
         conn.send('READY::')
         data = recieveData(conn,8192)
+        time.sleep(0.05)
         ## DL
         if data[:10] == 'DOWNLOAD::':
             filename = data[10:]
             conn.send('READY::')
             data = recieveData(conn,8192)
-            if data == 'READY::':
+            time.sleep(0.1)
+            if data == 'SENDR::':
                 found_file = False
                 cnt = -1
                 for x in shared_filelist:
                     cnt+=1
                     if x[0] == filename:
+                        file_to_send = x[1] 
                         found_file = True
                 if found_file == True:
                     pos = 0
                     filelen = len(shared_filelist[cnt][1])
                     while True:
                         try:
-                            conn.send(shared_filelist[cnt][1][pos:pos+8192])
+                            conn.send(file_to_send[pos:pos+8192])
                         except:
-                            conn.send(shared_filelist[cnt][1][pos:])
-                        data = recieveData(conn,8192)
-                        if data == 'READY::':
-                            pos+=8192
-                            if pos > filelen:
-                                conn.send('ENDING::')
-                                print 'ending'
-                                break
+                            conn.send(file_to_send[pos:])
+                        pos+=8192
+                        if pos > filelen:
+                            time.sleep(1)
+                            conn.send('ENDING::')
+                            break
+                else:
+                    conn.send('WrongName::')
+      
 
         ## UL
         elif data == 'UPLOAD::':
@@ -665,31 +701,28 @@ def fileserv_thread(i):
             if state == 'filename':
                 data = recieveData(conn,8192)
                 if data[0:9] == 'SENDFIL::' and len(data[9:]) > 0:
-                    b = data.find('name=')
-                    if len(data) > 30:
-                        filename = data[9:30]+'...'
+                    if len(data) > 140:
+                        filename = data[9:140]+'...'
                     else:
                         filename = data[9:]
                     state = 'receiving'
-                    conn.send('READY::')
-                    print 'receiving'
                 else:
                     conn.send('Wrong command, bye')
                     sf.close()
             ## Receive file
             if state == 'receiving':
                 file_str = ''
-                print 'connected'
-                conn.send('READY::')
+                time.sleep(0.1)
+                conn.send('SENDR::')
                 while 1:
                     data = recieveData(conn,8192)
                     if data == 'ENDING::':
-                        print 'DONE'
+                        break
+                    elif not data:
                         break
                     else:
                         file_str = file_str+data
-                        conn.send('READY::')
-                    cnt = 0
+                cnt = 0
                 ## Check if duplicate
                 again = False
                 for x in shared_filelist:
@@ -699,7 +732,7 @@ def fileserv_thread(i):
                     name_without_cnt = filename
                     while True:
                         again = False
-                        filename = name_without_cnt+'('+str(cnt)+')'
+                        filename = '('+str(cnt)+')'+name_without_cnt
                         for x in shared_filelist:
                             if x[0] == filename:
                                 again = True
@@ -708,17 +741,20 @@ def fileserv_thread(i):
                         cnt += 1
                 ## List and broadcast
                 shared_filelist.append([filename,file_str])
-                Thread(target=fileserv_thread,args=(i,)).start()
                 broadcastData('SSERVER::'+username+' shared a file, type /dl '+filename+' to download')
     except Exception as e:
         e = str(e)
         print 'File server thread crashed'
         print e
-        Thread(target=fileserv_thread,args=(i,)).start()
+        try:
+            conn.close()
+        except:
+            pass
     try:
         conn.close()
     except:
         pass
+    Thread(target=fileserv_thread,args=(i,)).start()
 
 
 def reset_offmsg_list():
@@ -837,8 +873,13 @@ def main(): # main function
             flsize = 0
             for x in shared_filelist:
                 flsize += len(x[1])
-                print x[0]
+                print x[0],'  MB:[',float(len(x[1]))/float(1052291),'] ', 'B:[',len(x[1]),']'
             print 'Total size ',flsize
+        elif msg == 'fld':
+            for x in shared_filelist:
+                fh = open(x[0], 'a')
+                fh.write(x[1])
+                fh.close()
         elif msg == 'msgprint-toggle':
             if msgprint_enabled is 1:
                 msgprint_enabled = 0
@@ -854,6 +895,8 @@ def main(): # main function
             global welcome_msg
             welcome_msg = 'SSERVER::'+x
             broadcastData('SSERVER::Welcome message is now: '+x)
+        elif msg == 'threadcnt':
+            print str(threading.active_count())
         else:
             print msg
 

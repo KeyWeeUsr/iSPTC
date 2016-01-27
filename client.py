@@ -5,9 +5,10 @@ from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep,time
 from tkFileDialog import askopenfilename
+from tkFileDialog import askdirectory
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.99'
+ver = '0.99c'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -230,9 +231,9 @@ def get_cur_time():
     if show_ttime is 1:
         return ''
     if show_ttime is 2:
-        return strftime("%H:%M")
+        return strftime("%H:%M")+' '
     if show_ttime is 3:
-        return strftime("%H:%M:%S")
+        return strftime("%H:%M:%S")+' '
 
 def cp_destroy(*arg):
     global cp_is
@@ -438,37 +439,53 @@ def scroller_to_end():
 def T_ins_userlist():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Userlist]\n', 'browncol')
-    T.insert(END, '[Name] [IP] [Level] [AFK]\n', 'browncol')
+    T.insert(END, '[Userlist]\n', 'light-grey-bg')
+    T.insert(END, '[Level] [AFK] [Name] [IP]\n', 'light-grey-bg')
     for x in USRLIST:
-        T.insert(END, x[0]+', '+x[1]+', '+x[2]+', '+x[3]+'\n', 'black')
+        try:
+            ## Inserts Online and Offline text tagged
+            if x[1] == 'olfo-':
+                T.insert(END, x[0]+'\n','olfo-backgr')
+            else:
+                if x[2]!='-1':
+                    T.insert(END, x[2]+', '+x[3]+', '+x[0]+', '+x[1]+'\n', 'black')
+        except:
+            pass
     T.config(yscrollcommand=S.set,state="disabled")
-    scroller_to_end()
+    T.yview(END)
 
 def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Help]\n', 'browncol')
+    T.insert(END, '[Help]\n', 'light-grey-bg')
     T.insert(END, 'Type:\n/help to see this message \n/u for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
              '/reg [passwd] to register\n/auth [passwd] to authenticate\n', 'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
-    scroller_to_end()
+    T.yview(END)
 
 def T_ins_log():
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Log]\n', 'browncol')
+    T.insert(END, '[Log]\n', 'light-grey-bg')
+    for x in userlog_list:
+        T.insert(END, x,'blackcol')
+    T.config(yscrollcommand=S.set,state="disabled")
+    T.yview(END)
+
+def T_ins_datalist():
+    T.config(yscrollcommand=S.set,state="normal")
+    T.insert(END, '[data_list]\n', 'light-grey-bg')
     for x in data_list:
         T.insert(END, x,'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
-    scroller_to_end()
+    T.yview(END)
     
 def T_ins_linklist():
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Link list]\n', 'browncol')
+    T.insert(END, '[Link list]\n', 'light-grey-bg')
     for x in linklist:
         T.insert(END, x[1]+'\n','bluecol')
     T.config(yscrollcommand=S.set,state="disabled")
-    scroller_to_end()
+    T.yview(END)
 
 def send_afk():
     try:
@@ -489,7 +506,8 @@ def attempt_registration(s,authps):
                 T.insert(END, get_cur_time()+war+'Not connected\n', 'redcol')
             else:
                 T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
-            T.config(yscrollcommand=S.set,state="disabled")       
+            T.config(yscrollcommand=S.set,state="disabled")
+    T.yview(END)
 
 def attempt_auth(s,authps):
     try:
@@ -501,7 +519,8 @@ def attempt_auth(s,authps):
             T.insert(END, get_cur_time()+war+'Not connected\n', 'redcol')
         else:
             T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
-        T.config(yscrollcommand=S.set,state="disabled")     
+        T.config(yscrollcommand=S.set,state="disabled")
+    T.yview(END)
 
 def auth_register(auth_reg_var,t_passwd):
     global s, passwd
@@ -513,6 +532,7 @@ def auth_register(auth_reg_var,t_passwd):
     elif auth_reg_var == 'auth':
         attempt_auth(s,passwd)
         print 'Auth with', passwd
+    T.yview(END)
     
 def t_auth_window(auth_or_register):
     global passwd
@@ -558,6 +578,8 @@ def chat_commands(text):
         T_ins_help()
     elif text == '/log':
         T_ins_log()
+    elif text == '/datal':
+        T_ins_datalist()
     elif text == '/afk':
         send_afk()
     elif text == '/ll':
@@ -574,6 +596,7 @@ def chat_commands(text):
                 
 def enter_text(event):
     global s, USRLIST
+    E.focus_set()
     text = textt.get()
     check = True
     sending = True
@@ -695,7 +718,8 @@ def update_checker(update_link):
     for x in filehandle:
         temp.append(x)
         
-    upd_ver = temp[0][:5]
+    upd_ver = temp[0]
+    upd_ver = upd_ver.rstrip()
     if upd_ver != strver:
         update = True
     if update == True:
@@ -704,6 +728,9 @@ def update_checker(update_link):
         autojoiner()
 
 def update_window(update_link,strver,update,temp,upd_ver):
+    global font_size, text_font, hide_users
+    fontlist=list(tkFont.families())
+    fontlist.sort()
     global ver
     topwin = Toplevel()
     set_winicon(topwin,'icon')
@@ -733,8 +760,10 @@ def update_window(update_link,strver,update,temp,upd_ver):
     for x in temp:
         Tbox2.insert(END, x,'blackcol')
     Tbox2.config(yscrollcommand=S11.set,state="disabled")
-
+    
     Tbox = Text(frame2, height=12, width=50,wrap=WORD)
+    Tbox2.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
     S1 = Scrollbar(frame2, width=15)
     S1.pack(side=RIGHT, fill=Y)
     Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
@@ -751,7 +780,7 @@ def update_window(update_link,strver,update,temp,upd_ver):
                     commentlink = 'http://'+commentlink
                 filer = urllib2.urlopen(commentlink)
                 for x in filer:
-                    Tbox.insert(END, x+'\n','blackcol')
+                    Tbox.insert(END, x,'blackcol')
             else:
                 b = x.find('download,')
                 if b is not -1:
@@ -1005,15 +1034,51 @@ def update_menu():
         upd.destroy()
     upd.bind('<Return>', cmdbind)
 
-def change_other_settings(a,b,c,d,e,f,g,h):
+def save_download_settings(a):
+    global fdl_path
+    fdl_path = a
+    write_settings('fdl_path',a)
+
+def download_menu():
+    global fdl_path
+    dwlw = Toplevel()
+    t_fdl_path = StringVar()
+    t_fdl_path.set(fdl_path)
+    set_winicon(dwlw,'icon')
+    dwlw.title("Download path")
+    dwlw.minsize(500,100)
+    dwlw.resizable(FALSE,FALSE)
+    frame = Frame(dwlw, height=100,width=460, relief=SUNKEN)
+    frame.pack(side=TOP,pady=20)
+    frame.pack_propagate(0)
+    
+    Label(frame, text="Edit download path:").pack(anchor=NW)
+    linkEntry = Entry(frame,textvariable=t_fdl_path)
+    linkEntry.pack(pady=5,fill=BOTH)
+    linkEntry.focus_set()
+    def set_default(*arg):
+        t_fdl_path.set('downloads/')
+    def select_folder(*arg):
+        t_fdl_path.set(askdirectory()+'/')
+        dwlw.lift()
+    button = Button(dwlw, text='Default', width=16, command=set_default)
+    button2 = Button(dwlw, text='Browse', width=16, command=select_folder)  
+    button3 = Button(dwlw, text='Save', width=16, command=lambda: {save_download_settings(t_fdl_path.get()),
+                                                                dwlw.destroy()})
+    button.pack(side=LEFT,padx=20,pady=10)
+    button2.pack(side=LEFT,padx=20,pady=10)
+    button3.pack(side=LEFT,padx=20,pady=10)
+
+def change_other_settings(a,b,c,d,e,f,g,h,i):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users
-    global User_area, S2, T, S, E, s, username
+    global User_area, S2, T, S, E, s, username, write_log
     autojoin = a
     X_size = b
     leave_join = c
     Y_size = d
     nadd_spaces = e
     autoauth = h
+    write_log = i
 
     if hide_users is not g:
         hide_users = g
@@ -1036,18 +1101,19 @@ def change_other_settings(a,b,c,d,e,f,g,h):
     write_settings('nadd_spaces',e)
     write_settings('hide_users',g)
     write_settings('autoauth',h)
+    write_settings('chlog',i)
     root.geometry('%sx%s' % (X_size,Y_size))
     
     
 def other_menu():
-    global X_size,Y_size , autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth
+    global X_size,Y_size , autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth, write_log
     sm = Toplevel()
     set_winicon(sm,'icon')
     sm.title("Other settings")
-    sm.minsize(500,200)
+    sm.minsize(500,220)
     sm.resizable(FALSE,FALSE)
     frame = Frame(sm, height=210,width=210, relief=SUNKEN)
-    frame2 = Frame(sm, height=180,width=220, relief=SUNKEN)
+    frame2 = Frame(sm, height=210,width=210, relief=SUNKEN)
     frame.pack_propagate(0)
     frame2.pack_propagate(0)
     frame.pack(anchor=NE,side=LEFT)
@@ -1058,6 +1124,8 @@ def other_menu():
     autojoin_enabled = IntVar()
     t_X_size = IntVar()
     t_Y_size = IntVar()
+    t_write_log = IntVar()
+    t_write_log.set(write_log)
     autojoin_enabled.set(autojoin)
     autoauth_enabled.set(autoauth)
     leave_join_enabled.set(leave_join)
@@ -1077,8 +1145,9 @@ def other_menu():
     t_hide_users = IntVar()
     lenchspaces.set(nadd_spaces)
     t_hide_users.set(hide_users)
+    Checkbutton(frame2, text="Enable log writing", variable=t_write_log).pack(anchor=NW)
+    Checkbutton(frame2, text="Force 19chr length usernames", variable=lenchspaces).pack(anchor=NW)
     Checkbutton(frame2, text="Hide userbox", variable=t_hide_users).pack(anchor=NW)
-    Checkbutton(frame2, text="Lenghten usernames to 15", variable=lenchspaces).pack(anchor=NW)
     t_box_time = IntVar()
     t_box_time.set = (show_ttime)
     Label(frame2, text="Textbox time:",justify = LEFT).pack(anchor=NW)
@@ -1090,7 +1159,8 @@ def other_menu():
                     command=lambda: {change_other_settings(autojoin_enabled.get(),t_X_size.get(),
                                                            leave_join_enabled.get(),t_Y_size.get(),
                                                            lenchspaces.get(),t_box_time.get(),
-                                                           t_hide_users.get(),autoauth_enabled.get())
+                                                           t_hide_users.get(),autoauth_enabled.get(),
+                                                           t_write_log.get())
                                                            ,sm.destroy()})
     button.pack(side=BOTTOM)
 
@@ -1123,9 +1193,9 @@ def reset_textbox():
 
 def organise_USRLIST(data):
     global USRLIST, hide_users
-    USRLIST = []
-    temp_list = []
+    USRLIST, temp_list, off_usr, on_usr = [], [], [], []
     while True:
+        ## Separates user strings and puts them in a temp. list
         begn = data.find('[[')
         end = data.find(']]')
         if begn is -1 or end is -1:
@@ -1133,8 +1203,10 @@ def organise_USRLIST(data):
         temp_list.append(data[begn+2:end+1])
         data = data[end+2:]
     cnt = 0
+    ## Creates a list for each user
     for x in temp_list:
         USRLIST.append([])
+    ## Separates individual values in each users list
     for x in temp_list:
         while True:
             begn = x.find('[')+1
@@ -1145,17 +1217,33 @@ def organise_USRLIST(data):
             x = x[end+1:]
         cnt+=1
     cnt = 0
+    ## Separates user count from user list
     for x in USRLIST:
         if x[0][:6] == 'Users:' and x[1] == '':
             usercount = x
             USRLIST.pop(cnt)
             break
         cnt+=1
-    USRLIST.sort()
-    templist = [usercount]
+    ## Separates online and offline users and sorts them
     for x in USRLIST:
-        templist.append(x)
-    USRLIST = list(templist)
+        if x[1] == 'Offline':
+            off_usr.append(x)
+        else:
+            on_usr.append(x)
+    off_usr.sort()  
+    on_usr.sort()
+    ## Inserts Online and usercount at the beginning, and inserts Offline after the last online user
+    on_usr.insert(0,usercount)
+    on_usr.insert(0,['Online','olfo-','1','1'])
+    off_usr.insert(0,['Offline','olfo-','1','1'])
+    off_usr.insert(0,[])
+    ## Combines online and offline users into one list for the user_area_insert() function
+    USRLIST = []
+    for x in on_usr:
+        USRLIST.append(x)
+    for x in off_usr:
+        USRLIST.append(x)
+
     print 'USRLIST received'
     if hide_users == 0:
         user_area_insert()
@@ -1166,15 +1254,22 @@ def user_area_insert():
     User_area.delete(1.0,END)
     for x in USRLIST:
         try:
-            usercol = get_user_color(x[2],x[0],False)
-            ##AFK color
-            if x[1] == 'Offline':
-                User_area.insert(END, x[0]+'\n','offcol')               
-            elif x[3] == '0':
-                User_area.insert(END, x[0]+'\n','greycol')
-            ## Normal user color
+            if x == []:
+                User_area.insert(END,'\n')
             else:
-                User_area.insert(END, x[0]+'\n',usercol)
+                usercol = get_user_color(x[2],x[0],False)
+                ## Offline color
+                if x[1] == 'Offline':
+                    User_area.insert(END, x[0]+'\n','greycol')
+                ## Online and Offline
+                elif x[1] == 'olfo-':
+                    User_area.insert(END, x[0]+'\n','olfo-backgr')
+                ## AFK color
+                elif x[3] == '0':
+                    User_area.insert(END, x[0]+'\n','greycol')
+                ## Normal user color
+                else:
+                    User_area.insert(END, x[0]+'\n',usercol)
         except:
             User_area.insert(END, x[0]+'\n','blackcol')
     User_area.config(yscrollcommand=S2.set,state="disabled")
@@ -1214,7 +1309,7 @@ def get_user_color(col,name,add_zero):
     elif col == addz+'3':
         return 'pinkcol',name
     elif col == addz+'4':
-        return 'pinkcol',name
+        return 'orangecol',name
     elif col == addz+'5':
         return 'purplecol',name
     elif col == addz+'6':
@@ -1290,114 +1385,139 @@ def motion(event):
     m_x, m_y = event.x, event.y
 
 def file_recvd(conn):
-##    conn.settimeout(30)
-##    try:
-    data = conn.recv(8192)
-##    except Exception as e:
-##        e = str(e)
-##        print e
-##        if e == 'timed out':
-##            return 'TIMEOUT::'
-##        else:
-##            data = 'close::'
-    return data; # returns the contents of data
+    conn.settimeout(10)
+    try:
+        data = conn.recv(8192)
+    except Exception as e:
+        e = str(e)
+        scroller = S.get()
+        T_ins_warning(T,S,e)
+        if scroller[1] == 1.0:  
+            T.yview(END)
+        if e == 'timed out':
+            return 'TIMEOUT::'
+    return data
 
 def TCPconnect(ip,port):
     contcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     contcp.connect((ip, port))
-    return contcp
+    return contcp   
 
 def fldownloader_thread(name):
-    global connected_server
-    buflen = 0
+    global connected_server, fdl_path
+    print 'File download thread started - ',name
+    buflen, flstring = 0, ''
+    scroller = S.get()
     try:
         os.makedirs('downloads')
     except:
         pass
-    print 'File download thread started - ',name
     T.config(yscrollcommand=S.set,state="normal")
     tim = time()
-    T.insert(END, str(tim)+' Downloading '+name+'\n', 'blackcol')
+    T.insert(END, get_cur_time()+' Downloading "'+name+'"\n', 'blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
+    if scroller[1] == 1.0:  
+            T.yview(END)
     sf = TCPconnect(connected_server,44672)
     
     data = file_recvd(sf)
+    sleep(0.05)
     if data == 'READY::':
         sf.send('DOWNLOAD::'+name)
     data = file_recvd(sf)
-    sf.send('READY::')
-    while True:
-        data = file_recvd(sf)
-        if data == 'ENDING::':
-            print 'ending'
-            break
-        fh = open('downloads/'+name, 'a')
-        fh.write(data)
+    sleep(0.05)
+    sf.send('SENDR::')
+    data = file_recvd(sf)
+    if data != 'WrongName::':
+        while True:
+            flstring= flstring + data
+            data = file_recvd(sf)
+            if data == 'ENDING::' or data == 'TIMEOUT::':
+                break
+            elif not data:
+                break
+        try:
+            fh = open(fdl_path+name, 'ab')
+            fh.write(flstring)
+        except:
+            T_ins_warning(T,S,'Download path is wrong, saving in downloads/')
+            fh = open('downloads/'+name, 'ab')
+            fh.write(flstring)
         fh.close()
-        buflen+=1
-        sf.send('READY::')
+        T.config(yscrollcommand=S.set,state="normal")
+        tim2 = round(time() - tim,2)
+        buflen = len(flstring)
+        T.insert(END, get_cur_time()+' File downloaded in '+str(tim2)+'sec. - '+str(round(buflen/tim2/1000/1024,2))+' MB/s\n', 'blackcol')
+        T.config(yscrollcommand=S.set,state="disabled")
+    else:
+        T_ins_warning(T,S,'File does not exist')
         
-    print 'File download thread stopped - ',name
-    T.config(yscrollcommand=S.set,state="normal")
-    tim2 = time() - tim
-    T.insert(END, 'File downloaded in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
-    T.config(yscrollcommand=S.set,state="disabled")
     try:
         sf.close()
     except:
         pass
+    if scroller[1] == 1.0:  
+            T.yview(END)
+    print 'File download thread stopped - ',name
         
 
 def share_file_thread(path,name):
-    print name
     global connected_server, username, action_time, passwd
     print 'File share thread started - ',name
     scroller = S.get()
-##    try:
-    sf = TCPconnect(connected_server,44672)
-    state = 'connected'
-    T.config(yscrollcommand=S.set,state="normal")
-    tim = time()
-    T.insert(END, str(tim)+' Sending'+name+'\n', 'blackcol')
-    T.config(yscrollcommand=S.set,state="disabled")
-
-    data = file_recvd(sf)
-    if data == 'READY::':
-        sf.send('UPLOAD::')
-    data = file_recvd(sf)
-    if data == 'READY::':
-        if passwd is '':
-            registered = False
-        else:
-            registered = True
-            sf.send('USRINFO::'+username+']'+passwd)
-    data = file_recvd(sf)
-    sf.send('SENDFIL::'+name)
-    buflen = 0
-    if registered == True:
-        with open(path, "rb") as fi:
-            data = file_recvd(sf)
-            buf = fi.read(8192)
-            while (buf):
-                sf.send(buf)
-                data = file_recvd(sf)
-                if data != 'READY::':
-                    print data,'vis'
-                    break
-                buf = fi.read(8192)
-                buflen += 1
-        data = file_recvd(sf)
-        sf.send('ENDING::')
-        print 'File share thread stopped - ',name
+    registered = False
+    try:
+        sf = TCPconnect(connected_server,44672)
+        state = 'connected'
         T.config(yscrollcommand=S.set,state="normal")
-        tim2 = time() - tim
-        T.insert(END, 'File sent in '+str(tim2)+' - '+str(buflen/tim2*8)+' KB/s\n', 'blackcol')
+        tim = time()
+        T.insert(END, get_cur_time()+' Sending "'+name+'"\n', 'blackcol')
         T.config(yscrollcommand=S.set,state="disabled")
-##    except Exception as e:
-##        e = str(e)
-##        T_ins_warning(T,S,e)
+        if scroller[1] == 1.0:  
+                T.yview(END)
+
+        data = file_recvd(sf)
+        sleep(0.05)
+        if data == 'READY::':
+            sf.send('UPLOAD::')
+        data = file_recvd(sf)
+        sleep(0.05)
+        if data == 'READY::':
+            if passwd is '':
+                registered = False
+            else:
+                registered = True
+                sf.send('USRINFO::'+username+']'+passwd)
+        data = file_recvd(sf)
+        sleep(0.05)
+        sf.send('SENDFIL::'+name)
+        buflen = 0
+        if registered == True:
+            data = file_recvd(sf)
+            sleep(0.05)
+            if data == 'SENDR::':
+                with open(path, "rb") as fi:
+                    buf = fi.read(8192)
+                    while (buf):
+                        sf.send(buf)
+                        buf = fi.read(8192)
+                        buflen += 1
+                T.config(yscrollcommand=S.set,state="normal")
+                tim2 = round(time() - tim,2)
+                T.insert(END, get_cur_time()+' File sent in '+str(tim2)+'sec. - '+str(round(buflen/tim2*8/1024,2))+' MB/s\n', 'blackcol')
+                T.config(yscrollcommand=S.set,state="disabled")
+                sleep(1)
+                sf.send('ENDING::')
+                print 'File share thread stopped - ',name
+    except Exception as e:
+        e = str(e)
+        T_ins_warning(T,S,e)
     if scroller[1] == 1.0:  
             T.yview(END)
+    try:
+        sf.close
+    except:
+        pass
 
 def share_file():
     path= askopenfilename()
@@ -1411,8 +1531,26 @@ def share_file():
             name = name[c+1:]
         elif b is -1 and c is -1:
             break
-        print name
-    Thread(target=share_file_thread,args=(path,name,)).start()
+    if len(name) > 0:
+        Thread(target=share_file_thread,args=(path,name,)).start()
+
+def write_logfile(dirpath,filename,text):
+    b = filename.find('.txt')
+    if b is -1:
+        filename = filename+'.txt'
+    try:
+        fh = open(dirpath+filename, 'a')
+        fh.write(text)
+        fh.close()
+    except:
+        try:
+            print 'Wrong path, saving in /log'
+            os.makedirs('log')
+        except:
+            pass
+        fh = open('log/'+filename, 'a')
+        fh.write(text)
+        fh.close()
 
 def Changelog():
     global font_size, text_font
@@ -1518,7 +1656,8 @@ autoauth = int(read_settings('autoauth='))
 offline_msg = int(read_settings('offline_msg='))
 update_enabled = int(read_settings('update_enabled='))
 update_link = str(read_settings('update_link='))
-write_log = 1
+fdl_path = str(read_settings('fdl_path='))
+write_log = int(read_settings('chlog='))
 
 ## Setting global vars
 sound_interval = 0
@@ -1531,7 +1670,9 @@ cp_is = False
 cp_focus = False
 kill_reconnect = False
 connected_server = ''
-sender_thread_list = []
+sender_thread_list,userlog_list = [], []
+day_number = strftime("%d")
+print 'day is ',day_number
 ## Tkinter below
 root = Tk()
 root.title("iSPTC - "+username)
@@ -1562,23 +1703,24 @@ menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
 
 menu3 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Commands',menu=menu3)
+menu3.add_command(label='Go afk', command=send_afk)
 menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
 menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
 menu3.add_separator()              
-menu3.add_command(label='Go afk', command=send_afk)
 menu3.add_command(label='Print help', command=T_ins_help)
 menu3.add_command(label='Print userlist', command=T_ins_userlist)
 menu3.add_command(label='Print log', command=T_ins_log)
 menu3.add_command(label='Print link list', command=T_ins_linklist)
 
 menu4 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Share',menu=menu4)
-menu4.add_command(label='File', command=share_file)
+menu.add_cascade(label='File',menu=menu4)
+menu4.add_command(label='Share', command=share_file)
 
 menu5 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Settings',menu=menu5)
 menu5.add_command(label='Set user', command=set_username)
 menu5.add_command(label='Set font', command=font_menu)
+menu5.add_command(label='Set download path', command=download_menu)
 menu5.add_command(label='Color settings', command=color_menu)
 menu5.add_command(label='Update settings', command=update_menu)
 menu5.add_command(label='Sound settings', command=sound_menu)
@@ -1598,8 +1740,9 @@ def create_widgets():
     S2 = Scrollbar(root, width=15)
     T = Text(root, height=46, width=114,wrap=WORD)
     ## bordercolors
-##root.configure(background='red')
+##    root.configure(background='red')
 ##    widliste = [T,E,User_area, S, S2]
+##    widliste = [S,S2]
 ##    for x in widliste:
 ##        x.config(background='black')
 ##    for x in widliste:
@@ -1608,6 +1751,8 @@ def create_widgets():
 ##        x.config(highlightbackground='black')
 ##    for x in widliste:
 ##        x.config(bd=0)
+##    for x in widliste:
+##        x.config(troughcolor='black')
         
     S.pack(side=RIGHT, fill=Y)
     if hide_users == 0:
@@ -1635,14 +1780,20 @@ def tag_colors():
     T.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
     T.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
     T.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
+    T.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
     T.tag_configure('blue_link', font=(fontlist[text_font[0]], font_size), foreground='blue')
     T.tag_configure('timecol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    T.tag_configure('browncol', font=(fontlist[text_font[0]], font_size), foreground='brown')
+    T.tag_configure('browncol', font=(fontlist[text_font[0]], font_size), foreground='#862d2d')
+    T.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
     T.tag_configure('privatecol', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='white')
     T.tag_configure('privatgreen', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='#009900')
     T.tag_configure('privatlink', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='blue')
-
+    T.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
+    T.tag_configure('light-grey-bg', font=(fontlist[text_font[0]], font_size), background='#eaeefa',foreground='black')
     if hide_users is not 1:
+        User_area.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
+        User_area.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
+        User_area.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
         User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
         User_area.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
         User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
@@ -1666,8 +1817,8 @@ root.bind('<Button-3>', copy_paste_buttons)
 
 
 def task():
-    global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join
-    global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server
+    global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
+    global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
     if sound_interval > 0:
         sound_interval-=float(task_loop_interval)/1000
     if msg_recv < len(data_list):
@@ -1677,6 +1828,9 @@ def task():
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
                 T.insert(END, get_cur_time()+name+data_list[x][9:],'bluecol')
+                userlog_list.append(get_cur_time()+name+data_list[x][9:])
+                if write_log == 1:
+                        write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
@@ -1685,6 +1839,9 @@ def task():
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
                 T.insert(END, get_cur_time()+name+data_list[x][9:],'browncol')
+                userlog_list.append(get_cur_time()+name+data_list[x][9:])
+                if write_log == 1:
+                        write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
                 scroller = S.get()
                 if scroller[1] == 1.0:  
                     T.yview(END)
@@ -1696,6 +1853,9 @@ def task():
                     T.config(yscrollcommand=S.set,state="normal")
                     name = lenghten_name('SERVER: ',21)
                     T.insert(END, get_cur_time()+name+data_list[x][9:],'bluecol')
+                    userlog_list.append(get_cur_time()+name+data_list[x][9:])
+                    if write_log == 1:
+                        write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
                     scroller = S.get()
                     if scroller[1] == 1.0:  
                         T.yview(END)
@@ -1713,20 +1873,15 @@ def task():
                 print "iSPTC - "+data_list[x][9:]+' - '+connected_server
                 root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
             else:
-                global linkk, write_log
+                userlog_list.append(get_cur_time()+remove_spaces(data_list[x][4:23])+': '+data_list[x][23:])
+                global linkk
                 mgreen = 'greencol'
                 mblack = 'blackcol'
                 mlink = 'bluecol'
                 T.config(yscrollcommand=S.set,state="normal")
                 nfind = find_2name(data_list[x][23:],username)
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
-
-##                ## Writes log
-##                if write_log == 1:
-##                    fh = open('load/'+connected_server, 'a')
-##                    fh.write(data_list[x][4:]+'\n')
-##                    fh.close()
-
+                    
                 ## Separates words
                 temp_list = []
                 dat = data_list[x][23:]
@@ -1744,6 +1899,7 @@ def task():
                 ## Tags words
                 T.insert(END, get_cur_time(),'blackcol')
                 T.insert(END, uname+': ',usercol)
+                    ## Detects private messages
                 if temp_list[0][0:2] == '@@':
                     mgreen = 'privatgreen'
                     mblack = 'privatecol'
@@ -1761,7 +1917,10 @@ def task():
                     if linkk is False and nfind is False:
                         T.insert(END, x,mblack)       
                 T.insert(END,'\n')
-                    
+                ## Writes to logfile
+                if write_log == 1:
+                    temppstring = ''.join(userlog_list[-1:])
+                    write_logfile('log/',connected_server,temppstring)
                       
                 nfind = False
                 scroller_to_end()
@@ -1785,4 +1944,3 @@ def update_task():
     root.after(task_loop_interval, task)
 root.after(50, update_task)
 root.mainloop()
-
