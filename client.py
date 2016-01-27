@@ -8,7 +8,11 @@ from tkFileDialog import askopenfilename
 from tkFileDialog import askdirectory
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
+<<<<<<< HEAD
 ver = '0.99c'
+=======
+ver = '0.99b'
+>>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
 
 sys_path = os.getcwd()
 bat_file = False
@@ -719,7 +723,11 @@ def update_checker(update_link):
         temp.append(x)
         
     upd_ver = temp[0]
+<<<<<<< HEAD
     upd_ver = upd_ver.rstrip()
+=======
+    print upd_ver
+>>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
     if upd_ver != strver:
         update = True
     if update == True:
@@ -1307,7 +1315,7 @@ def get_user_color(col,name,add_zero):
     elif col == addz+'2':
         return 'blackcol',name
     elif col == addz+'3':
-        return 'pinkcol',name
+        return 'orangecol',name
     elif col == addz+'4':
         return 'orangecol',name
     elif col == addz+'5':
@@ -1404,7 +1412,11 @@ def TCPconnect(ip,port):
     return contcp   
 
 def fldownloader_thread(name):
+<<<<<<< HEAD
     global connected_server, fdl_path
+=======
+    global connected_server
+>>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
     print 'File download thread started - ',name
     buflen, flstring = 0, ''
     scroller = S.get()
@@ -1436,6 +1448,7 @@ def fldownloader_thread(name):
                 break
             elif not data:
                 break
+<<<<<<< HEAD
         try:
             fh = open(fdl_path+name, 'ab')
             fh.write(flstring)
@@ -1443,6 +1456,10 @@ def fldownloader_thread(name):
             T_ins_warning(T,S,'Download path is wrong, saving in downloads/')
             fh = open('downloads/'+name, 'ab')
             fh.write(flstring)
+=======
+        fh = open('downloads/'+name, 'ab')
+        fh.write(flstring)
+>>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
         fh.close()
         T.config(yscrollcommand=S.set,state="normal")
         tim2 = round(time() - tim,2)
@@ -1533,6 +1550,7 @@ def share_file():
             break
     if len(name) > 0:
         Thread(target=share_file_thread,args=(path,name,)).start()
+<<<<<<< HEAD
 
 def write_logfile(dirpath,filename,text):
     b = filename.find('.txt')
@@ -1551,6 +1569,8 @@ def write_logfile(dirpath,filename,text):
         fh = open('log/'+filename, 'a')
         fh.write(text)
         fh.close()
+=======
+>>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
 
 def Changelog():
     global font_size, text_font
@@ -1791,7 +1811,10 @@ def tag_colors():
     T.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
     T.tag_configure('light-grey-bg', font=(fontlist[text_font[0]], font_size), background='#eaeefa',foreground='black')
     if hide_users is not 1:
+<<<<<<< HEAD
         User_area.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
+=======
+>>>>>>> c7b9a20518ee2cce1b95cbbe8dbdca41f64dcf71
         User_area.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
         User_area.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
         User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
