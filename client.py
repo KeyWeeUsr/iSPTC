@@ -264,7 +264,7 @@ def open_in_browser_btn():
         E.clipboard_append(clipboardData)    
 
 def copy_paste_buttons_del_thread(*arg):
-    sleep(0.05)
+    sleep(0.2)
 ##    try:
     cp_destroy()
 ##    except:
@@ -428,7 +428,7 @@ def join_srv_check(curselection,jaddr):
         join_server(jaddr)
                 
 def join_server(typing):
-    global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server
+    global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server, ver
     scroller = S.get()
     try:
         action_time = False
@@ -461,7 +461,7 @@ def join_server(typing):
         else:
             s.send('USRINFO::'+username+']'+passwd)
         sleep(0.2)
-        s.send('CONFIGR::offmsg='+str(offline_msg))
+        s.send('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
         kill_reconnect = True
     except Exception as e:
         e = str(e)
@@ -486,15 +486,22 @@ def T_ins_userlist():
     T.insert(END, '[Userlist]\n', 'light-grey-bg')
     T.insert(END, '[Level] [AFK] [Name] [IP]\n', 'light-grey-bg')
     for x in USRLIST:
+        while len(x) < 5:
+            x.append('')
         try:
             ## Inserts Online and Offline text tagged
             if x[1] == 'olfo-':
                 T.insert(END, x[0]+'\n','olfo-backgr')
             else:
-                if x[2]!='-1':
-                    T.insert(END, x[2]+', '+x[3]+', '+x[0]+', '+x[1]+'\n', 'black')
-        except:
-            pass
+                if x[0] == '' and x[1] == '' and x[2] == '':
+                    pass
+                elif x[2]!='-1':
+                    if x[4] == 'unknown' or x[4] == '':
+                        T.insert(END, x[2]+', '+x[3]+', '+x[0]+', '+x[1]+'\n', 'blackcol')
+                    else:
+                        T.insert(END, x[2]+', '+x[3]+', '+x[0]+', '+x[1]+', '+x[4]+'\n', 'blackcol')
+        except Exception as e:
+            print e
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 

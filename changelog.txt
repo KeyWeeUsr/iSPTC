@@ -1,3 +1,18 @@
+## Client[0.99d] - 2016-1-28
+### Added
+ - Sends version number to server
+ - Commands /u /usr /users - print client versions
+ - Command window (ctrl-g hotkey) can run commands on "Enter" keypress
+### Fix
+ - Textbox autofocus on mousewheel events works in Windows too now
+ - Context menu threaded destroy worked in Linux only and crashed in Windows. Switched Windows to a different system
+
+## Server[0.98c] - 2016-1-28
+### Added
+ - Accepts version information
+ - Client version in user list
+
+
 ## Client[0.99c] - 2016-1-27
 ### Added
  - Downloader target folder path selection

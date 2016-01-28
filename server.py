@@ -214,7 +214,7 @@ def send_ulist_only():
         if ip_sending_enabled == True:
             ## Checks if username is set and appends to list
             if len(x[2]) > 1:
-                sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']]]'
+                sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']['+str(x[6])+']]]'
 ##        else:
 ##            sendlist+= '[[['+str(x[2])+']['+str(x[4])+']]]'
     for x in off_users:
@@ -235,7 +235,7 @@ def send_user_list(s,conn,oldusername,username,addr,level):
         if ip_sending_enabled == True:
             ## Checks if username is set and appends to list
             if len(x[2]) > 1:
-                sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']]]'
+                sendlist+= '[[['+str(x[2])+']['+str(x[3][0])+']['+str(x[4])+']['+str(x[5])+']['+str(x[6])+']]]'
 ##        else:
 ##            sendlist+= '[[['+str(x[2])+']['+str(x[4])+']]]'
     for x in off_users:
@@ -373,12 +373,12 @@ def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,r
 def clientHandler(i):
     global threadip, threads, msgprint_enabled, logging_enabled, welcome_msg, iplist, action_time, shared_filelist
     username,username2,username_set,authed_user,off_msg = '','', False, True, '0'
-    level, timeouts = 1, 0
+    level, timeouts, usr_ver = 1, 0, 'unknown'
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
     print get_cur_time(),addr," is now connected!"
     chatlog.append([get_cur_time(),addr[0]," is now connected!"])
-    ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk
-    threadip.append([str(i),conn,'',[addr[0],addr[1]],1,'1'])
+    ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk,6client version
+    threadip.append([str(i),conn,'',[addr[0],addr[1]],1,'1',usr_ver])
     conn.sendall(welcome_msg)
     while 1:
         data = recieveData(conn,4096)
@@ -495,12 +495,12 @@ def clientHandler(i):
             else:
                 time.sleep(0.1)
                 conn.send('WSERVER::Wrong pass')
-        ## Configure offline msg
+        ## Configure offline msg and client version
         elif data[0:9] == 'CONFIGR::':
             if username_set is True and authed_user is True:
                 b = data.find('offmsg=')
                 if b is not -1:
-                    off_msg = data[b+len('offmsg='):]
+                    off_msg = data[b+len('offmsg=')]
                     for levels in iplist:
                         for x in levels[1]:
                             if x[0] == username2:
@@ -509,6 +509,18 @@ def clientHandler(i):
                     time.sleep(0.1)
                     conn.send('WSERVER::off_msg set to: '+off_msg)
                     time.sleep(0.1)
+            b = data.find('ver=')
+            if b is not -1:
+                usr_ver = data[b+len('ver='):]
+                b = usr_ver.find(' ')
+                if b is not -1:
+                    usr_ver = usr_ver[:b]
+                if len(usr_ver) > 50:
+                    usr_ver = usr_ver[:50]
+                for x in threadip:
+                    if x[0] == str(i):
+                        x[6] = usr_ver
+                        
             else:
 ##                time.sleep(0.1)
 ##                conn.send('WSERVER::You have no power here')
