@@ -9,7 +9,7 @@ from tkFileDialog import askdirectory
 from tkColorChooser import askcolor
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.99c'
+ver = '0.99d'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -94,7 +94,7 @@ def get_settings(text,text_find):
     except:
         c = str(1)
         fh = open('load/settings.cfg', 'a')
-        fh.write(text_find+c+'\n')
+        fh.write('\n'+text_find+c)
         fh.close()
     return c
 
@@ -239,11 +239,14 @@ def get_cur_time():
         return strftime("%H:%M:%S")+' '
 
 def cp_destroy(*arg):
-    bb1.destroy()
-    bb2.destroy()
-    bb3.destroy()
-    bb4.destroy()
-    bb5.destroy()
+    try:
+        bb1.destroy()
+        bb2.destroy()
+        bb3.destroy()
+        bb4.destroy()
+        bb5.destroy()
+    except:
+        pass
 
 def open_in_browser_btn():
     try:
@@ -260,12 +263,12 @@ def open_in_browser_btn():
         E.clipboard_clear()
         E.clipboard_append(clipboardData)    
 
-def copy_paste_buttons_del_thread():
-    sleep(0.07)
-    try:
-        cp_destroy()
-    except:
-        pass
+def copy_paste_buttons_del_thread(*arg):
+    sleep(0.05)
+##    try:
+    cp_destroy()
+##    except:
+##        pass
 
 def copy_paste_buttons_del(*arg):
     Thread(target=copy_paste_buttons_del_thread).start()
@@ -304,6 +307,11 @@ def copy_paste_buttons(*arg):
     bb5 = Button(root, text='Paste', width=50,
                     command=lambda: {entry_paste(),cp_destroy()})
     bb5.place(x=m_x, y=m_y+104,width=120, height=26)
+##    bb1.config(relief=SUNKEN,bd=1)
+##    bb2.config(relief=SUNKEN,bd=1)
+##    bb3.config(relief=SUNKEN,bd=1)
+##    bb4.config(relief=SUNKEN,bd=1)
+##    bb5.config(relief=SUNKEN,bd=1)
 
 def sender_thread():
     global sender_thread_list, s, action_time
@@ -884,6 +892,7 @@ def command_window(*arg):
         cww.destroy()
     def close_func(*arg):
         cww.destroy()
+    cww.bind('<Return>', run_func)
     cww.bind('<Escape>', close_func)
 
 def change_name(t_new_name,t_passwd,t_offline_msg):
@@ -1546,7 +1555,52 @@ def entrym_BACK(*arg):
     if entrilen > 0:
         if entry_message_arch*-1 < entrilen:
             entry_message_arch -= 1
-            textt.set(entry_mlist[entry_message_arch])        
+            textt.set(entry_mlist[entry_message_arch])
+            
+def rClicker(e):
+    ''' right click context menu for all Tk Entry and Text widgets
+    '''
+    try:
+        def rClick_Copy(e, apnd=0):
+            e.widget.event_generate('<Control-c>')
+        def rOpenBrowser(e):
+            open_in_browser_btn()
+        def rCommandWin(e):
+            command_window()
+        def rClick_Clear(e):
+            textt.set('')
+        def rClick_Paste(e):
+            entry_paste()
+
+        e.widget.focus()
+
+        nclst=[(' Open in browser', lambda e=e: rOpenBrowser(e)),
+               (' Command window', lambda e=e: rCommandWin(e)),
+               (' Clear', lambda e=e: rClick_Clear(e)),
+               (' Copy', lambda e=e: rClick_Copy(e)),
+               (' Paste', lambda e=e: rClick_Paste(e)),
+               ]
+
+        rmenu = Menu(None, tearoff=0, takefocus=0)
+
+        for (txt, cmd) in nclst:
+            rmenu.add_command(label=txt, command=cmd)
+
+        rmenu.tk_popup(e.x_root+40, e.y_root+10,entry="0")
+
+    except TclError:
+        print ' - rClick menu, something wrong'
+        pass
+    return "break"
+
+def rClickbinder(r):
+    try:
+        for b in [ 'Text', 'Entry', 'Listbox', 'Label']: #
+            r.bind_class(b, sequence='<Button-3>',
+                         func=rClicker, add='')
+    except TclError:
+        print ' - rClickbinder, something wrong'
+        passwd
 
 def motion(event):
     global m_x,m_y
@@ -2019,11 +2073,13 @@ def tag_colors():
 
 create_widgets()
     
-def focusT(*arg):
-    T.focus_set() 
+def focusT(event):
+    T.focus_set()
+##    if event.delta == -120:
+##        print event
 def click1():
     print "nothing"
-    
+
 root.bind('<Return>', enter_text)
 root.bind('<KP_Enter>', enter_text)
 E.bind('<Escape>', reset_entry)
@@ -2032,12 +2088,19 @@ root.bind('<FocusOut>', winf_isnt)
 root.bind('<Control-c>', copy_text)
 root.bind('<Control-g>', command_window)
 root.bind('<Motion>', motion)
-root.bind('<Button-3>', copy_paste_buttons)
-root.bind('<Button-1>', copy_paste_buttons_del)
-root.bind('<Button-4>', focusT)
-root.bind('<Button-5>', focusT)
+if OS != 'Windows':
+    root.bind('<Button-3>', copy_paste_buttons)
+    root.bind("<Button-4>", focusT)
+    root.bind("<Button-5>", focusT)
+    root.bind('<Button-1>', copy_paste_buttons_del)
+if OS == 'Windows':
+    root.bind('<Button-3>',rClicker, add='')
+    root.bind("<MouseWheel>", focusT)
+    
+## Entry log
 E.bind('<Up>', entrym_BACK)
 E.bind('<Down>', entrym_FORWARD)
+## Stores name of activated widget for rightclick menu position adjustments
 User_area.bind('<Enter>', set_activated_U)
 T.bind('<Enter>', set_activated_T)
 E.bind('<Enter>', set_activated_E)
@@ -2047,11 +2110,13 @@ S2.bind('<Enter>', set_activated_S2)
 def task():
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
     global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
+    global windows_destroy_m3_buttons
     if sound_interval > 0:
         sound_interval-=float(task_loop_interval)/1000
     if msg_recv < len(data_list):
         for x in range(msg_recv,len(data_list)):
 ##            print data_list[x]
+            ## Server messages
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
@@ -2063,6 +2128,7 @@ def task():
                 if scroller[1] == 1.0:  
                     T.yview(END)
                 T.config(yscrollcommand=S.set,state="disabled")
+            ## Private server messages
             elif data_list[x][:9] == 'WSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
@@ -2074,6 +2140,7 @@ def task():
                 if scroller[1] == 1.0:  
                     T.yview(END)
                 T.config(yscrollcommand=S.set,state="disabled")
+            ## Server leave/join messages
             elif data_list[x][:9] == 'SERVELJ::':
                 if leave_join == 0:
                     doing = 'nothing'
@@ -2088,18 +2155,22 @@ def task():
                     if scroller[1] == 1.0:  
                         T.yview(END)
                     T.config(yscrollcommand=S.set,state="disabled")
+            ## Server closing connection
             elif data_list[x][:9] == 'CLOSING::':
                 T.config(yscrollcommand=S.set,state="normal")
                 war = lenghten_name('WARNING: ',21)
                 T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
                 leave_server()
                 T.config(yscrollcommand=S.set,state="disabled")
+            ## User list update
             elif data_list[x][:9] == 'USRLIST::':
                 organise_USRLIST(data_list[x][9:])
+            ## User name change
             elif data_list[x][:9] == 'DUPLICT::':
                 data_list[x] = data_list[x].rstrip()
                 print "iSPTC - "+data_list[x][9:]+' - '+connected_server
                 root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
+            ## Messages from users
             else:
                 userlog_list.append(get_cur_time()+remove_spaces(data_list[x][4:23])+': '+data_list[x][23:])
                 global linkk
@@ -2159,7 +2230,7 @@ def task():
                     icon_was_switched = True
             msg_recv +=1
     root.after(task_loop_interval, task)  # reschedule event
-
+    
 ##te = Test(root)
 set_winicon(root,'icon')
 
