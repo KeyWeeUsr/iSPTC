@@ -8,7 +8,7 @@ from tkFileDialog import askopenfilename
 from tkFileDialog import askdirectory
 from tkColorChooser import askcolor
 from subprocess import *
-import socket,os,platform,webbrowser, tkFont, urllib, urllib2, wx
+import socket,os,platform,webbrowser, tkFont, urllib, urllib2
 
 ver = '1.00'
 
