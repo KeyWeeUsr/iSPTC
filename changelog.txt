@@ -1,4 +1,4 @@
-## Client[0.99d] - 2016-1-28
+## Client[1.00] - 2016-1-28
 ### Added
  - Sends version number to server
  - Commands /u /usr /users - print client versions
@@ -7,10 +7,14 @@
  - Textbox autofocus on mousewheel events works in Windows too now
  - Context menu threaded destroy worked in Linux only and crashed in Windows. Switched Windows to a different system
 
-## Server[0.98c] - 2016-1-28
+## Server[0.99] - 2016-1-28
 ### Added
+ - Dedicated message sender thread (eventThread)
+ - Ending characters for messages
  - Accepts version information
  - Client version in user list
+### Changed
+ - Removed most sleep timers
 
 
 ## Client[0.99c] - 2016-1-27

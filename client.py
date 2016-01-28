@@ -8,8 +8,9 @@ from tkFileDialog import askopenfilename
 from tkFileDialog import askdirectory
 from tkColorChooser import askcolor
 from subprocess import *
-import socket,os,platform,webbrowser, tkFont, urllib, urllib2
-ver = '0.99d'
+import socket,os,platform,webbrowser, tkFont, urllib, urllib2, wx
+
+ver = '1.00'
 
 sys_path = os.getcwd()
 bat_file = False
@@ -40,6 +41,7 @@ def set_winicon(window,name):
             window.tk.call('wm', 'iconphoto', window._w, img)
         except:
             print "Couldn't load Linux icon"
+    
 
 def readf(filename):
     file = filename
@@ -212,7 +214,7 @@ def closewin():
         sender_thread_list.append('close::')
         action_time = False
 ##        s.send('close::')
-        sleep(0.3)
+        sleep(0.2)
         s.close()
         root.quit()
         try:
@@ -221,7 +223,7 @@ def closewin():
         except:
             pass
     except:
-        sleep(0.3)
+        sleep(0.2)
         root.quit()
         try:
             root.destroy()
@@ -337,13 +339,21 @@ def recv_thread():
     global action_time, s, connected_server
     while action_time is True:
         try:
-            data = s.recv(2048)
+            data = s.recv(4096)
             if not data:
                 if action_time is True:
                     action_time = False
                     Thread(target=jlost_reconnect).start()
                 break
-            data_list.append(data+'\n')
+            ## Finds messages and appends
+            while True:
+                b = data.find('<e%$>')
+                if b is not -1:
+                    data_list.append(data[:b]+'\n')
+                    if len(data[b:]) > 4:
+                        data = data[b+len('<e%$>'):]
+                else:
+                    break
         except:
             action_time = False
             Thread(target=jlost_reconnect).start()
@@ -433,7 +443,7 @@ def join_server(typing):
     try:
         action_time = False
         s.send('close::')
-        sleep(0.3)
+        sleep(0.2)
         s.close()
     except:
         pass
@@ -455,13 +465,14 @@ def join_server(typing):
         action_time = True
         Thread(target=recv_thread).start()
         Thread(target=sender_thread).start()
-        sleep(0.2)
         if passwd is '' or autoauth is 0:
-            s.send('USRINFO::'+username)
+            sender_thread_list.append('USRINFO::'+username)
+##            s.send('USRINFO::'+username)
         else:
-            s.send('USRINFO::'+username+']'+passwd)
-        sleep(0.2)
-        s.send('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
+            sender_thread_list.append('USRINFO::'+username+']'+passwd)
+##            s.send('USRINFO::'+username+']'+passwd)
+        sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
+##        s.send('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
         kill_reconnect = True
     except Exception as e:
         e = str(e)
@@ -719,7 +730,7 @@ def leave_server():
         sender_thread_list.append('close::')
 ##        s.send('close::')
         action_time = False
-        sleep(0.3)
+        sleep(0.2)
         s.close()
         s = ''
         T.config(yscrollcommand=S.set,state="normal")
@@ -2113,11 +2124,14 @@ T.bind('<Enter>', set_activated_T)
 E.bind('<Enter>', set_activated_E)
 S.bind('<Enter>', set_activated_S)
 S2.bind('<Enter>', set_activated_S2)
-       
+
 def task():
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
     global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
-    global windows_destroy_m3_buttons
+##    getsize = 0
+##    for x in data_list:
+##        getsize += sys.getsizeof(x)
+##    print getsize
     if sound_interval > 0:
         sound_interval-=float(task_loop_interval)/1000
     if msg_recv < len(data_list):
@@ -2240,7 +2254,6 @@ def task():
     
 ##te = Test(root)
 set_winicon(root,'icon')
-
 root.protocol('WM_DELETE_WINDOW', closewin)
 def update_task():
     if update_enabled == 1:

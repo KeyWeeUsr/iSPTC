@@ -5,7 +5,7 @@
 
 ![Client small window screenshot](https://github.com/Bakterija/iSPTC/tree/master/load/screen2.png)
 
-![Changelog](https://github.com/Bakterija/iSPTC/tree/master/load/changelog.txt)
+![Changelog](https://github.com/Bakterija/iSPTC/tree/master/changelog.txt)
 
 ##Info
 * Works on Linux and Windows based os
