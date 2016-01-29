@@ -3,7 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 from time import sleep
-ver = '0.99'
+ver = '0.99b'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -247,7 +247,7 @@ def send_user_list(s,conn,oldusername,username,addr,level):
             event_list.append(['SEND','SSERVER::'+oldusername+' is now '+username])
 ##            broadcastData('SSERVER::'+oldusername+' is now '+username)
         else:
-            event_list.append(['SEND','SERVELJ::lvl['+str(level)+'] '+username+'('+addr+')'+' joined'])
+            event_list.append(['SEND','SERVELJ::'+username+'('+addr+')'+' joined'])
 ##            broadcastData('SERVELJ::lvl['+str(level)+'] '+username+'('+addr+')'+' joined')
     event_list.append(['SEND','USRLIST::'+sendlist[:-1]])
 ##    broadcastData('USRLIST::'+sendlist[:-1])
@@ -342,7 +342,8 @@ def send_offline_msg(username_set,authed_user,username2,conn):
             cnt = 0
             for x in off_messages:
                 if x[0].lower() == username2.lower():
-                    conn.send(x[1])
+                    event_list.append(['Send-Thread',conn,x[1]])
+##                    conn.send(x[1])
                     deletlist.append(cnt)
                 cnt+=1
             deletlist.reverse()
@@ -391,7 +392,7 @@ def eventThread():
             current_event += 1
             cnt += 1
         if cnt < 30:
-            sleep(0.02)
+            sleep(0.05)
     
 
 def clientHandler(i):

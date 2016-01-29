@@ -10,19 +10,10 @@ from tkColorChooser import askcolor
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2
 
-ver = '1.00'
+ver = '1.00b'
 
 sys_path = os.getcwd()
-bat_file = False
-try:
-    argv = sys.argv[1]
-    b = argv.find('bat_file')
-    if b is not -1:
-        sys_path+="\\iSPTC\\"
-        sys_path = str(sys_path)
-        bat_file=True
-except:
-    pass
+
 OS = platform.system()
 print sys_path
 if OS is 'Windows':
@@ -74,16 +65,13 @@ def edit_settings(text,text_find,new_value):
     count = 1
     return newlist
 
-def read_settings(text_find):
-    global bat_file, sys_path
-    if bat_file is True:
-        a = readf(sys_path+'load/settings.cfg')
-    else:
-        a = readf('load/settings.cfg')
-    a = get_settings(a,text_find)
+def read_settings(*arg):
+    global sys_path
+    a = readf('load/settings.cfg')
+    a = get_settings(a,arg[0],arg[1])
     return a
 
-def get_settings(text,text_find):
+def get_settings(text,text_find,default_value):
     for lines in text:
         b = lines.find(text_find)
         if b is not -1:
@@ -91,27 +79,21 @@ def get_settings(text,text_find):
     ## Checks if it exists and appends something, if not
     try:
         if c == '':
-            c = str(1)
-            write_settings(text_find[:-1],c)
+            c = default_value
+            write_settings(text_find[:-1],'\n'+c)
     except:
-        c = str(1)
+        c = default_value
         fh = open('load/settings.cfg', 'a')
-        fh.write('\n'+text_find+c)
+        fh.write('\n'+str(text_find)+str(c))
         fh.close()
     return c
 
 def write_settings(text_find,new_value):
-    global bat_file, sys_path
-    if bat_file is True:
-        a = readf(sys_path+'load/settings.cfg')
-        a = edit_settings(a,text_find,new_value)
-        text = a = '\n'.join(str(e) for e in a)
-        savef(text,sys_path+'load/settings.cfg')
-    else:
-        a = readf('load/settings.cfg')
-        a = edit_settings(a,text_find,new_value)
-        text = a = '\n'.join(str(e) for e in a)
-        savef(text,'load/settings.cfg')      
+    global sys_path
+    a = readf('load/settings.cfg')
+    a = edit_settings(a,text_find,new_value)
+    text = a = '\n'.join(str(e) for e in a)
+    savef(text,'load/settings.cfg')      
 
 def play_sound(name,ignore):
     if sound_settings[0] == 1:
@@ -382,7 +364,7 @@ def join_typing():
     temp_text = readf('load/serverlist')
     for x in temp_text:
         server_list.append(x)
-    joinaddr = str(read_settings('joinaddr='))
+    joinaddr = str(read_settings('joinaddr=',''))
     jaddr = StringVar()
     jaddr.set(joinaddr)
     jsrv = Toplevel()
@@ -454,7 +436,7 @@ def join_server(typing):
             write_settings('joinaddr',TCP_IP)
             connected_server = typing
         else:
-            joinaddr = str(read_settings('joinaddr='))
+            joinaddr = str(read_settings('joinaddr=',''))
             TCP_IP = joinaddr
             TCP_PORT = 44671
             connected_server = joinaddr
@@ -1149,7 +1131,14 @@ def font_menu():
     apply_display_font(display_text,text_font,fonts,font_size)
     def close_func(*arg):
         fom.destroy()
+    def focusList(event):
+        display.focus_set()
     fom.bind('<Escape>', close_func)
+    if OS != 'Windows':
+        fom.bind("<Button-4>", focusList)
+        fom.bind("<Button-5>", focusList)
+    if OS == 'Windows':
+        fom.bind("<MouseWheel>", focusList)
 
 def apply_display_font(display_text,font,fontlist,t_font_size):
     global font_size, text_font
@@ -1250,7 +1239,7 @@ def download_menu():
     dwlw.bind('<Escape>', close_func)
 
 def change_other_settings(a,b,c,d,e,f,g,h,i):
-    global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users
+    global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth
     global User_area, S2, T, S, E, s, username, write_log
     autojoin = a
     X_size = b
@@ -1594,7 +1583,7 @@ def rClicker(e):
 
         nclst=[(' Open in browser', lambda e=e: rOpenBrowser(e)),
                (' Command window', lambda e=e: rCommandWin(e)),
-               (' Clear', lambda e=e: rClick_Clear(e)),
+               (' Clear entry', lambda e=e: rClick_Clear(e)),
                (' Copy', lambda e=e: rClick_Copy(e)),
                (' Paste', lambda e=e: rClick_Paste(e)),
                ]
@@ -1900,49 +1889,36 @@ def set_activated_S2(*arg):
     activated_widget = 'S2'
 
 ## Loading from settings file
-### 0all_sound, 1entry, 2user textbox
+### 0all_sound, 1entry, 2username mention in textbox
 sound_settings = [1,1,1]
-task_loop_interval = int(500)
-task_loop_interval = int(read_settings('chat_interval='))
-sound_settings[0] = int(read_settings('enable_sound='))
-sound_settings[1] = int(read_settings('entry_enabled='))
-sound_settings[2] = int(read_settings('user_textbox='))
-dsound_interval = float(6.0)
-dsound_interval=float(read_settings('sound_interval='))
-leave_join = 1
-leave_join = int(read_settings('leave_join='))
-usr_symbolmatch = 0
-usr_symbolmatch = int(read_settings('symbol_match='))
-show_ttime= int(read_settings('show_ttime='))
-nadd_spaces= int(read_settings('nadd_spaces='))
-try:
-    username = str(read_settings('username='))
-    if username == 'default':
-        username = 'User'+str(randrange(1,999,1))
-    elif len(username) < 3:
-        username = 'User'+str(randrange(1,999,1))
-except:
-    print "Couldn't load username"
+task_loop_interval = int(read_settings('chat_interval=',500))
+sound_settings[0] = int(read_settings('enable_sound=',1))
+sound_settings[1] = int(read_settings('entry_enabled=',0))
+sound_settings[2] = int(read_settings('user_textbox=',1))
+dsound_interval=float(read_settings('sound_interval=',2.0))
+leave_join = int(read_settings('leave_join=',1))
+show_ttime= int(read_settings('show_ttime=',2))
+nadd_spaces= int(read_settings('nadd_spaces=',1))
+username = str(read_settings('username=','User'+str(randrange(1,999,1))))
+if len(username) < 1:
     username = 'User'+str(randrange(1,999,1))
-autojoin = 0
-autojoin = int(read_settings('autojoin='))
-hide_users = int(read_settings('hide_users='))
-X_size = int(read_settings('X_size='))
-Y_size = int(read_settings('Y_size='))
-font_size = int(read_settings('font_size='))
-text_font = (int(read_settings('tfont=')),)
-server_list = []
-passwd = str(read_settings('usrauth='))
-autoauth = int(read_settings('autoauth='))
-offline_msg = int(read_settings('offline_msg='))
-update_enabled = int(read_settings('update_enabled='))
-update_link = str(read_settings('update_link='))
-fdl_path = str(read_settings('fdl_path='))
-write_log = int(read_settings('chlog='))
-usra_len = int(read_settings('usra_len='))
-day_number_old = str(read_settings('day_number='))
+autojoin = int(read_settings('autojoin=',0))
+hide_users = int(read_settings('hide_users=',0))
+X_size = int(read_settings('X_size=',800))
+Y_size = int(read_settings('Y_size=',600))
+font_size = int(read_settings('font_size=',10))
+text_font = (int(read_settings('tfont=',10)),)
+passwd = str(read_settings('usrauth=',''))
+autoauth = int(read_settings('autoauth=',1))
+offline_msg = int(read_settings('offline_msg=',1))
+update_enabled = int(read_settings('update_enabled=',0))
+update_link = str(read_settings('update_link=',''))
+fdl_path = str(read_settings('fdl_path=','downloads/'))
+write_log = int(read_settings('chlog=',1))
+usra_len = int(read_settings('usra_len=',20))
+day_number_old = str(read_settings('day_number=','1'))
 window_sizes = []
-window_sizes.append([[str(read_settings('win_changelog_x='))],[str(read_settings('win_changelog_y='))]])
+window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_settings('win_changelog_y=','500'))]])
 
 ## Setting global vars
 sound_interval = 0
@@ -2095,14 +2071,20 @@ def focusT(event):
     T.focus_set()
 ##    if event.delta == -120:
 ##        print event
+def focus_entry(*arg):
+    E.focus_set()
 def click1():
     print "nothing"
+def join_server_shortcut():
+    join_server(False)
 
+root.bind("<Key>", focus_entry)
 root.bind('<Return>', enter_text)
 root.bind('<KP_Enter>', enter_text)
-E.bind('<Escape>', reset_entry)
+root.bind('<Escape>', reset_entry)
 root.bind('<FocusIn>', winf_is)
 root.bind('<FocusOut>', winf_isnt)
+root.bind('<Control-j>', join_server_shortcut)
 root.bind('<Control-c>', copy_text)
 root.bind('<Control-g>', command_window)
 root.bind('<Motion>', motion)
@@ -2124,6 +2106,7 @@ T.bind('<Enter>', set_activated_T)
 E.bind('<Enter>', set_activated_E)
 S.bind('<Enter>', set_activated_S)
 S2.bind('<Enter>', set_activated_S2)
+
 
 def task():
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
@@ -2252,7 +2235,6 @@ def task():
             msg_recv +=1
     root.after(task_loop_interval, task)  # reschedule event
     
-##te = Test(root)
 set_winicon(root,'icon')
 root.protocol('WM_DELETE_WINDOW', closewin)
 def update_task():
