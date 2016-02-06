@@ -404,7 +404,6 @@ def eventThread():
             elif x[0] == 'Send-Thread':
                 try:
                     x[1].send(x[2]+'<e%$>')
-                    print x[1],x[2]
                 except:
                     pass
             ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk,6client version

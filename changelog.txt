@@ -1,3 +1,11 @@
+## Client[1.02b] - 2016-2-6
+### Added
+ - File delete button for lvl 4+ in file manager
+### Changed
+ - File manager hotkey is <Control-q> now
+### Fix
+ - Previous recv_thread fix caused recv_thread to skip some messages, it's fixed in 1.02b
+
 ## Client[1.02] - 2016-2-6
 ### Added
  - Autocomplete usernames in entry box

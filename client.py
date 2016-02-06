@@ -24,12 +24,12 @@ from tkColorChooser import askcolor
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox
 
-ver = '1.02'
+ver = '1.02b'
 
 sys_path = os.getcwd()
 
 OS = platform.system()
-print sys_path
+print 'Path ',sys_path
 if OS is 'Windows':
     import winsound
 
@@ -346,14 +346,14 @@ def recv_thread():
             while True:
                 b = data.find('<e%$>')
                 if b is not -1:
-                    data_list.append(data[:b]+'\n')
+                    data_list.append(data[:b])
                     if len(data[b:]) > 4:
                         data = data[b+len('<e%$>'):]
+                else:
+                    break
                 cnt+= 1
                 if cnt == 500:
                     tkMessageBox.showerror(title='Error', message='recv_thread looped 500 times')
-                    break
-                else:
                     break
         except:
             action_time = False
@@ -497,7 +497,7 @@ def open_address_in_webbrowser(address):
 def Tbox_insert_lock(Tbx,Scr,text,tag):
     scroller = Scr.get()
     Tbx.config(yscrollcommand=Scr.set,state="normal")
-    Tbx.insert(END, text+'\n', tag)
+    Tbx.insert(END, text, tag)
     Tbx.config(yscrollcommand=Scr.set,state="disabled")
     Tbx.yview(END)
 
@@ -532,7 +532,7 @@ def T_ins_help():
     T.insert(END, '[Help]\n', 'light-grey-bg')
     T.insert(END, 'Type:\n/help to see this message \n/u for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
              '/reg "password" to register\n/auth "password" to authenticate\n/clear to clear textbox\n/share to share a file\n'+
-             '/fm to open file manager\n/fl to show file list\n/files to open download foler\n', 'light-grey-bg')
+             '/fm to open file manager\n/fl to show file list\n/files to open download folder\n', 'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
@@ -540,7 +540,7 @@ def T_ins_log():
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Log]\n', 'light-grey-bg')
     for x in userlog_list:
-        T.insert(END, x,'light-grey-bg')
+        T.insert(END, x+'\n','light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
@@ -548,7 +548,7 @@ def T_ins_datalist():
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[data_list]\n', 'light-grey-bg')
     for x in data_list:
-        T.insert(END, x,'light-grey-bg')
+        T.insert(END, x+'\n','light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
     
@@ -640,12 +640,14 @@ def t_auth_window(auth_or_register):
 def T_ins_file_list():
     global file_list, s
     sender_thread_list.append('RQFILES::')
-    T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[File list]\n', 'light-grey-bg')
-    for x in file_list:
-        T.insert(END, x, 'light-grey-bg')
-    T.config(yscrollcommand=S.set,state="disabled")
-    T.yview(END)
+    def append_files():
+        T.config(yscrollcommand=S.set,state="normal")
+        T.insert(END, '[File list]\n', 'light-grey-bg')
+        for x in file_list:
+            T.insert(END, str(x)+'\n', 'light-grey-bg')
+        T.config(yscrollcommand=S.set,state="disabled")
+        T.yview(END)
+    root.after(300, append_files)
 
 def T_ins_warning(T,S,text):
     T.config(yscrollcommand=S.set,state="normal")
@@ -1329,18 +1331,18 @@ def file_manager():
                     e = str(e)
                     self.selected = 'none'
                 for x in dl_ul_events[self.dl_ul_event_counter:]:
-                    Tbox_insert_lock(Tbox,Scroll,x[0]+' '+x[1]+' '+x[2],'black')
+                    Tbox_insert_lock(Tbox,Scroll,x[0]+' '+x[1]+' '+x[2]+'\n','black')
                     self.dl_ul_event_counter += 1
 ##                self.frame_xsize += 1
 ##                frame.config(width=self.frame_xsize)
                 topwin.after(10,lambda: self.aftertask2(Tbox,Scroll,frame,frame2,frame3))
                 self.windowX = topwin.winfo_width()
                 self.windowY = topwin.winfo_height()
-                self.frame_xsize = self.windowX*0.48
+                self.frame_xsize = self.windowX*0.53
                 self.frame_ysize = self.windowY*0.95
-                self.frame2_xsize = self.windowX*0.48
+                self.frame2_xsize = self.windowX*0.43
                 self.frame2_ysize = self.windowY*0.95
-                self.frame3_xsize = self.windowX*0.45
+                self.frame3_xsize = self.windowX*0.43
                 self.frame3_ysize = self.windowY*0.1
                 frame.config(width=self.frame_xsize,height=self.frame_ysize)
                 frame2.config(width=self.frame2_xsize,height=self.frame2_ysize)
@@ -1387,6 +1389,11 @@ def file_manager():
                         if self.tree.column(car_header[ix],width=None)<col_w:
                             self.tree.column(car_header[ix], width=col_w)
 
+            def delete_all_button(self,Tbox,Scroll):
+                enter_text('command_window','s/clear files')
+                Tbox_insert_lock(Tbox,Scroll,get_cur_time()+'Deleting files'+'\n','red')
+                topwin.lift()
+
             def share_button(self,Tbox,Scroll):
                 filename = share_file()
                 topwin.lift()
@@ -1409,6 +1416,8 @@ def file_manager():
                 button.pack(anchor=SW,side=LEFT)
                 button = Button(frame, text='Download', command=lambda :self.download_button(Tbox,Scroll))
                 button.pack(padx=10,anchor=SW,side=LEFT)
+                button = Button(frame, text='Clear memory', command=lambda :self.delete_all_button(Tbox,Scroll))
+                button.pack(padx=50,anchor=SW,side=LEFT)
 
         def sortby(tree, col, descending):
             """sort tree contents when a column header is clicked on"""
@@ -1465,10 +1474,10 @@ def file_manager():
             else:
                 topwin.after(200,file_list_to_MultiColl)
 
-        car_header = ['Name', 'Size MB','Format','Upload time','Remaining time']
+        car_header = ['Name', 'Size MB','Format','Uploaded','Remaining']
         car_list = []
         topwin = Toplevel()
-        topwin.minsize(700,400)
+        topwin.minsize(800,420)
         set_winicon(topwin,'icon')
         topwin.title("File manager") 
         
@@ -1685,7 +1694,6 @@ def organise_USRLIST(data):
     for x in off_usr:
         USRLIST.append(x)
 
-    print 'USRLIST received'
     if hide_users == 0:
         user_area_insert()
 
@@ -2318,7 +2326,7 @@ menu3.add_command(label='Help', command=T_ins_help)
 menu3.add_command(label='File list', command=lambda: enter_text('command_window','/fl'))
 menu3.add_command(label='Link list', command=T_ins_linklist)
 menu3.add_command(label='Log', command=T_ins_log)
-menu3.add_command(label='Open download foler', command=lambda: enter_text('command_window','/files'))
+menu3.add_command(label='Open download folder', command=lambda: enter_text('command_window','/files'))
 menu3.add_command(label='User list', command=T_ins_userlist)
 
 menu4 = Menu(menu,tearoff=0)
@@ -2431,17 +2439,17 @@ def click1(*arg):
     pass
 
 root.bind("<Tab>", return_break)
-root.bind("<Control-d>",lambda x: file_manager())
+root.bind("<Control-q>",lambda x: file_manager())
 root.bind("<Control-m>",lambda x: open_address_in_webbrowser(fdl_path))
+root.bind('<Control-j>', join_server_shortcut)
+root.bind('<Control-c>', copy_text)
+root.bind('<Control-g>', command_window)
 ##root.bind("<Key>", focus_entry)
 root.bind('<Return>', enter_text)
 root.bind('<KP_Enter>', enter_text)
 root.bind('<Escape>', reset_entry)
 root.bind('<FocusIn>', winf_is)
 root.bind('<FocusOut>', winf_isnt)
-root.bind('<Control-j>', join_server_shortcut)
-root.bind('<Control-c>', copy_text)
-root.bind('<Control-g>', command_window)
 root.bind('<Motion>', motion)
 if OS != 'Windows':
     root.bind('<Button-3>', copy_paste_buttons)
@@ -2482,7 +2490,7 @@ def task():
             if data_list[x][:9] == 'SSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
-                T.insert(END, get_cur_time()+name+data_list[x][9:],'bluecol')
+                T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
                 userlog_list.append(get_cur_time()+name+data_list[x][9:])
                 if write_log == 1:
                         write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
@@ -2491,7 +2499,7 @@ def task():
             elif data_list[x][:9] == 'WSERVER::':
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
-                T.insert(END, get_cur_time()+name+data_list[x][9:],'browncol')
+                T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','browncol')
                 userlog_list.append(get_cur_time()+name+data_list[x][9:])
                 if write_log == 1:
                         write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
@@ -2503,7 +2511,7 @@ def task():
                 else:
                     T.config(yscrollcommand=S.set,state="normal")
                     name = lenghten_name('SERVER: ',21)
-                    T.insert(END, get_cur_time()+name+data_list[x][9:],'bluecol')
+                    T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
                     userlog_list.append(get_cur_time()+name+data_list[x][9:])
                     if write_log == 1:
                         write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
@@ -2527,7 +2535,7 @@ def task():
                 b = data_list[x].find(']')
                 T.config(yscrollcommand=S.set,state="normal")
                 name = lenghten_name('SERVER: ',21)
-                T.insert(END, get_cur_time()+name+data_list[x][9:b+0]+' shared a file, type /dl '+data_list[x][b+1:]+' or open file manager to download\n','bluecol')
+                T.insert(END, get_cur_time()+name+data_list[x][9:b+0]+' shared a file, type "/dl '+data_list[x][b+1:]+'" or open file manager to download\n','bluecol')
                 userlog_list.append(get_cur_time()+name+data_list[x][9:])
                 T.config(yscrollcommand=S.set,state="disabled")
             ## User list update
@@ -2536,7 +2544,6 @@ def task():
             ## User name change
             elif data_list[x][:9] == 'DUPLICT::':
                 data_list[x] = data_list[x].rstrip()
-                print "iSPTC - "+data_list[x][9:]+' - '+connected_server
                 root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
                 username = data_list[x][9:]
             ## Messages from users
