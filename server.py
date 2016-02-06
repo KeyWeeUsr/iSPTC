@@ -3,7 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 from time import sleep
-ver = '1.00'
+ver = '1.00b'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -404,6 +404,7 @@ def eventThread():
             elif x[0] == 'Send-Thread':
                 try:
                     x[1].send(x[2]+'<e%$>')
+                    print x[1],x[2]
                 except:
                     pass
             ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk,6client version
@@ -442,7 +443,7 @@ def clientHandler(i):
         cnt += 1
         if cnt == 15:
             break
-    conn.sendall(welcome_msg+'<e%$>')
+    event_list.append(['Send-Thread',conn,welcome_msg])
     while 1:
         data = recieveData(conn,4096)
         if data != 'kpALIVE::' and data != 'TIMEOUT::':

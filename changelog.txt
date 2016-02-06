@@ -12,6 +12,7 @@
  - New command - /files (Opens download foler)
  - New hotkey - <Control-d> (Opens file manager)
  - New hotkey - <Control-m> (Opens download foler)
+ - New hotkey - <Control-j> (Joins last server)
  - Various small GUI improvements
 ### Changed
  - Removed "Open in browser" rightclick button
