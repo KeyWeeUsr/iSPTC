@@ -1,0 +1,261 @@
+## Client[1.02] - 2016-2-6
+### Added
+ - Autocomplete usernames in entry box
+ - ttk Buttons, Scrollbars
+ - File manager
+ - Hyperlink detection for top level domains
+ - Dialogue windows for errors and warnings
+ - Multi column list object
+ - New command - /share (Opens file sharing window)
+ - New command - /fm (Opens file manager)
+ - New command - /fl (Shows file list)
+ - New command - /files (Opens download foler)
+ - New hotkey - <Control-d> (Opens file manager)
+ - New hotkey - <Control-m> (Opens download foler)
+ - Various small GUI improvements
+### Changed
+ - Removed "Open in browser" rightclick button
+ - User name mention sound will play only when another user mentions the user name
+ - User name mention sound will play only when text in chat is an exact match or match with "@" in front
+### Fix
+ - recv_thread won't go into an infinite loop after receiving unexcepted message ending symbols
+
+## Server[1.00] - 2016-2-6
+### Added
+ - Can start threads from server console
+ - Expanded file_list, newly added values - file_format, upload time, time remaining (placeholder)
+### Changed
+ - Switched user-append and user-remove functions to eventThread (Won't crash when many users leave at the same moment)
+### Fix
+ - Won't allow users to send message ending symbols to other users
+
+
+## Client[1.00b] - 2016-1-29
+### Added
+ - Will now always load and save default values when they can't be found in the settings.cfg file
+
+## Server[0.99b] - 2016-1-29
+### Fix
+ - Private offline messages get delivered again
+
+
+## Client[1.00] - 2016-1-28
+### Added
+ - Sends version number to server
+ - Commands /u /usr /users - print client versions
+ - Command window (ctrl-g hotkey) can run commands on "Enter" keypress
+### Fix
+ - Textbox autofocus on mousewheel events works in Windows too now
+ - Context menu threaded destroy worked in Linux only and crashed in Windows. Switched Windows to a different system
+
+## Server[0.99] - 2016-1-28
+### Added
+ - Dedicated message sender thread (eventThread)
+ - Ending characters for messages
+ - Accepts version information
+ - Client version in user list
+### Changed
+ - Removed most sleep timers (Increases speed)
+
+
+## Client[0.99c] - 2016-1-27
+### Added
+ - Downloader target folder path selection
+ - Chat message logging in log folder (Toggleable in other options)
+ - Command window (ctrl-g hotkey)
+ - Cycle through previous messages with "UP" and "DOWN" arrows
+ - Light grey background tag, used in every first line of a / command
+ - Command /datal - prints data_list
+ - Command /clear - clears textbox
+ - Corrected right click context menu position
+ - All menus can be closed with "Escape" button
+ - Background color tags for changelog window
+### Changed
+ - Separated online users from offline users in User_area
+ - /log command no longer prints the data_list, instead it prints a new userlog list that  is clearer and excludes unnecessary information, data_list can still be printed with /datal
+ - Commands /u /usr /users format, online and offline users are separated and background color tagged like in User_area. Changed value order for clarity
+ - Offline users are no longer light blue, instead they are grey
+ - Moved changelog to main folder
+### Fix
+ - Space was not inserted between time and usernames in chat when name length was not forced to 19chr
+ - Average upload and download speed is shown again
+
+## Server[0.98b] - 2016-1-27
+### Added
+ - List printer thread for s/** commands
+### Changed
+ - Increased max shared file name length from 61 to 131
+ - Removed annoying "You have no power here" message
+
+
+## Client[0.99b] - 2016-1-26
+### Added
+ - Chat colors
+### Changed
+ - Lvl 4 color changed from pink to orange
+### Fix
+ - Infinite loop when wrong file name is entered in /dl
+
+
+## Server[0.98] - 2016-1-25
+### Added
+ - New client commands - s/help, s/filelist, s/clear files, s/fld(server stores files in server folder)
+ - New server commands - filelist, clear files, fld(server stores files in server folder)
+### Fix
+ - Infinite loop when wrong file name is entered in /dl
+
+
+## Client[0.99] and Server[0.97] - 2016-1-23
+### Added
+ - File sharing
+
+
+## Server[0.95b] - 2016-1-14
+### Added
+ - Server can take commands from clients now. Added 3 - s/log, s/mlog, s/threadip.
+### Fix
+ - No chatlog.append on thread timeout
+
+
+## Client[0.98] - 2016-1-14
+### Added
+ - Message sender thread
+ - 'kpALIVE' automessage every 7 sec (Server autokicks after 30 sec of no communication now)
+ - "/users" command is back and also added "/usr". Now 3 commands show the user list, the first 2 and "/u"
+ - Server address is shown in title now
+
+## Server[0.95] - 2016-1-14
+### Added
+ - Time outs for user threads (set to every 8 sec currently)
+ - Users get kicked after 30 sec of no communication and reason is shown as TIMEOUT
+ - Welcome message can be changed from server console now with "welcm" command
+### Fix
+ - New lines get stripped from usernames
+
+
+## Client[0.97] - 2016-1-11
+### Added
+ - Enabled unicode for sent text messages
+ - Auto rejoin after losing connection
+### Changed
+ - Shortened "/users" command to "/u"
+ - Shortened "/register" command to "/reg"
+
+
+## Client[0.97] - 2016-1-11
+### Added
+ - Enabled unicode for sent text messages
+ - Auto rejoin after losing connection
+### Changed
+ - Shortened "/users" command to "/u"
+ - Shortened "/register" command to "/reg"
+
+
+## Client[0.96] - 2016-1-5
+### Added
+ - Updater (server not included)
+
+## Server[0.93c] - 2016-1-5
+### Fix
+ - broadcastPrivate function was looking for unregistered users when variable was not set and crashed a thread
+
+
+## Client[0.95b] - 2015-12-31
+### Added
+ - Commands after @Username
+### Changed
+ - Different colortag for private server warnings
+### Fix
+ - Won't crash when can't read settings file or find a value in it
+
+## Server[0.93b] - 2015-12-31
+### Added
+ - Warning when private message target user does not exist
+### Fix
+ - Threads won't crash when user is disconnecting with no username set
+
+
+## Client[0.95] - 2015-12-30
+### Added
+ - Offline messages (Offline users are tagged with light blue color)
+ - App title changes when username is a duplicate now
+## Changed
+ - Improved private message sending (Type @@ + "username" + "]" + your message)
+ - Added black background and colors for received private messages
+## Fixed
+ - Mistake that caused some tags to switch to size 10 fonts when changing size only
+
+## Server[0.93] - 2015-12-30
+### Added
+ - Offline messages for registered users (Can be switched off by clients)
+###
+Changed
+ - Improved replicant protection
+
+
+## Client[0.94c] - 2015-12-28
+### Added
+ - Brown color for first line of link list, help, log,userlist 
+### Changed
+ - Link_list command from /link_list to /ll
+### Fixed
+ - Some tags were hardcoded to size 10 instead of loading from settings
+
+
+## Client[0.94b] - 2015-12-28
+### Added
+ - Context menu buttons for entry widget clear and opening in browser
+### Fixed
+ - Client leave button not closing connection
+
+## Server[0.91b] - 2015-12-28
+### Fixed
+ - Thread numbers in connection list were being searched instead of compared, e.g. number 4 could be found in thread 14. This caused wrong users to be dropped
+
+
+## Client[0.94] - 2015-12-27
+### Fixed
+ - Recv thread [errno 9] bug
+
+
+## Client[0.93] - 2015-12-27
+### Added
+ - Registration  (Plain text)
+ - Password authentication (Plain text)
+### Fixed
+ - A warning is shown when connection to server is lost
+
+## Server[0.91] - 2015-12-27
+### Added
+ - Username registration (Plain text)
+ - Thread count configuration in server.cfg file
+
+
+## Client[0.91t] - 2015-12-26
+### Added
+ - Private messages (Type @@ + "username" + space + your message)
+### Changed
+ - the way that userlevels get displayed
+
+## Server[0.86t] - 2015-12-26
+### Added
+ - User levels
+ - IP address authentification
+ - Private messages
+
+
+## Client[0.91] - 2015-12-26
+### Added
+ - Changelog toplevel window
+ - Command to print all received links
+### Changed
+ - Increased username length to 19 to have space for duplicate renaming
+### Fixed
+ - text tagging bugs
+ - Tkinter error when attempting to color tag text in disabled user window
+
+## Server[0.86] - 2015-12-26
+### Fixed
+ - Duplica username bug
+###Changed
+ - Increased username length to 19 to have space for duplicate renaming
