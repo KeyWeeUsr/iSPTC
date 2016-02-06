@@ -3,7 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 from time import sleep
-ver = '0.99'
+ver = '1.00'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -117,7 +117,6 @@ def check_duplicate(name,conn):
                 break
             cnt += 1
         event_list.append(['Send-Thread',conn,"WSERVER::You are a replicant, changing your name..."])
-##        conn.send("WSERVER::You are a replicant, changing your name...")
         return name
     else:
         return name
@@ -221,7 +220,6 @@ def send_ulist_only():
     for x in off_users:
         sendlist+= '[[['+str(x)+'][Offline][0][0]]]'
     event_list.append(['SEND','USRLIST::'+sendlist[:-1]])
-##    broadcastData('USRLIST::'+sendlist[:-1])
 
 def send_user_list(s,conn,oldusername,username,addr,level):
     global threads
@@ -245,17 +243,25 @@ def send_user_list(s,conn,oldusername,username,addr,level):
     if username is not '':
         if oldusername is not '':
             event_list.append(['SEND','SSERVER::'+oldusername+' is now '+username])
-##            broadcastData('SSERVER::'+oldusername+' is now '+username)
         else:
-            event_list.append(['SEND','SERVELJ::lvl['+str(level)+'] '+username+'('+addr+')'+' joined'])
-##            broadcastData('SERVELJ::lvl['+str(level)+'] '+username+'('+addr+')'+' joined')
+            event_list.append(['SEND','SERVELJ::'+username+'('+addr+')'+' joined'])
     event_list.append(['SEND','USRLIST::'+sendlist[:-1]])
-##    broadcastData('USRLIST::'+sendlist[:-1])
 
 def recieveData(conn,bitr):# function to recieve data
     conn.settimeout(30)
     try:
-        data = conn.recv(bitr) # conn.recv(2048) waits for data of 2048 or less bytes and stores it in data
+        data = conn.recv(bitr) # waits for data and stores it in data
+        while True:
+            b = data.find('<e%$>')
+            if b is not -1:
+                dtmp = []
+                dtmp.append(data)
+                dtmp[b],dtmp[b+1],dtmp[b+2],dtmp[b+3],dtmp[b+4] = '', '', '', '', ''
+                data = ''
+                for x in dtmp:
+                    data = data+x
+            else:
+                break
     except Exception as e:
         e = str(e)
         if e == 'timed out':
@@ -287,7 +293,6 @@ def broadcastPrivate(conn,user, data):
         if is_registered == False and conn != '':
             try:
                 event_list.append(['Send-Thread',conn,'WSERVER::User not found'])
-##                conn.send('WSERVER::User not found')
             except:
                 pass
 
@@ -296,31 +301,41 @@ def broadcastData(data): # function to send Data
     for x in threadip:
         try:
             if x[2] is not '':
-                x[1].sendall(data+'<e%$>')
+                x[1].send(data+'<e%$>')
         except:
-##            print x[1],' NOT AVAILABLE'
+            print x[1],' NOT AVAILABLE'
             chatlog.append([get_cur_time(),x[1],' NOT AVAILABLE'])
             threadip.remove(x)
             send_ulist_only()
 
 def list_sender_thread(conn,lisst,typ):
-    if typ == 'filelist':
-        global shared_filelist
+    global shared_filelist
+    if typ == 'filelist-message':
         event_list.append(['Send-Thread',conn,'WSERVER::File count - '+str(len(shared_filelist))])
-##        conn.send('WSERVER::File count - '+str(len(shared_filelist)))
         tflsize = 0
         for x in shared_filelist:
             tflsize += len(x[1])
             flsizemb = float(len(x[1]))/float(1052291)
             flsizemb =  round(flsizemb,2)
             event_list.append(['Send-Thread',conn,'WSERVER::'+x[0]+'  MB['+str(flsizemb)+'] '+' B['+str(len(x[1]))+']'])
-##            conn.send('WSERVER::'+x[0]+'  MB['+str(flsizemb)+'] '+' B['+str(len(x[1]))+']')
+            sleep(0.02)
         event_list.append(['Send-Thread',conn,'WSERVER::Total size '+str(tflsize)])
-##        conn.send('WSERVER::Total size '+str(tflsize))
+    elif typ == 'filelist-list':
+        sendlist = ''
+        cnt = 0
+        for x in shared_filelist:
+            flsizemb = float(len(x[1]))/float(1052291)
+            flsizemb = round(flsizemb,2)
+            sendlist+= '[[['+x[0]+']['+str(flsizemb)+' MB'+']['+x[2]+']['+x[3]+']['+x[4]+']]]'
+            cnt += 1
+        if cnt == 0:
+            event_list.append(['Send-Thread',conn,'FILLIST::EMPTY-LIST'])
+        else:
+            event_list.append(['Send-Thread',conn,'FILLIST::'+sendlist])
     else:
         for x in lisst:
             event_list.append(['Send-Thread',conn,'WSERVER::'+str(x)])
-##            conn.send('WSERVER::'+str(x))
+            sleep(0.02)
 
 def remove_offline_usr(username2):
     cnt = 0
@@ -337,12 +352,11 @@ def send_offline_msg(username_set,authed_user,username2,conn):
                 cnt+=1
         if cnt > 0:
             event_list.append(['Send-Thread',conn,'WSERVER::We have '+str(cnt)+' messages stored for you'])
-##            conn.send('WSERVER::We have '+str(cnt)+' messages stored for you')
             deletlist = []
             cnt = 0
             for x in off_messages:
                 if x[0].lower() == username2.lower():
-                    conn.send(x[1])
+                    event_list.append(['Send-Thread',conn,x[1]])
                     deletlist.append(cnt)
                 cnt+=1
             deletlist.reverse()
@@ -361,8 +375,8 @@ def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,r
     else:
         event_list.append(['SEND','SERVELJ::'+username2+'('+addr[0]+')'+' left'])
 ##        broadcastData('SERVELJ::'+username2+'('+addr[0]+')'+' left')
-    print get_cur_time(),addr[0]," ",username2," is now disconnected!"
-    chatlog.append([get_cur_time(),addr," is now disconnected!"])
+    print get_cur_time(),addr[0]," ",username2," disconnected!"
+    chatlog.append([get_cur_time(),addr," disconnected!"])
     ## Enables private offline messaging for registered and authed user
     if off_msg == '1':
         if username_set is True and authed_user is True:
@@ -375,6 +389,7 @@ def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,r
     send_ulist_only()
 
 def eventThread():
+    global threadip
     current_event = 0
     while True:
         cnt = 0
@@ -387,11 +402,25 @@ def eventThread():
                 broadcastPrivate(x[1],x[2],x[3])
             ## 1Conn, 2Message
             elif x[0] == 'Send-Thread':
-                x[1].send(x[2]+'<e%$>')
+                try:
+                    x[1].send(x[2]+'<e%$>')
+                except:
+                    pass
+            ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk,6client version
+            elif x[0] == 'USR-APPEND':
+                threadip.append([x[1],x[2],x[3],x[4],x[5],x[6],x[7]])
+            elif x[0] == 'USR-REM':
+                usrLeaving(x[1],x[2],x[3],x[4],x[5],x[6],x[7],x[8],x[9])
+                try:
+                    x[1].close()
+                except Exception as e:
+                    e = str(e)
+                    print e
+                Thread(target=clientHandler,args=(x[5],)).start()
             current_event += 1
             cnt += 1
         if cnt < 30:
-            sleep(0.02)
+            sleep(0.05)
     
 
 def clientHandler(i):
@@ -399,10 +428,20 @@ def clientHandler(i):
     username,username2,username_set,authed_user,off_msg = '','', False, True, '0'
     level, timeouts, usr_ver = 1, 0, 'unknown'
     conn, addr = s.accept() # awaits for a client to connect and then accepts 
-    print get_cur_time(),addr," is now connected!"
-    chatlog.append([get_cur_time(),addr[0]," is now connected!"])
+    print get_cur_time(),addr," connected!"
+    chatlog.append([get_cur_time(),addr[0]," connected!"])
     ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk,6client version
-    threadip.append([str(i),conn,'',[addr[0],addr[1]],1,'1',usr_ver])
+    event_list.append(['USR-APPEND',str(i),conn,'',[addr[0],addr[1]],1,'1',usr_ver])
+    looping,cnt = True, 0
+    while looping:
+        sleep(0.01)
+        for x in threadip:
+            b = x[0].find(str(i))
+            if b is not -1:
+                looping = False
+        cnt += 1
+        if cnt == 15:
+            break
     conn.sendall(welcome_msg+'<e%$>')
     while 1:
         data = recieveData(conn,4096)
@@ -416,11 +455,9 @@ def clientHandler(i):
             if data[9:11] == 's/' and level > 7:
                 if data == 'MESSAGE::s/log':
                     event_list.append(['Send-Thread',conn,'WSERVER::Sending '+str(len(chatlog))+' lines'])
-##                    conn.send('WSERVER::Sending '+str(len(chatlog))+' lines')
                     Thread(target=list_sender_thread,args=(conn,chatlog,'',)).start()
                 elif data == 'MESSAGE::s/mlog':
                     event_list.append(['Send-Thread',conn,'WSERVER::Sending '+str(len(chatmlog))+' lines'])
-##                    conn.send('WSERVER::Sending '+str(len(chatmlog))+' lines')
                     Thread(target=list_sender_thread,args=(conn,chatmlog,'',)).start()
                 elif data == 'MESSAGE::s/threadip':
                     Thread(target=list_sender_thread,args=(conn,threadip,'',)).start()
@@ -430,67 +467,55 @@ def clientHandler(i):
                         fh.write(x[1])
                         fh.close()
                     event_list.append(['Send-Thread',conn,'WSERVER::Saved'])
-##                    conn.send('WSERVER::Saved')
             if data[9:11] == 's/' and level > 3:
                 if data == 'MESSAGE::s/help':
                     event_list.append(['Send-Thread',conn,'WSERVER::Available commands to lvl 4+\ns/log - log\ns/mlog - message log\ns/threadip - thread list\ns/fld - save all files to disk\ns/clear files - clear all shared files from RAM\ns/filelist - returns list of shared files'])
-##                    conn.send('WSERVER::Available commands to lvl 4+\ns/log - log\ns/mlog - message log\ns/threadip - thread list\ns/fld - save all files to disk\ns/clear files - clear all shared files from RAM\ns/filelist - returns list of shared files')
                 elif data == 'MESSAGE::s/clear files':
                     shared_filelist = []
                     event_list.append(['SEND','SSERVER::'+username2+' cleared all shared files'])
-##                        broadcastData('SSERVER::'+username2+' cleared all shared files')
                 elif data == 'MESSAGE::s/filelist':
-                    Thread(target=list_sender_thread,args=(conn,threadip,'filelist',)).start()
+                    Thread(target=list_sender_thread,args=(conn,threadip,'filelist-message',)).start()
             elif data[9:11] == 's/' and level < 4:
                 event_list.append(['Send-Thread',conn,'WSERVER::Level too low'])
-##                conn.send('WSERVER::Level too low')
                 
             elif data[9:11] == '@@' and data[11] is not " ":
                 b = data[:].find(']')
                 if b is -1:
                     event_list.append(['Send-Thread',conn,'WSERVER::] has to be at the end of username'])
-##                    conn.send('WSERVER::] has to be at the end of username')
                 else:
                     usr_to_send = data[11:b]
                     event_list.append(['SEND-PRIVATE',conn,usr_to_send, 'm:'+sendlevel+username+'@@'+usr_to_send+data[b:]])
-##                        broadcastPrivate(conn,usr_to_send, 'm:'+sendlevel+username+'@@'+usr_to_send+data[b:])
             else:
                 event_list.append(['SEND','m:'+sendlevel+username+data[9:]])
-##                    broadcastData('m:'+sendlevel+username+data[9:])
         ## Leaving
         elif not data:
-            usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no')
-            conn.close()
-            Thread(target=clientHandler,args=(i,)).start()
+            event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no'])
             break
         ## Leaving2
         elif data == 'close::' or data == 'TIMEOUT::':
             if data == 'close::':
-                usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no')
+                event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no'])
             else:
-                usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::')
-            conn.close()
-            Thread(target=clientHandler,args=(i,)).start()
+                event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::'])
             break
+        ## Requesting file list
+        elif data[0:9] == 'RQFILES::':
+            Thread(target=list_sender_thread,args=(conn,threadip,'filelist-list',)).start()
         ## Registration
         elif data[0:9] == 'aUSRREG::':
             registered = check_if_registered(username2,addr[0],False)
             if registered == True:
                 event_list.append(['Send-Thread',conn,'WSERVER::Already registered'])
-##                conn.send('WSERVER::Already registered')
             else:
                 usr_pass = data[9:]
                 if len(usr_pass) > 10:
                     usr_pass = usr_pass[:10]
                     event_list.append(['Send-Thread',conn,'SSERVER::Max length is 10, changed to: '+usr_pass])
-##                    conn.send('SSERVER::Max length is 10, changed to: '+usr_pass)
                 illeg_chk = check_for_illegal_chr([' ','[',']'],usr_pass)
                 if illeg_chk == True:
                     event_list.append(['Send-Thread',conn,'WSERVER::Spaces, "[", "]" are not allowed'])
-##                    conn.send('WSERVER::Spaces, "[", "]" are not allowed')
                 else:
                     event_list.append(['Send-Thread',conn,'WSERVER::Registering '+username2+' with '+usr_pass])
-##                    conn.send('WSERVER::Registering '+username2+' with '+usr_pass)
                     register_user(username2,usr_pass,True)
         ## User auth with passwd
         elif data[0:9] == 'USRLOGI::':
@@ -506,7 +531,6 @@ def clientHandler(i):
                 else:
                     sendlevel = str(level)
                 event_list.append(['SEND','SSERVER::'+remove_spaces(username)+' is level'+str(level)])
-##                broadcastData('SSERVER::'+remove_spaces(username)+' is level'+str(level))
                 for x in threadip:
                     if x[0] == str(i):
                         x[2] = username2
@@ -516,13 +540,10 @@ def clientHandler(i):
                 remove_offline_usr(username2)
                 send_ulist_only()
                 event_list.append(['Send-Thread',conn,'WSERVER::Accepted'])
-##                conn.send('WSERVER::Accepted')
                 send_offline_msg(username_set,authed_user,username2,conn)
                 event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
-##                conn.send('DUPLICT::'+username2)
             else:
                 event_list.append(['Send-Thread',conn,'WSERVER::Wrong pass'])
-##                conn.send('WSERVER::Wrong pass')
         ## Configure offline msg and client version
         elif data[0:9] == 'CONFIGR::':
             if username_set is True and authed_user is True:
@@ -535,7 +556,6 @@ def clientHandler(i):
                                 x[2] = off_msg
                     register_user('a','a',False)
                     event_list.append(['Send-Thread',conn,'WSERVER::off_msg set to: '+off_msg])
-##                    conn.send('WSERVER::off_msg set to: '+off_msg)
             b = data.find('ver=')
             if b is not -1:
                 usr_ver = data[b+len('ver='):]
@@ -547,6 +567,7 @@ def clientHandler(i):
                 for x in threadip:
                     if x[0] == str(i):
                         x[6] = usr_ver
+                send_ulist_only()
                         
             else:
 ##                sleep(0.1)
@@ -558,11 +579,9 @@ def clientHandler(i):
                 if x[0] == str(i):
                     if x[5] == '1':
                         event_list.append(['SEND','SSERVER::'+username2+' is afk'])
-##                        broadcastData('SSERVER::'+username2+' is afk')
                         newval = '0'
                     else:
                         event_list.append(['SEND','SSERVER::'+username2+' is no longer afk'])
-##                        broadcastData('SSERVER::'+username2+' is no longer afk')
                         newval = '1'
                     x[5] = newval
             send_ulist_only()
@@ -589,7 +608,6 @@ def clientHandler(i):
                 if len(username) > 15:
                     username = username[:15]
                     event_list.append(['Send-Thread',conn,'WSERVER::Name too long, shortened to 15 characters'])
-##                    conn.send('WSERVER::Name too long, shortened to 15 characters')
                 ## Username gets changed
                 if username_set is True:
                     for x in threadip:
@@ -606,7 +624,6 @@ def clientHandler(i):
                                 username_set, authed_user = True, True
                             elif registered[0] == True and usr_pass != registered[1]:
                                 event_list.append(['Send-Thread',conn,'WSERVER::Name is registered, waiting for auth'])
-##                                conn.send('WSERVER::Name is registered, waiting for auth')
                                 level = 0
                                 x[4] = level
                                 username_set, authed_user = False, False
@@ -627,7 +644,6 @@ def clientHandler(i):
                                     remove_offline_usr(username2)
                                 send_user_list(s,conn,'',username2,addr[0],level)
                                 event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
-##                                conn.send('DUPLICT::'+username2)
                 ## Login username received
                 else:
                     for x in threadip:
@@ -644,7 +660,6 @@ def clientHandler(i):
                                 username_set, authed_user = True, True
                             elif registered[0] == True and usr_pass != registered[1]:
                                 event_list.append(['Send-Thread',conn,'WSERVER::Name is registered, waiting for auth'])
-##                                conn.send('WSERVER::Name is registered, waiting for auth')
                                 level = 0
                                 x[4] = level
                                 username_set, authed_user = False, False
@@ -664,7 +679,6 @@ def clientHandler(i):
                                     remove_offline_usr(username2)
                                 send_user_list(s,conn,'',username2,addr[0],level)
                                 event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
-##                                conn.send('DUPLICT::'+username2)
                 send_offline_msg(username_set,authed_user,username2,conn)
     
         else:
@@ -673,13 +687,12 @@ def clientHandler(i):
             else:
                 sleep(0.05)
                 event_list.append(['Send-Thread',conn,"WSERVER::We don't accept this"])
-##                conn.send("WSERVER::We don't accept this")
     
 def fileserv_thread(i):
     global threadip, msgprint_enabled, logging_enabled, iplist, action_time, sf
     conn, addr = sf.accept() # awaits for a client to connect and then accepts 
     print get_cur_time(),addr," started a fileserver thread!"
-    chatlog.append([get_cur_time(),addr[0]," is now connected to fileserver!"])
+    chatlog.append([get_cur_time(),addr[0]," connected to fileserver!"])
     ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk
     state = 'auth'
     try:
@@ -737,7 +750,6 @@ def fileserv_thread(i):
                 state = 'filename'
             else:
                 event_list.append(['SEND-PRIVATE','',username,'password is wrong'])
-##                broadcastPrivate('',username,'password is wrong')
                 conn.close()
             conn.send('READY::')
             ## Get filename
@@ -782,10 +794,23 @@ def fileserv_thread(i):
                         if again == False:
                             break
                         cnt += 1
-                ## List and broadcast
-                shared_filelist.append([filename,file_str])
-                event_list.append(['SEND','SSERVER::'+username+' shared a file, type /dl '+filename+' to download'])
-##                broadcastData('SSERVER::'+username+' shared a file, type /dl '+filename+' to download')
+                ## Gets file format
+                file_format,cnt = str(filename), 0
+                while True:
+                    b = file_format.find('.')
+                    if b is not -1:
+                        file_format = file_format[b+1:]
+                    else:
+                        if cnt == 0:
+                            file_format = 'unknown'
+                            break
+                        else:
+                            break
+                    cnt += 1
+                        
+                ## Puts in list and broadcasts
+                shared_filelist.append([filename,file_str,file_format,get_cur_time(),'500'])
+                event_list.append(['SEND','NEWFILE::'+username+']'+filename])
     except Exception as e:
         e = str(e)
         print 'File server thread crashed'
@@ -818,7 +843,7 @@ msgprint_enabled = 0
 msgprint_enabled = int(read_settings('msgprint='))
 reset_offmsg_list()
 def main(): # main function
-    global s,sf, action_time, msgprint_enabled, log_enabled, iplist
+    global s,sf, action_time, msgprint_enabled, log_enabled, iplist, threads
     ## Chat server
     s = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
     try:
@@ -856,7 +881,6 @@ def main(): # main function
         msg = str(msg)
         if msg == 'q':
             event_list.append(['SEND','CLOSING::'])
-##            broadcastData('CLOSING::')
             action_time = False
             s.close()
             s = ''
@@ -881,7 +905,7 @@ def main(): # main function
             reset_offmsg_list()
         elif msg == 'help':
             print """ Type: quit, lvluser, threadip, iplist, iplist-reload, log, mlog, log-toggle,
-            log-save, say, msgprint, msgprint-toggle, welcm, filelist"""
+            log-save, say, msgprint, msgprint-toggle, welcm, filelist, print-threads, start-threads, events"""
         elif msg == 'log-toggle':
             if log_enabled == 1:
                 log_enabled = 0
@@ -937,15 +961,25 @@ def main(): # main function
             x = raw_input(':::Say what? ')
             print 'Sending "'+x+'" to all'
             event_list.append(['SEND','SSERVER::'+x])
-##            broadcastData('SSERVER::'+x)
         elif msg == 'welcm':
             x = raw_input(':::message ')
             global welcome_msg
             welcome_msg = 'SSERVER::'+x
             event_list.append(['SEND','SSERVER::Welcome message is now: '+x])
-##            broadcastData('SSERVER::Welcome message is now: '+x)
-        elif msg == 'threadcnt':
+        elif msg == 'print-threads':
             print str(threading.active_count())
+        elif msg == 'start-threads':
+            x = raw_input('How many?')
+            try:
+                x = int(x)
+            except:
+                x = 0
+            threads += x
+            for i in range(threads+1,threads+1+x):
+                Thread(target=clientHandler,args=(i,)).start()
+        elif msg == 'events':
+            for x in event_list:
+                print x
         else:
             print msg
 

@@ -1,6 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from Tkinter import *
+from Tkinter import Button as tkButton
+from Tkinter import Label as tkLabel
+from ttk import Style as ttkStyle
+from ttk import Button
+from ttk import Scrollbar
+from ttk import Checkbutton
+from ttk import Radiobutton
+from ttk import Combobox
+from ttk import Menubutton
+from ttk import Scale
+from ttk import Separator
+from ttk import Treeview
+from ttk import Label
+from ttk import Frame as ttkFrame
 from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep,time
@@ -8,21 +22,12 @@ from tkFileDialog import askopenfilename
 from tkFileDialog import askdirectory
 from tkColorChooser import askcolor
 from subprocess import *
-import socket,os,platform,webbrowser, tkFont, urllib, urllib2, wx
+import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox
 
-ver = '1.00'
+ver = '1.02'
 
 sys_path = os.getcwd()
-bat_file = False
-try:
-    argv = sys.argv[1]
-    b = argv.find('bat_file')
-    if b is not -1:
-        sys_path+="\\iSPTC\\"
-        sys_path = str(sys_path)
-        bat_file=True
-except:
-    pass
+
 OS = platform.system()
 print sys_path
 if OS is 'Windows':
@@ -74,16 +79,13 @@ def edit_settings(text,text_find,new_value):
     count = 1
     return newlist
 
-def read_settings(text_find):
-    global bat_file, sys_path
-    if bat_file is True:
-        a = readf(sys_path+'load/settings.cfg')
-    else:
-        a = readf('load/settings.cfg')
-    a = get_settings(a,text_find)
+def read_settings(*arg):
+    global sys_path
+    a = readf('load/settings.cfg')
+    a = get_settings(a,arg[0],arg[1])
     return a
 
-def get_settings(text,text_find):
+def get_settings(text,text_find,default_value):
     for lines in text:
         b = lines.find(text_find)
         if b is not -1:
@@ -91,27 +93,21 @@ def get_settings(text,text_find):
     ## Checks if it exists and appends something, if not
     try:
         if c == '':
-            c = str(1)
-            write_settings(text_find[:-1],c)
+            c = default_value
+            write_settings(text_find[:-1],'\n'+c)
     except:
-        c = str(1)
+        c = default_value
         fh = open('load/settings.cfg', 'a')
-        fh.write('\n'+text_find+c)
+        fh.write('\n'+str(text_find)+str(c))
         fh.close()
     return c
 
 def write_settings(text_find,new_value):
-    global bat_file, sys_path
-    if bat_file is True:
-        a = readf(sys_path+'load/settings.cfg')
-        a = edit_settings(a,text_find,new_value)
-        text = a = '\n'.join(str(e) for e in a)
-        savef(text,sys_path+'load/settings.cfg')
-    else:
-        a = readf('load/settings.cfg')
-        a = edit_settings(a,text_find,new_value)
-        text = a = '\n'.join(str(e) for e in a)
-        savef(text,'load/settings.cfg')      
+    global sys_path
+    a = readf('load/settings.cfg')
+    a = edit_settings(a,text_find,new_value)
+    text = a = '\n'.join(str(e) for e in a)
+    savef(text,'load/settings.cfg')      
 
 def play_sound(name,ignore):
     if sound_settings[0] == 1:
@@ -294,19 +290,19 @@ def copy_paste_buttons(*arg):
         cp_destroy()
     except:
         pass
-    bb1 = Button(root, text='Open in browser', width=50,
+    bb1 = tkButton(root, text='Open in browser', width=50,
                     command=lambda: {open_in_browser_btn(),cp_destroy()})
     bb1.place(x=m_x, y=m_y,width=120, height=26)
-    bb2 = Button(root, text='Command window', width=50,
+    bb2 = tkButton(root, text='Command window', width=50,
                     command=lambda: {command_window(),cp_destroy()})
     bb2.place(x=m_x, y=m_y+26,width=120, height=26)
-    bb3 = Button(root, text='Clear', width=50,
+    bb3 = tkButton(root, text='Clear', width=50,
                     command=lambda: {textt.set(''),cp_destroy()})
     bb3.place(x=m_x, y=m_y+52,width=120, height=26)   
-    bb4 = Button(root, text='Copy', width=50,
+    bb4 = tkButton(root, text='Copy', width=50,
                     command=lambda: {copy_text(),cp_destroy()})
     bb4.place(x=m_x, y=m_y+78,width=120, height=26)
-    bb5 = Button(root, text='Paste', width=50,
+    bb5 = tkButton(root, text='Paste', width=50,
                     command=lambda: {entry_paste(),cp_destroy()})
     bb5.place(x=m_x, y=m_y+104,width=120, height=26)
 ##    bb1.config(relief=SUNKEN,bd=1)
@@ -329,11 +325,11 @@ def sender_thread():
         else:
             if action_time == False:
                 break
-        tim+=(0.05)
-        if tim > 7:
+        tim+=(0.07)
+        if tim > 6:
             sender_thread_list.append('kpALIVE::')
             tim = 0
-        sleep(0.05)
+        sleep(0.07)
         
 def recv_thread():
     global action_time, s, connected_server
@@ -346,12 +342,17 @@ def recv_thread():
                     Thread(target=jlost_reconnect).start()
                 break
             ## Finds messages and appends
+            cnt = 0
             while True:
                 b = data.find('<e%$>')
                 if b is not -1:
                     data_list.append(data[:b]+'\n')
                     if len(data[b:]) > 4:
                         data = data[b+len('<e%$>'):]
+                cnt+= 1
+                if cnt == 500:
+                    tkMessageBox.showerror(title='Error', message='recv_thread looped 500 times')
+                    break
                 else:
                     break
         except:
@@ -382,7 +383,7 @@ def join_typing():
     temp_text = readf('load/serverlist')
     for x in temp_text:
         server_list.append(x)
-    joinaddr = str(read_settings('joinaddr='))
+    joinaddr = str(read_settings('joinaddr=',''))
     jaddr = StringVar()
     jaddr.set(joinaddr)
     jsrv = Toplevel()
@@ -401,7 +402,7 @@ def join_typing():
     scroll = Scrollbar(frame)
     scroll.pack(side=RIGHT, fill=Y, expand=NO)
     display.pack(fill=BOTH, expand=YES, side=TOP)
-    scroll.configure(command=display.yview,width=15)
+    scroll.configure(command=display.yview)
     display.configure(yscrollcommand=scroll.set)
     for item in server_list:
         display.insert(END, item)
@@ -411,9 +412,12 @@ def join_typing():
     usrEntry = Entry(jsrv,textvariable=jaddr)
     usrEntry.pack(side=TOP)
     usrEntry.focus_set()
-    button = Button(jsrv, text='Join',width=20,height=2, command=lambda: {join_srv_check(display.curselection(),jaddr.get()),
+    buttonframe = Frame(jsrv, height=30,width=120, relief=SUNKEN)
+    buttonframe.pack_propagate(0)
+    buttonframe.pack(padx=10,pady=20, side=TOP)
+    button = Button(buttonframe, text='Join',command=lambda: {join_srv_check(display.curselection(),jaddr.get()),
                                                                 jsrv.destroy()})
-    button.place(x=75,y=350)
+    button.pack(fill=BOTH, expand=1)
     def cmdbind(*arg):
         join_srv_check(display.curselection(),jaddr.get())
         jsrv.destroy()
@@ -454,11 +458,10 @@ def join_server(typing):
             write_settings('joinaddr',TCP_IP)
             connected_server = typing
         else:
-            joinaddr = str(read_settings('joinaddr='))
+            joinaddr = str(read_settings('joinaddr=',''))
             TCP_IP = joinaddr
             TCP_PORT = 44671
             connected_server = joinaddr
-        BUFFER_SIZE = 2048
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print 'joining',TCP_IP, TCP_PORT
         s.connect((TCP_IP, TCP_PORT))
@@ -491,6 +494,13 @@ def scroller_to_end():
 def open_address_in_webbrowser(address):
     webbrowser.open(address)
 
+def Tbox_insert_lock(Tbx,Scr,text,tag):
+    scroller = Scr.get()
+    Tbx.config(yscrollcommand=Scr.set,state="normal")
+    Tbx.insert(END, text+'\n', tag)
+    Tbx.config(yscrollcommand=Scr.set,state="disabled")
+    Tbx.yview(END)
+
 def T_ins_userlist():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
@@ -521,7 +531,8 @@ def T_ins_help():
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'light-grey-bg')
     T.insert(END, 'Type:\n/help to see this message \n/u for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
-             '/reg [passwd] to register\n/auth [passwd] to authenticate\n/clear to clear textbox\n', 'light-grey-bg')
+             '/reg "password" to register\n/auth "password" to authenticate\n/clear to clear textbox\n/share to share a file\n'+
+             '/fm to open file manager\n/fl to show file list\n/files to open download foler\n', 'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
@@ -618,13 +629,23 @@ def t_auth_window(auth_or_register):
     usrEntry.pack(side=TOP)
     usrEntry.focus_set()
     
-    button = Button(hhw, text='Auth', width=20, command=lambda: {auth_register(auth_or_register,t_passwd),
+    button = Button(hhw, text='Auth', command=lambda: {auth_register(auth_or_register,t_passwd),
                                                                 hhw.destroy()})
     button.pack(side=BOTTOM,pady=10)
     def cmdbind(*arg):
         auth_register(auth_or_register,t_passwd)
         hhw.destroy()
     hhw.bind('<Return>', cmdbind)
+
+def T_ins_file_list():
+    global file_list, s
+    sender_thread_list.append('RQFILES::')
+    T.config(yscrollcommand=S.set,state="normal")
+    T.insert(END, '[File list]\n', 'light-grey-bg')
+    for x in file_list:
+        T.insert(END, x, 'light-grey-bg')
+    T.config(yscrollcommand=S.set,state="disabled")
+    T.yview(END)
 
 def T_ins_warning(T,S,text):
     T.config(yscrollcommand=S.set,state="normal")
@@ -633,6 +654,7 @@ def T_ins_warning(T,S,text):
     T.config(yscrollcommand=S.set,state="disabled")
 
 def chat_commands(text):
+    global fdl_path
     if text == '/u' or text == '/usr' or text == '/users':
         T_ins_userlist()
     elif text == '/help':
@@ -653,6 +675,14 @@ def chat_commands(text):
         Thread(target=fldownloader_thread,args=(text[4:],)).start()
     elif text[:6] == '/clear':
         reset_textbox()
+    elif text == '/share':
+        share_file()
+    elif text == '/fm':
+        file_manager()
+    elif text == '/fl':
+        T_ins_file_list()
+    elif text == '/files':
+        open_address_in_webbrowser(fdl_path)
     else:
         return True
     return False
@@ -828,7 +858,7 @@ def update_window(update_link,strver,update,temp,upd_ver):
 
     Label(frame, text="Comment:").pack(side=BOTTOM)
     Tbox2 = Text(frame, height=12, width=50,wrap=WORD)
-    S11 = Scrollbar(frame, width=15)
+    S11 = Scrollbar(frame)
     S11.pack(side=RIGHT, fill=Y)
     Tbox2.pack(side=BOTTOM,fill=BOTH,expand=1)
     Tbox2.config(yscrollcommand=S11.set,state="normal")
@@ -843,7 +873,7 @@ def update_window(update_link,strver,update,temp,upd_ver):
     Tbox.tag_configure('SE-bg', font=(fontlist[text_font[0]], font_size), background='#66cc66',foreground='black')
     Tbox.tag_configure('light-bg', font=(fontlist[text_font[0]], font_size), background='#f3f3f3',foreground='black')
     Tbox2.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    S1 = Scrollbar(frame2, width=15)
+    S1 = Scrollbar(frame2)
     S1.pack(side=RIGHT, fill=Y)
     Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
     Tbox.config(yscrollcommand=S1.set,state="normal")
@@ -873,9 +903,9 @@ def update_window(update_link,strver,update,temp,upd_ver):
                     downlist.append(x)
     Tbox.config(yscrollcommand=S1.set,state="disabled")
     
-    button = Button(topwin, text='Update', height=2, width=18,command=lambda: {start_update(downlist)})
+    button = Button(topwin, text='Update', command=lambda: {start_update(downlist)})
     button.place(x=180,y=540)
-    button2 = Button(topwin, text='Close', height=2, width=18,command=lambda: {autojoiner(),topwin.destroy()})
+    button2 = Button(topwin, text='Close', command=lambda: {autojoiner(),topwin.destroy()})
     button2.place(x=360,y=540)
     topwin.lift()
 
@@ -899,9 +929,9 @@ def command_window(*arg):
     tEntry.pack(pady=5,fill=BOTH)
     tEntry.focus_set()
     tEntry.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
-    button = Button(cww, text='Close', width=16, command=lambda: {enter_text('command_window',t_encommand.get()),
+    button = Button(cww, text='Close', command=lambda: {enter_text('command_window',t_encommand.get()),
                                                                   cww.destroy()})
-    button2 = Button(cww, text='Run', width=16, command=lambda: {enter_text('command_window',t_encommand.get()),
+    button2 = Button(cww, text='Run', command=lambda: {enter_text('command_window',t_encommand.get()),
                                                                   cww.destroy()})
     button.pack(side=LEFT,padx=60,pady=20)
     button2.pack(side=LEFT,padx=60,pady=20)
@@ -949,7 +979,7 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
         except:
             pass
 
-def set_username():
+def username_menu():
     global username, passwd, offline_msg
     uw = Toplevel()
     t_new_name = StringVar()
@@ -968,15 +998,16 @@ def set_username():
     usrEntry.pack(pady=5)
     usrEntry.focus_set()
 
-    Label(uw, text="Pass (leave blank, if unused):").pack(anchor=NW,padx=35)
+    Label(uw, text="Password (leave blank, if unused):").pack(anchor=NW,padx=35)
     usrEntry = Entry(uw,textvariable=t_passwd)
     usrEntry.pack(pady=5)
     usrEntry.focus_set()
     Checkbutton(uw, text="Enable offline messages", variable=t_offline_msg).pack(anchor=NW,padx=35)
-    button = Button(uw, text='Save', width=20, command=lambda: {change_name(t_new_name,t_passwd,
+    button = Button(uw, text='Save', command=lambda: {change_name(t_new_name,t_passwd,
                                                                             t_offline_msg),
                                                                 uw.destroy()})
     button.pack(side=BOTTOM,pady=10)
+    Label(uw, text="(Requires registration)").pack(anchor=N,padx=35)
     def cmdbind(*arg):
         change_name(t_new_name,t_passwd,t_offline_msg)
         uw.destroy()
@@ -1007,18 +1038,22 @@ def sound_menu():
     sound_enabled = IntVar()
     entry_enabled = IntVar()
     user_textbox = IntVar()
-    snd_interval = IntVar()
+    snd_interval = StringVar()
+    snd_interval.set(str(int((dsound_interval))))
     sound_enabled.set(sound_settings[0])
     entry_enabled.set(sound_settings[1])
     user_textbox.set(sound_settings[2])
     Checkbutton(sw, text="Enable sound", variable=sound_enabled).grid(row=1, sticky=W,padx=20)
     Checkbutton(sw, text="Entry sound", variable=entry_enabled).grid(row=2, sticky=W,padx=20)
     Checkbutton(sw, text="Textbox sound", variable=user_textbox).grid(row=3, sticky=W,padx=20)
-    snd_interval = Scale(sw, from_=0, to=30,length=120, orient=HORIZONTAL)
-    Label(sw, text="Sound min interval").grid(row=1,padx=160)
-    snd_interval.grid(row=2,padx=160)
-    snd_interval.set(int(dsound_interval))
-    button = Button(sw, text='Save', width=20,command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),user_textbox.get(),snd_interval.get()),sw.destroy()})
+    Label(sw, text="Chat sound interval").grid(row=1,padx=140)
+    snd_interval_Entry = Entry(sw,textvariable=snd_interval,width=5).place(x=145,y=20)
+    Label(sw, text="seconds").place(x=190,y=22)
+##    snd_interval = Scale(sw, from_=0, to=30,length=120, orient=HORIZONTAL)
+##    snd_interval.grid(row=2,padx=160)
+##    snd_interval.set(int(dsound_interval))
+    button = Button(sw, text='Save', command=lambda: {change_sound_set(sound_enabled.get(),entry_enabled.get(),
+                                                user_textbox.get(),snd_interval.get()),sw.destroy()})
     button.grid(row=6, padx=60,pady=30)
     def close_func(*arg):
         sw.destroy()
@@ -1057,10 +1092,10 @@ def color_menu():
     col = 0
     for x in colorbutton_list:
         if x[2] is not '':
-            Button(colm, text=x[0], fg=x[1], bg=x[2],width=11,
+            tkButton(colm, text=x[0], fg=x[1], bg=x[2],width=11,
                    command=lambda: callback(str(x[1]),str(x[2]))).place(x=20+col*116,y=20+cnt*30)
         else:
-            Button(colm, text=x[0], fg=x[1],width=11,
+            tkButton(colm, text=x[0], fg=x[1],width=11,
                    command=lambda: callback(x[1])).place(x=20+col*116,y=20+cnt*30)
         cnt += 1
         if cnt == 4:
@@ -1137,19 +1172,23 @@ def font_menu():
     display_text.insert(END, get_cur_time()+' Mouse: hello cat\n','privatecol')
     display_text.insert(END, get_cur_time()+' Twitterbot: Falcon has landed\n','olfo-backgr')
 
-    button2 = Button(frame2, text='Apply', width=12,
-                    command=lambda: {apply_display_font(display_text,display.curselection(),fonts,
+    button2 = Button(frame2, text='Apply', command=lambda: {apply_display_font(display_text,display.curselection(),fonts,
                                                         t_font_size.get())})
-    button = Button(frame2, text='Save', width=12,
-                    command=lambda: {set_font(display.curselection(),fonts,t_font_size.get(),
-                                              t_usra_len.get()),
-                                     fom.destroy()})
+    button = Button(frame2, text='Save', command=lambda: {set_font(display.curselection(),fonts,t_font_size.get(),
+                                              t_usra_len.get()), fom.destroy()})
     button.place(x=200,y=360)
     button2.place(x=40,y=360)
     apply_display_font(display_text,text_font,fonts,font_size)
     def close_func(*arg):
         fom.destroy()
+    def focusList(event):
+        display.focus_set()
     fom.bind('<Escape>', close_func)
+    if OS != 'Windows':
+        fom.bind("<Button-4>", focusList)
+        fom.bind("<Button-5>", focusList)
+    if OS == 'Windows':
+        fom.bind("<MouseWheel>", focusList)
 
 def apply_display_font(display_text,font,fontlist,t_font_size):
     global font_size, text_font
@@ -1201,7 +1240,7 @@ def update_menu():
     linkEntry.pack(pady=5,fill=BOTH)
     linkEntry.focus_set()
     
-    button = Button(upd, text='Save', width=20, command=lambda: {save_update_settings(t_update_enabled.get(),t_update_link.get()),
+    button = Button(upd, text='Save', command=lambda: {save_update_settings(t_update_enabled.get(),t_update_link.get()),
                                                                 upd.destroy()})
     button.pack(side=BOTTOM,pady=20)
     def cmdbind(*arg):
@@ -1238,24 +1277,227 @@ def download_menu():
         t_fdl_path.set('downloads/')
     def select_folder(*arg):
         t_fdl_path.set(askdirectory()+'/')
-    button = Button(dwlw, text='Default', width=16, command=set_default)
-    button2 = Button(dwlw, text='Browse', width=16, command=select_folder)  
-    button3 = Button(dwlw, text='Save', width=16, command=lambda: {save_download_settings(t_fdl_path.get()),
+    button = Button(dwlw, text='Default', command=set_default)
+    button2 = Button(dwlw, text='Browse', command=select_folder)  
+    button3 = Button(dwlw, text='Save', command=lambda: {save_download_settings(t_fdl_path.get()),
                                                                 dwlw.destroy()})
     button.pack(side=LEFT,padx=20,pady=20)
     button2.pack(side=LEFT,padx=20,pady=20)
     button3.pack(side=LEFT,padx=20,pady=20)
     def close_func(*arg):
         dwlw.destroy()
-    dwlw.bind('<Escape>', close_func)
+    dwlw.bind('<Escape>', close_func)  
 
-def change_other_settings(a,b,c,d,e,f,g,h,i):
-    global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users
+def file_manager():
+    global OS
+    '''
+    Here the TreeView widget is configured as a multi-column listbox
+    with adjustable column width and column-header-click sorting.
+    '''
+    global s, file_list
+    file_list = []
+
+    try:
+        sender_thread_list.append('RQFILES::')
+    
+        class MultiColumnListbox(object):
+            """use a ttk.TreeView as a multicolumn ListBox"""
+
+            def __init__(self,frame,frame2,frame3,Tbox,Scroll):
+                self.selected = 'none'
+                self.dl_ul_event_counter = 0
+                self.windowX = topwin.winfo_width()
+                self.windowY = topwin.winfo_height()
+                self.frame_xsize = 500
+                self.frame_ysize = 400
+                self.frame2_xsize = 400
+                self.frame2_ysize = 390
+                self.frame3_xsize = 400
+                self.frame3_ysize = 50
+                
+                self.tree = None
+                self._setup_widgets(frame)
+                self._build_tree()
+                self.setup_buttons(frame3,Tbox,Scroll)
+                topwin.after(10,lambda: self.aftertask2(Tbox,Scroll,frame,frame2,frame3))
+
+            def aftertask2(self,Tbox,Scroll,frame,frame2,frame3,*arg):
+                global dl_ul_events
+                try:
+                    self.selected = self.tree.item(self.tree.selection()[0])
+                except Exception as e:
+                    e = str(e)
+                    self.selected = 'none'
+                for x in dl_ul_events[self.dl_ul_event_counter:]:
+                    Tbox_insert_lock(Tbox,Scroll,x[0]+' '+x[1]+' '+x[2],'black')
+                    self.dl_ul_event_counter += 1
+##                self.frame_xsize += 1
+##                frame.config(width=self.frame_xsize)
+                topwin.after(10,lambda: self.aftertask2(Tbox,Scroll,frame,frame2,frame3))
+                self.windowX = topwin.winfo_width()
+                self.windowY = topwin.winfo_height()
+                self.frame_xsize = self.windowX*0.48
+                self.frame_ysize = self.windowY*0.95
+                self.frame2_xsize = self.windowX*0.48
+                self.frame2_ysize = self.windowY*0.95
+                self.frame3_xsize = self.windowX*0.45
+                self.frame3_ysize = self.windowY*0.1
+                frame.config(width=self.frame_xsize,height=self.frame_ysize)
+                frame2.config(width=self.frame2_xsize,height=self.frame2_ysize)
+                frame3.config(width=self.frame3_xsize,height=self.frame3_ysize)
+##                print self.windowX, self.windowY
+                
+            def _setup_widgets(self,frame):
+                s = """\click on header to sort by that column
+        to change width of column drag boundary
+                """
+                msg = Label(frame,wraplength="4i", justify="left", anchor="n",
+                    padding=(10, 2, 10, 6), text=s)
+                msg.pack(fill='x')
+                container = Frame(frame)
+                container.pack(fill='both', expand=True)
+                # create a treeview with dual scrollbars
+                self.tree = Treeview(frame,columns=car_header, show="headings")
+                vsb = Scrollbar(frame,orient="vertical",
+                    command=self.tree.yview)
+                hsb = Scrollbar(frame,orient="horizontal",
+                    command=self.tree.xview)
+                self.tree.configure(yscrollcommand=vsb.set,
+                    xscrollcommand=hsb.set)
+                self.tree.grid(column=0, row=0, sticky='nsew', in_=container)
+                vsb.grid(column=1, row=0, sticky='ns', in_=container)
+                hsb.grid(column=0, row=1, sticky='ew', in_=container)
+                container.grid_columnconfigure(0, weight=1)
+                container.grid_rowconfigure(0, weight=1)
+                vsb.focus_set()
+
+            def _build_tree(self):
+                for col in car_header:
+                    self.tree.heading(col, text=col.title(),
+                        command=lambda c=col: sortby(self.tree, c, 0))
+                    # adjust the column's width to the header string
+                    self.tree.column(col,
+                        width=tkFont.Font().measure(col.title()))
+                    
+                for item in car_list:
+                    self.tree.insert('', 'end', values=item)
+                    # adjust column's width if necessary to fit each value
+                    for ix, val in enumerate(item):
+                        col_w = tkFont.Font().measure(val)
+                        if self.tree.column(car_header[ix],width=None)<col_w:
+                            self.tree.column(car_header[ix], width=col_w)
+
+            def share_button(self,Tbox,Scroll):
+                filename = share_file()
+                topwin.lift()
+                
+            def download_button(self,Tbox,Scroll):
+                try:
+                    for key in self.selected.iteritems():
+                        if key[0] == 'values':
+                            selFilename = str(key[1][0])
+                    enter_text('command_window','/dl '+selFilename)               
+                except Exception as e:
+                    e = str(e)
+                    if e == "'str' object has no attribute 'iteritems'":
+                        e = 'No file selected!'
+                    tkMessageBox.showerror(title='Error', message=str(e))
+                topwin.lift()
+
+            def setup_buttons(self,frame,Tbox,Scroll):
+                button = Button(frame, text='Share', command=lambda :self.share_button(Tbox,Scroll))
+                button.pack(anchor=SW,side=LEFT)
+                button = Button(frame, text='Download', command=lambda :self.download_button(Tbox,Scroll))
+                button.pack(padx=10,anchor=SW,side=LEFT)
+
+        def sortby(tree, col, descending):
+            """sort tree contents when a column header is clicked on"""
+            # grab values to sort
+            data = [(tree.set(child, col), child) \
+                for child in tree.get_children('')]
+            # if the data to be sorted is numeric change to float
+            #data =  change_numeric(data)
+            # now sort the data in place
+            data.sort(reverse=descending)
+            for ix, item in enumerate(data):
+                tree.move(item[1], '', ix)
+            # switch the heading so it will sort in the opposite direction
+            tree.heading(col, command=lambda col=col: sortby(tree, col, \
+                int(not descending)))
+
+        def file_list_to_MultiColl(*arg):
+            if len(file_list) > 0:
+                if file_list == ['EMPTY-LIST']:
+                    tkMessageBox.showerror(title='File list', message='File list is empty')
+                else:
+                    for x in file_list:
+                        try:
+                            car_list.append([x[0],x[1],x[2],x[3],x[4]])
+                        except Exception as e:
+                            e = str(e)
+                            print e
+                            try:
+                                car_list.append([x[0]])
+                            except:
+                                car_list.append(['Bad list'])
+                msg.destroy()
+                frame = Frame(topwin, height=400,width=500)
+                frame.pack_propagate(0)
+                frame.pack(padx=10,anchor=NE,side=LEFT)
+                frame2 = Frame(topwin, height=390,width=400)
+                frame2.pack_propagate(0)
+                frame2.pack(padx=10,anchor=NE,side=LEFT)
+                frame3 = Frame(frame2, height=50,width=400)
+                frame3.pack_propagate(0)
+                frame3.pack(side=BOTTOM)
+
+                Label(frame2,text= '\n\n').pack(side=TOP,pady=4)
+                Scroll = Scrollbar(frame2)
+                Tbox = Text(frame2, height=46, width=114,wrap=WORD)
+                Scroll.pack(side=RIGHT, fill=Y)
+                Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
+##                Tbox.config(background='black',highlightthickness=0,highlightbackground='black',bd=0,)
+##                Tbox.tag_configure('greencol', font=('OCR A Extended', 16), foreground='#00FF00')
+                Scroll.config(command=Tbox.yview)
+                Tbox.config(yscrollcommand=Scroll.set,state="disabled")
+    
+                listbox = MultiColumnListbox(frame,frame2,frame3,Tbox,Scroll)
+            else:
+                topwin.after(200,file_list_to_MultiColl)
+
+        car_header = ['Name', 'Size MB','Format','Upload time','Remaining time']
+        car_list = []
+        topwin = Toplevel()
+        topwin.minsize(700,400)
+        set_winicon(topwin,'icon')
+        topwin.title("File manager") 
+        
+        msg = Message(topwin, width=550,text = "Downloading file list...")
+        msg.config(fg='black',font=('Arial', 26))
+        msg.pack(anchor=NW)
+        topwin.after(200,file_list_to_MultiColl)
+        topwin.lift()
+        topwin.focus_set()  
+        
+    ##    topwin.resizable(FALSE,FALSE)
+    ##
+        def close_func(*arg):
+            topwin.destroy()
+    ##    def focusList(event):
+    ##        display.focus_set()
+        topwin.bind('<Escape>', close_func)
+        
+    except Exception as e:
+        e = str(e)
+        if e == "global name 's' is not defined" or e == "'str' object has no attribute 'send'":
+            e = 'Not connected!'
+        tkMessageBox.showerror(title='Error', message=str(e))
+
+def change_other_settings(a,c,e,f,g,h,i):
+    global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth
     global User_area, S2, T, S, E, s, username, write_log
     autojoin = a
-    X_size = b
     leave_join = c
-    Y_size = d
     nadd_spaces = e
     autoauth = h
     write_log = i
@@ -1275,18 +1517,16 @@ def change_other_settings(a,b,c,d,e,f,g,h,i):
         show_ttime = f
         write_settings('show_ttime',f)
     write_settings('autojoin',a)
-    write_settings('X_size',b)
     write_settings('leave_join',c)
-    write_settings('Y_size',d)
     write_settings('nadd_spaces',e)
     write_settings('hide_users',g)
     write_settings('autoauth',h)
     write_settings('chlog',i)
-    root.geometry('%sx%s' % (X_size,Y_size))
+##    root.geometry('%sx%s' % (X_size,Y_size))
     
     
 def other_menu():
-    global X_size,Y_size , autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth, write_log
+    global autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth, write_log
     sm = Toplevel()
     set_winicon(sm,'icon')
     sm.title("Other settings")
@@ -1302,8 +1542,6 @@ def other_menu():
     leave_join_enabled = IntVar()
     autoauth_enabled = IntVar()
     autojoin_enabled = IntVar()
-    t_X_size = IntVar()
-    t_Y_size = IntVar()
     t_write_log = IntVar()
     t_write_log.set(write_log)
     autojoin_enabled.set(autojoin)
@@ -1312,14 +1550,6 @@ def other_menu():
     Checkbutton(frame, text="Show leave and join", variable=leave_join_enabled).pack(anchor=NW)
     Checkbutton(frame, text="Enable autoauthentication", variable=autoauth_enabled).pack(anchor=NW)
     Checkbutton(frame, text="Enable autojoin", variable=autojoin_enabled).pack(anchor=NW)
-    t_X_size = Scale(frame, from_=300, to=2000,length=160, orient=HORIZONTAL)
-    t_Y_size = Scale(frame, from_=300, to=1600,length=160, orient=HORIZONTAL)
-    Label(frame, text="X_size").pack(side=TOP)
-    t_X_size.pack(side=TOP)
-    Label(frame, text="Y_size").pack(side=TOP)
-    t_X_size.set(X_size)
-    t_Y_size.set(Y_size)
-    t_Y_size.pack(side=TOP)
     
     lenchspaces = IntVar()
     t_hide_users = IntVar()
@@ -1335,9 +1565,8 @@ def other_menu():
     Radiobutton(frame2,text="Without seconds",variable=t_box_time,value=2).pack(anchor=NW)
     Radiobutton(frame2,text="Hide",variable=t_box_time,value=1).pack(anchor=NW)
     t_box_time.set = (show_ttime)
-    button = Button(frame2, text='Save', width=20,
-                    command=lambda: {change_other_settings(autojoin_enabled.get(),t_X_size.get(),
-                                                           leave_join_enabled.get(),t_Y_size.get(),
+    button = Button(frame2, text='Save', command=lambda: {change_other_settings(autojoin_enabled.get(),
+                                                           leave_join_enabled.get(),
                                                            lenchspaces.get(),t_box_time.get(),
                                                            t_hide_users.get(),autoauth_enabled.get(),
                                                            t_write_log.get())
@@ -1348,17 +1577,22 @@ def other_menu():
     sm.bind('<Escape>', close_func)
 
     
-def find_2name(text,name):
+def find_2name(text,name,uname,beeped):
     global username
+    uname = remove_spaces(uname)
+    if uname == username:
+        return False, beeped
+    print text, name, uname,beeped
     text = text.lower()
     name = name.lower()
-    b = text.find(name)
-    if b is not -1:
-        if sound_settings[2] == 1:
+    text = text[:-1]
+    if name == text or '@'+name == text or '@@'+name == text:
+        if sound_settings[2] == 1 and beeped == False:
             play_sound('beep1.wav',False)
-        return True
+            beeped = True
+        return True, beeped
     else:
-        return False
+        return False, beeped
 
 def reset_entry(var):
     textt.set('')
@@ -1367,6 +1601,36 @@ def reset_textbox():
     T.config(yscrollcommand=S.set,state="normal")
     T.delete(1.0,END)
     T.config(yscrollcommand=S.set,state="disabled")
+
+def string_to_list(data):
+##    print data
+    temp_list,strlist = [], []
+    while True:
+        ## Separates user strings and puts them in a temp. list
+        begn = data.find('[[')
+        end = data.find(']]')
+        if begn is -1 or end is -1:
+            break
+        temp_list.append(data[begn+2:end+1])
+        data = data[end+2:]
+    cnt = 0
+    ## Creates a list for each user
+    for x in temp_list:
+        strlist.append([])
+    ## Separates individual values in each users list
+    for x in temp_list:
+        while True:
+            begn = x.find('[')+1
+            end = x.find(']')
+            if begn is -1 or end is -1:
+                break
+            strlist[cnt].append(x[begn:end])
+            x = x[end+1:]
+        cnt+=1
+    return strlist
+
+def organise_file_list(data):
+    string_to_list(file_list)
 
 def organise_USRLIST(data):
     global USRLIST, hide_users
@@ -1526,6 +1790,42 @@ def find_link(data):
                 begn+=1
             else:
                 return 'http://'+linktext
+    data = data[:-1]
+    begn = data.find('.com')
+    if begn is not -1 and len(data) > begn:
+        b = linktext.find('http://')
+        if b is -1:
+            return 'http://'+data
+        else:
+            return linktext
+    begn = data.find('.org')
+    if begn is not -1 and len(data) > begn:
+        b = linktext.find('http://')
+        if b is -1:
+            return 'http://'+data
+        else:
+            return linktext
+    begn = data.find('.net')
+    if begn is not -1 and len(data) > begn:
+        b = linktext.find('http://')
+        if b is -1:
+            return 'http://'+data
+        else:
+            return linktext
+    begn = data.find('.eu')
+    if begn is not -1 and len(data) > begn:
+        b = linktext.find('http://')
+        if b is -1:
+            return 'http://'+data
+        else:
+            return linktext
+    begn = data.find('.nu')
+    if begn is not -1 and len(data) > begn:
+        b = linktext.find('http://')
+        if b is -1:
+            return 'http://'+data
+        else:
+            return linktext
     return False
 
 def copy_text(*arg):
@@ -1556,6 +1856,44 @@ def entry_paste(*arg):
         E.insert('insert', text)
     except:
         print 'Nothing in clipboard'
+
+def autocomplete_name(*arg):
+    try:
+        ## Finds the last word in entry widget
+        if len(USRLIST) > 0:
+            text = textt.get()
+            text = text[::-1]
+            cnt = 0
+            for x in text:
+                if x == ' ':
+                    text = text[:cnt]
+                    break
+                cnt += 1
+            text = text[::-1]
+            ## Removes "@"
+            if text[0] == '@':
+                text = text[1:]
+            if text[0] == '@':
+                text = text[1:]
+            ## Finds the name in USRLIST
+            if text != '' and text != ' ':
+                for x in USRLIST:
+                    try:
+                        if x[1] is not 'olfo-':
+                            b = x[0].find(text)
+                            if b == 0 and x[0] != text:
+                                ## Completes it and moves the cursor to the end
+                                textt.set(textt.get()+x[0][len(text):]+' ')
+                                lentext = textt.get()
+                                E.icursor(len(lentext))
+                                break
+
+                    except:
+                        pass
+    except:
+        pass
+    ## Stops tkinter from tabbing
+    return "break"
 
 def entrym_FORWARD(*arg):
     global entry_message_arch
@@ -1592,9 +1930,8 @@ def rClicker(e):
 
         e.widget.focus()
 
-        nclst=[(' Open in browser', lambda e=e: rOpenBrowser(e)),
-               (' Command window', lambda e=e: rCommandWin(e)),
-               (' Clear', lambda e=e: rClick_Clear(e)),
+        nclst=[(' Command window', lambda e=e: rCommandWin(e)),
+               (' Clear entry', lambda e=e: rClick_Clear(e)),
                (' Copy', lambda e=e: rClick_Copy(e)),
                (' Paste', lambda e=e: rClick_Paste(e)),
                ]
@@ -1644,18 +1981,17 @@ def TCPconnect(ip,port):
     return contcp   
 
 def fldownloader_thread(name):
-    global connected_server, fdl_path
+    global connected_server, fdl_path, dl_ul_events
     print 'File download thread started - ',name
+    dl_ul_events.append([get_cur_time(),'Downloading',name])
     buflen, flstring = 0, ''
     scroller = S.get()
     try:
         os.makedirs('downloads')
     except:
         pass
-    T.config(yscrollcommand=S.set,state="normal")
     tim = time()
-    T.insert(END, get_cur_time()+' Downloading "'+name+'"\n', 'blackcol')
-    T.config(yscrollcommand=S.set,state="disabled")
+    Tbox_insert_lock(T,S,get_cur_time()+' Downloading "'+name+'"\n','blackcol')
     if scroller[1] == 1.0:  
             T.yview(END)
     sf = TCPconnect(connected_server,44672)
@@ -1684,11 +2020,9 @@ def fldownloader_thread(name):
             fh = open('downloads/'+name, 'ab')
             fh.write(flstring)
         fh.close()
-        T.config(yscrollcommand=S.set,state="normal")
         tim2 = round(time() - tim,2)
         buflen = len(flstring)
-        T.insert(END, get_cur_time()+' File downloaded in '+str(tim2)+'sec. - '+str(round(buflen/tim2/1000/1024,2))+' MB/s\n', 'blackcol')
-        T.config(yscrollcommand=S.set,state="disabled")
+        Tbox_insert_lock(T,S,get_cur_time()+' File downloaded in '+str(tim2)+'sec. - '+str(round(buflen/tim2/1000/1024,2))+' MB/s\n','blackcol')
     else:
         T_ins_warning(T,S,'File does not exist')
         
@@ -1699,20 +2033,20 @@ def fldownloader_thread(name):
     if scroller[1] == 1.0:  
             T.yview(END)
     print 'File download thread stopped - ',name
+    dl_ul_events.append([get_cur_time(),'Downloaded',name])
         
 
 def share_file_thread(path,name):
-    global connected_server, username, action_time, passwd
+    global connected_server, username, action_time, passwd, dl_ul_events
     print 'File share thread started - ',name
+    dl_ul_events.append([get_cur_time(),'Uploading',name])
     scroller = S.get()
     registered = False
     try:
         sf = TCPconnect(connected_server,44672)
         state = 'connected'
-        T.config(yscrollcommand=S.set,state="normal")
         tim = time()
-        T.insert(END, get_cur_time()+' Sending "'+name+'"\n', 'blackcol')
-        T.config(yscrollcommand=S.set,state="disabled")
+        Tbox_insert_lock(T,S,get_cur_time()+' Sending "'+name+'"\n','blackcol')
         if scroller[1] == 1.0:  
                 T.yview(END)
 
@@ -1742,13 +2076,12 @@ def share_file_thread(path,name):
                         sf.send(buf)
                         buf = fi.read(8192)
                         buflen += 1
-                T.config(yscrollcommand=S.set,state="normal")
                 tim2 = round(time() - tim,2)
-                T.insert(END, get_cur_time()+' File sent in '+str(tim2)+'sec. - '+str(round(buflen/tim2*8/1024,2))+' MB/s\n', 'blackcol')
-                T.config(yscrollcommand=S.set,state="disabled")
+                Tbox_insert_lock(T,S,get_cur_time()+' File sent in '+str(tim2)+'sec. - '+str(round(buflen/tim2*8/1024,2))+' MB/s\n','blackcol')
                 sleep(1)
                 sf.send('ENDING::')
                 print 'File share thread stopped - ',name
+                dl_ul_events.append([get_cur_time(),'Uploaded',name])
     except Exception as e:
         e = str(e)
         T_ins_warning(T,S,e)
@@ -1773,6 +2106,7 @@ def share_file():
             break
     if len(name) > 0:
         Thread(target=share_file_thread,args=(path,name,)).start()
+        return name
 
 def write_logfile(dirpath,filename,text):
     b = filename.find('.txt')
@@ -1821,13 +2155,12 @@ def Changelog():
     Tbox.tag_configure('SE-bg', font=(fontlist[text_font[0]], font_size+2), background='#66cc66',foreground='black')
     Tbox.tag_configure('dark-bg', font=(fontlist[text_font[0]], font_size+2), background='#cccccc',foreground='black')
     Tbox.tag_configure('light-bg', font=(fontlist[text_font[0]], font_size+2), background='#f3f3f3',foreground='black')
-    S1 = Scrollbar(topwin, width=15)
+    S1 = Scrollbar(topwin)
     Tbox.focus_set()
     Tbox.config(yscrollcommand=S1.set,state="normal")
     S1.config(command=Tbox.yview)
 
-    bb1 = Button(topwin, text='Close', width=26,
-                        command=closethis)
+    bb1 = Button(topwin, text='Close', command=closethis)
     bb1.pack(side=BOTTOM,pady=10)
     S1.pack(side=RIGHT, fill=Y)
     Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
@@ -1862,22 +2195,22 @@ def About():
     
     Text = ("iSPTC ver%s" % (ver))
     msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('system', 26))
+    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('Arial', 26))
     msg.pack(anchor=NW)
 
     Text = ("inSecure Plain Text Chat")
     msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('system', 14))
+    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('Arial', 14))
     msg.pack(anchor=NW)
 
     Text = (" ")
     msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='#7F7F7F',width=winwi,font=('system', 54))
+    msg.config(bg='#7F7F7F',width=winwi,font=('Arial', 54))
     msg.pack(anchor=NW)
 
     Text = ("Github page: github.com/Bakterija")
     msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('system', 9))
+    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('Arial', 10))
     msg.pack(anchor=NW)
     def close_func(*arg):
         aboutwin.destroy()
@@ -1900,49 +2233,36 @@ def set_activated_S2(*arg):
     activated_widget = 'S2'
 
 ## Loading from settings file
-### 0all_sound, 1entry, 2user textbox
+### 0all_sound, 1entry, 2username mention in textbox
 sound_settings = [1,1,1]
-task_loop_interval = int(500)
-task_loop_interval = int(read_settings('chat_interval='))
-sound_settings[0] = int(read_settings('enable_sound='))
-sound_settings[1] = int(read_settings('entry_enabled='))
-sound_settings[2] = int(read_settings('user_textbox='))
-dsound_interval = float(6.0)
-dsound_interval=float(read_settings('sound_interval='))
-leave_join = 1
-leave_join = int(read_settings('leave_join='))
-usr_symbolmatch = 0
-usr_symbolmatch = int(read_settings('symbol_match='))
-show_ttime= int(read_settings('show_ttime='))
-nadd_spaces= int(read_settings('nadd_spaces='))
-try:
-    username = str(read_settings('username='))
-    if username == 'default':
-        username = 'User'+str(randrange(1,999,1))
-    elif len(username) < 3:
-        username = 'User'+str(randrange(1,999,1))
-except:
-    print "Couldn't load username"
+task_loop_interval = int(read_settings('chat_interval=',500))
+sound_settings[0] = int(read_settings('enable_sound=',1))
+sound_settings[1] = int(read_settings('entry_enabled=',0))
+sound_settings[2] = int(read_settings('user_textbox=',1))
+dsound_interval=float(read_settings('sound_interval=',2.0))
+leave_join = int(read_settings('leave_join=',1))
+show_ttime= int(read_settings('show_ttime=',2))
+nadd_spaces= int(read_settings('nadd_spaces=',1))
+username = str(read_settings('username=','User'+str(randrange(1,999,1))))
+if len(username) < 1:
     username = 'User'+str(randrange(1,999,1))
-autojoin = 0
-autojoin = int(read_settings('autojoin='))
-hide_users = int(read_settings('hide_users='))
-X_size = int(read_settings('X_size='))
-Y_size = int(read_settings('Y_size='))
-font_size = int(read_settings('font_size='))
-text_font = (int(read_settings('tfont=')),)
-server_list = []
-passwd = str(read_settings('usrauth='))
-autoauth = int(read_settings('autoauth='))
-offline_msg = int(read_settings('offline_msg='))
-update_enabled = int(read_settings('update_enabled='))
-update_link = str(read_settings('update_link='))
-fdl_path = str(read_settings('fdl_path='))
-write_log = int(read_settings('chlog='))
-usra_len = int(read_settings('usra_len='))
-day_number_old = str(read_settings('day_number='))
+autojoin = int(read_settings('autojoin=',0))
+hide_users = int(read_settings('hide_users=',0))
+X_size = int(read_settings('X_size=',800))
+Y_size = int(read_settings('Y_size=',600))
+font_size = int(read_settings('font_size=',10))
+text_font = (int(read_settings('tfont=',10)),)
+passwd = str(read_settings('usrauth=',''))
+autoauth = int(read_settings('autoauth=',1))
+offline_msg = int(read_settings('offline_msg=',1))
+update_enabled = int(read_settings('update_enabled=',0))
+update_link = str(read_settings('update_link=',''))
+fdl_path = str(read_settings('fdl_path=','downloads/'))
+write_log = int(read_settings('chlog=',1))
+usra_len = int(read_settings('usra_len=',20))
+day_number_old = str(read_settings('day_number=','1'))
 window_sizes = []
-window_sizes.append([[str(read_settings('win_changelog_x='))],[str(read_settings('win_changelog_y='))]])
+window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_settings('win_changelog_y=','500'))]])
 
 ## Setting global vars
 sound_interval = 0
@@ -1953,8 +2273,8 @@ windowfocus = True
 icon_was_switched = False
 kill_reconnect = False
 connected_server = ''
-sender_thread_list,userlog_list = [], []
-entry_mlist = []
+sender_thread_list, userlog_list, dl_ul_events = [], [], []
+entry_mlist, file_list = [], []
 day_number = strftime("%d")
 entry_message_arch = 0
 activated_widget = 'E'
@@ -1967,10 +2287,10 @@ maxsize = "5x5"
 textt = StringVar()
 textt.set("")
 ###Toolbar
-menu = Menu(root,tearoff=0)
+menu = Menu(root,tearoff=0,borderwidth=0)
 root.config(menu=menu)
 menu1 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Main',menu=menu1)
+menu.add_cascade(label='Server',menu=menu1)
 menu1.add_command(label='Join', command=join_typing)
 menu1.add_command(label='Join last', command=lambda: join_server(False))
 menu1.add_separator()
@@ -1988,24 +2308,29 @@ menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
 
 menu3 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Commands',menu=menu3)
+menu3.add_command(label='Command window', command=command_window)
+menu3.add_separator()
 menu3.add_command(label='Go afk', command=send_afk)
 menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
 menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
 menu3.add_separator()
-menu3.add_command(label='Cm window', command=command_window)
-menu3.add_command(label='Print help', command=T_ins_help)
-menu3.add_command(label='Print userlist', command=T_ins_userlist)
-menu3.add_command(label='Print log', command=T_ins_log)
-menu3.add_command(label='Print link list', command=T_ins_linklist)
+menu3.add_command(label='Help', command=T_ins_help)
+menu3.add_command(label='File list', command=lambda: enter_text('command_window','/fl'))
+menu3.add_command(label='Link list', command=T_ins_linklist)
+menu3.add_command(label='Log', command=T_ins_log)
+menu3.add_command(label='Open download foler', command=lambda: enter_text('command_window','/files'))
+menu3.add_command(label='User list', command=T_ins_userlist)
 
 menu4 = Menu(menu,tearoff=0)
 menu.add_cascade(label='File',menu=menu4)
+menu4.add_command(label='Download manager', command=file_manager)
+menu4.add_separator()
 menu4.add_command(label='Open folder', command=lambda: open_address_in_webbrowser(fdl_path))
 menu4.add_command(label='Share', command=share_file)
 
 menu5 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Settings',menu=menu5)
-menu5.add_command(label='Set user', command=set_username)
+menu5.add_command(label='Set user', command=username_menu)
 menu5.add_command(label='Set font', command=font_menu)
 menu5.add_command(label='Set download path', command=download_menu)
 menu5.add_command(label='Color settings', command=color_menu)
@@ -2023,8 +2348,8 @@ def create_widgets():
     global T,E,User_area,S,S2,hyperlink, usra_len
     E = Entry(textvariable=textt)
     User_area = Text(root, height=44, width=usra_len)
-    S = Scrollbar(root, width=15)
-    S2 = Scrollbar(root, width=15)
+    S = Scrollbar(root)
+    S2 = Scrollbar(root)
     T = Text(root, height=46, width=114,wrap=WORD)
     ## bordercolors
 ##    root.configure(background='red')
@@ -2040,12 +2365,12 @@ def create_widgets():
 ##        x.config(bd=0)
 ##    for x in widliste:
 ##        x.config(troughcolor='black')
-        
+
     S.pack(side=RIGHT, fill=Y)
     if hide_users == 0:
         User_area.pack(side=LEFT,fill=Y)
         S2.pack(side=LEFT, fill=Y)
-    E.pack(side=BOTTOM,fill=BOTH)
+    E.pack(side=BOTTOM,fill=X)
     T.pack(side=BOTTOM,fill=BOTH,expand=1)
     S.config(command=T.yview)
     S2.config(command=User_area.yview)
@@ -2095,14 +2420,26 @@ def focusT(event):
     T.focus_set()
 ##    if event.delta == -120:
 ##        print event
-def click1():
-    print "nothing"
+def focus_entry(*arg):
+    E.focus_set()
+def return_break(*arg):
+    ## Stops tkinter from tabbing
+    return "break"
+def join_server_shortcut():
+    join_server(False)
+def click1(*arg):
+    pass
 
+root.bind("<Tab>", return_break)
+root.bind("<Control-d>",lambda x: file_manager())
+root.bind("<Control-m>",lambda x: open_address_in_webbrowser(fdl_path))
+##root.bind("<Key>", focus_entry)
 root.bind('<Return>', enter_text)
 root.bind('<KP_Enter>', enter_text)
-E.bind('<Escape>', reset_entry)
+root.bind('<Escape>', reset_entry)
 root.bind('<FocusIn>', winf_is)
 root.bind('<FocusOut>', winf_isnt)
+root.bind('<Control-j>', join_server_shortcut)
 root.bind('<Control-c>', copy_text)
 root.bind('<Control-g>', command_window)
 root.bind('<Motion>', motion)
@@ -2114,7 +2451,8 @@ if OS != 'Windows':
 if OS == 'Windows':
     root.bind('<Button-3>',rClicker, add='')
     root.bind("<MouseWheel>", focusT)
-    
+
+E.bind('<Tab>', autocomplete_name)
 ## Entry log
 E.bind('<Up>', entrym_BACK)
 E.bind('<Down>', entrym_FORWARD)
@@ -2125,13 +2463,16 @@ E.bind('<Enter>', set_activated_E)
 S.bind('<Enter>', set_activated_S)
 S2.bind('<Enter>', set_activated_S2)
 
+
 def task():
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
     global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
+    global file_list
 ##    getsize = 0
 ##    for x in data_list:
 ##        getsize += sys.getsizeof(x)
 ##    print getsize
+    scroller = S.get()
     if sound_interval > 0:
         sound_interval-=float(task_loop_interval)/1000
     if msg_recv < len(data_list):
@@ -2145,9 +2486,6 @@ def task():
                 userlog_list.append(get_cur_time()+name+data_list[x][9:])
                 if write_log == 1:
                         write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
-                scroller = S.get()
-                if scroller[1] == 1.0:  
-                    T.yview(END)
                 T.config(yscrollcommand=S.set,state="disabled")
             ## Private server messages
             elif data_list[x][:9] == 'WSERVER::':
@@ -2157,9 +2495,6 @@ def task():
                 userlog_list.append(get_cur_time()+name+data_list[x][9:])
                 if write_log == 1:
                         write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
-                scroller = S.get()
-                if scroller[1] == 1.0:  
-                    T.yview(END)
                 T.config(yscrollcommand=S.set,state="disabled")
             ## Server leave/join messages
             elif data_list[x][:9] == 'SERVELJ::':
@@ -2172,9 +2507,6 @@ def task():
                     userlog_list.append(get_cur_time()+name+data_list[x][9:])
                     if write_log == 1:
                         write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
-                    scroller = S.get()
-                    if scroller[1] == 1.0:  
-                        T.yview(END)
                     T.config(yscrollcommand=S.set,state="disabled")
             ## Server closing connection
             elif data_list[x][:9] == 'CLOSING::':
@@ -2182,6 +2514,21 @@ def task():
                 war = lenghten_name('WARNING: ',21)
                 T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
                 leave_server()
+                T.config(yscrollcommand=S.set,state="disabled")
+            ## File list
+            elif data_list[x][:9] == 'FILLIST::':
+                data_list[x] = data_list[x].rstrip()
+                if data_list[x][9:] == 'EMPTY-LIST':
+                    file_list = list(['EMPTY-LIST'])
+                else:
+                    file_list = string_to_list(data_list[x][9:])
+            ## New file shared
+            elif data_list[x][:9] == 'NEWFILE::':
+                b = data_list[x].find(']')
+                T.config(yscrollcommand=S.set,state="normal")
+                name = lenghten_name('SERVER: ',21)
+                T.insert(END, get_cur_time()+name+data_list[x][9:b+0]+' shared a file, type /dl '+data_list[x][b+1:]+' or open file manager to download\n','bluecol')
+                userlog_list.append(get_cur_time()+name+data_list[x][9:])
                 T.config(yscrollcommand=S.set,state="disabled")
             ## User list update
             elif data_list[x][:9] == 'USRLIST::':
@@ -2191,15 +2538,16 @@ def task():
                 data_list[x] = data_list[x].rstrip()
                 print "iSPTC - "+data_list[x][9:]+' - '+connected_server
                 root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
+                username = data_list[x][9:]
             ## Messages from users
             else:
                 userlog_list.append(get_cur_time()+remove_spaces(data_list[x][4:23])+': '+data_list[x][23:])
                 global linkk
+                beeped = False
                 mgreen = 'greencol'
                 mblack = 'blackcol'
                 mlink = 'bluecol'
                 T.config(yscrollcommand=S.set,state="normal")
-                nfind = find_2name(data_list[x][23:],username)
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
                     
                 ## Separates words
@@ -2225,10 +2573,12 @@ def task():
                     mblack = 'privatecol'
                     mlink = 'privatlink'
                     del temp_list[0]
+                ## Username mentioned
                 for x in temp_list:
-                    nfind = find_2name(x,username)
+                    nfind, beeped = find_2name(x,username,uname,beeped)
                     if nfind is True:
                         T.insert(END, x,mgreen)
+                    ## Hyperlinks
                     elif nfind is False:
                         global linkk
                         linkk = find_link(x)
@@ -2244,15 +2594,15 @@ def task():
                     write_logfile('log/',connected_server,temppstring)
                       
                 nfind = False
-                scroller_to_end()
                 T.config(yscrollcommand=S.set,state="disabled")
                 if windowfocus is False:
                     set_winicon(root,'icon2')
                     icon_was_switched = True
             msg_recv +=1
+            if scroller[1] == 1.0:  
+                T.yview(END)
     root.after(task_loop_interval, task)  # reschedule event
-    
-##te = Test(root)
+
 set_winicon(root,'icon')
 root.protocol('WM_DELETE_WINDOW', closewin)
 def update_task():

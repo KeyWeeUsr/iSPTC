@@ -1,3 +1,44 @@
+## Client[1.02] - 2016-2-6
+### Added
+ - Autocomplete usernames in entry box
+ - ttk Buttons, Scrollbars
+ - File manager
+ - Hyperlink detection for top level domains
+ - Dialogue windows for errors and warnings
+ - Multi column list object
+ - New command - /share (Opens file sharing window)
+ - New command - /fm (Opens file manager)
+ - New command - /fl (Shows file list)
+ - New command - /files (Opens download foler)
+ - New hotkey - <Control-d> (Opens file manager)
+ - New hotkey - <Control-m> (Opens download foler)
+ - Various small GUI improvements
+### Changed
+ - Removed "Open in browser" rightclick button
+ - User name mention sound will play only when another user mentions the user name
+ - User name mention sound will play only when text in chat is an exact match or match with "@" in front
+### Fix
+ - recv_thread won't go into an infinite loop after receiving unexcepted message ending symbols
+
+## Server[1.00] - 2016-2-6
+### Added
+ - Can start threads from server console
+ - Expanded file_list, newly added values - file_format, upload time, time remaining (placeholder)
+### Changed
+ - Switched user-append and user-remove functions to eventThread (Won't crash when many users leave at the same moment)
+### Fix
+ - Won't allow users to send message ending symbols to other users
+
+
+## Client[1.00b] - 2016-1-29
+### Added
+ - Will now always load and save default values when they can't be found in the settings.cfg file
+
+## Server[0.99b] - 2016-1-29
+### Fix
+ - Private offline messages get delivered again
+
+
 ## Client[1.00] - 2016-1-28
 ### Added
  - Sends version number to server
@@ -14,7 +55,7 @@
  - Accepts version information
  - Client version in user list
 ### Changed
- - Removed most sleep timers
+ - Removed most sleep timers (Increases speed)
 
 
 ## Client[0.99c] - 2016-1-27
