@@ -811,7 +811,6 @@ def start_update(update_list):
     upd_str = ""
     savef('','load/upd_filelist')
     for x in update_list:
-        print x
         fh = open('load/upd_filelist', 'a')
         fh.write(x)
         fh.close()
@@ -848,6 +847,7 @@ def updater_updater(ufile):
                     print x
                 write_settings('updater_ver',temp_list[0])
                 tkMessageBox.showinfo(title='Update', message='Updater has been updated')
+                updater_ver = temp_list[0]
                 topwin.destroy()
                 update_checker(update_link)
             except Exception as e:
