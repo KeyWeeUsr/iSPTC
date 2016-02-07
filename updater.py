@@ -2,10 +2,13 @@
 # -*- coding: utf-8 -*-
 from Tkinter import *
 from time import strftime,gmtime,sleep
+from shutil import move as move_file
 from subprocess import *
 import platform, urllib, urllib2, os
 from threading import Thread
-v = 1.00
+from ttk import Button
+from ttk import Scrollbar
+v = '2'
 
 OS = platform.system()
 
@@ -25,6 +28,48 @@ def savef(text,file):
     f = open(file, 'w')
     f.write(text)
     f.close()
+
+def write_settings(text_find,new_value):
+    global sys_path
+    a = readf('load/settings.cfg')
+    a = edit_settings(a,text_find,new_value)
+    text = a = '\n'.join(str(e) for e in a)
+    savef(text,'load/settings.cfg')  
+
+def edit_settings(text,text_find,new_value):
+    count = 0
+    newlist = []
+    for lines in text:
+        b = lines.find(text_find)
+        if b is not -1:
+            c = text_find + '=' + str(new_value)
+            newlist.append(c)
+        else:
+            newlist.append(lines)
+        count+=1
+    count = 1
+    return newlist
+
+def read_settings(*arg):
+    a = readf('load/settings.cfg')
+    a = get_settings(a,arg[0],arg[1])
+    return a
+
+def get_settings(text,text_find,default_value):
+    for lines in text:
+        b = lines.find(text_find)
+        if b is not -1:
+            c = lines[len(text_find):]
+    try:
+        if c == '':
+            c = default_value
+            write_settings(text_find[:-1],'\n'+c)
+    except:
+        c = default_value
+        fh = open('load/settings.cfg', 'a')
+        fh.write('\n'+str(text_find)+str(c))
+        fh.close()
+    return c
 
 def set_winicon(window,name):
     global OS
@@ -46,8 +91,6 @@ def restart_client():
     if OS == 'Windows':
         if os.path.exists('client.exe') == True:
             INPUT = 'client.exe'
-        else:
-            INPUT = 'client.py'
     Popen([INPUT], shell=True,
              stdin=None, stdout=None, stderr=None, close_fds=True)
 
@@ -80,14 +123,14 @@ def download(filelink):
 
 ## Tkinter below
 root = Tk()
-root.title("Updater")
+root.title("Updater ver: "+str(v))
 root.minsize(280,300)
 
 frame = Frame(root, height=210,width=600, relief=SUNKEN)
 frame.pack_propagate(0)
-frame.pack(anchor=NE,side=TOP,padx=20)
+frame.pack(anchor=NE,side=TOP,padx=20,pady=20)
 
-S = Scrollbar(frame, width=15)
+S = Scrollbar(frame)
 T = Text(frame, height=46, width=80,wrap=WORD)
         
 S.pack(side=RIGHT, fill=Y)
@@ -95,27 +138,53 @@ T.pack(side=BOTTOM,fill=BOTH,expand=1)
 S.config(command=T.yview)
 T.tag_configure('redcol', foreground='red')
 T.tag_configure('blackcol', foreground='black')
+T.tag_configure('greencol', background='#c8d9ea',foreground='#009900')
+T.tag_configure('failed', background='#c8d9ea',foreground='red')
 
-button = Button(root, text='Reopen client', height=2, width=18,command=lambda: {restart_client(),root.destroy()})
+button = Button(root, text='Reopen client', command=lambda: {restart_client(),root.destroy()})
 button.place(x=180,y=250)
-button2 = Button(root, text='Close', height=2, width=18,command=lambda: {root.destroy()})
+button2 = Button(root, text='Close', command=lambda: {root.destroy()})
 button2.place(x=360,y=250)
 
 ## Create download link list 
 tlist = []
 tfile = readf('load/upd_filelist')
 
-def downloader_thread():
+def worker_thread():
     global T, tlist
-    for x in tlist:
+    cnt = 0
+    try:
+        for x in tlist:
+            T.config(yscrollcommand=S.set,state="normal")
+            if x[:8] == 'download':
+                T.insert(END, 'Downloading '+x[len('download,'):]+'\n','blackcol')
+                download(x[len('download,'):])
+            elif x[:8] == 'movefile':
+                b = x[9:].find(',')
+                source = x[9:b+9]
+                target = x[b+10:]
+                templist = [[source],[target]]
+                T.insert(END, 'Moving '+source+' to '+target+'\n','blackcol')
+                move_file(source,target)
+            elif x[:8] == 'mkfolder':
+                try:
+                    os.stat(x[9:])
+                except:
+                    os.mkdir(x[9:])
+                    T.insert(END, 'Making folder - '+x[9:]+'\n','blackcol')
+                    
+        savef('','load/upd_filelist')
         T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, 'Downloading '+x[len('download,'):]+'\n','blackcol')
-        download(x[len('download,'):])
-    savef('','load/upd_filelist')
-    T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, 'Erased file list\n','blackcol')
-    T.insert(END, 'Done\n','blackcol')
-    T.config(yscrollcommand=S.set,state="disabled")
+        T.insert(END, 'Erased file list\n','blackcol')
+        T.insert(END, '#Done\n','greencol')
+        T.config(yscrollcommand=S.set,state="disabled")
+    except Exception as e:
+        e = str(e)
+        T.config(yscrollcommand=S.set,state="normal")
+        T.insert(END, 'Update failed, worker thread has crashed\n','redcol')
+        T.insert(END, e+'\n','redcol')
+        T.insert(END, '#Failed\n','failed')
+        T.config(yscrollcommand=S.set,state="disabled")
 
 def kill_root():
     root.destroy()
@@ -131,20 +200,32 @@ def task1():
             T.insert(END, 'List loaded\n','blackcol')
             root.after(100, task2)
         else:
-            T.insert(END, 'No list, closing automatically in 15 seconds\n','redcol')
+            T.insert(END, 'No list, closing in 15 seconds\n','redcol')
             root.after(15000, kill_root)
     except Exception as e:
         T.insert(END, str(e)+'\n','redcol')
         T.insert(END, 'Updater has stopped\n','redcol')
+        T.insert(END, '#Failed\n','failed')
     T.config(yscrollcommand=S.set,state="disabled")
 
 def task2():
     T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, 'Downloader thread started\n','blackcol')
+    T.insert(END, 'Worker thread started\n','blackcol')
     T.config(yscrollcommand=S.set,state="disabled")
-    Thread(target=downloader_thread).start()
+    Thread(target=worker_thread).start()
+
+file_updater_ver = str(read_settings('updater_ver=','1'))
+can_update = True
+if v != file_updater_ver:
+    T.config(yscrollcommand=S.set,state="normal")
+    T.insert(END, 'Updater version does not match the stored value\nTry updating again\n','redcol')
+    T.insert(END, '#Failed\n','failed')
+    T.config(yscrollcommand=S.set,state="disabled")
+    write_settings('updater_ver',v)
+    can_update = False
 
 set_winicon(root,'icon')
-root.after(100, task1)
+if can_update == True:
+    root.after(100, task1)
 root.mainloop()
 

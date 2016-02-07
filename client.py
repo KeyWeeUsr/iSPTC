@@ -24,7 +24,7 @@ from tkColorChooser import askcolor
 from subprocess import *
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox
 
-ver = '1.02b'
+ver = '1.03'
 
 sys_path = os.getcwd()
 
@@ -193,6 +193,26 @@ class TT(Text):
         text = self.selection_get(selection='CLIPBOARD')
         self.insert('insert', text)
         self.config(state="disabled")
+
+def download_urlfile(filelink):
+    filelink = filelink.rstrip()
+    b = filelink.find('http://')
+    if b is -1:
+        filelink = 'http://'+filelink
+    name = str(filelink)
+    filehandle = urllib.urlopen(filelink)
+    
+    while True:
+        nametemp = name.find('/')
+        if nametemp is -1:
+            break
+        if nametemp is not -1:
+            name = name[nametemp+1:]
+    filer = urllib2.urlopen(filelink)
+    name = name.rstrip()
+    output = open(name,'wb')
+    output.write(filer.read())
+    output.close()
 
 def lenghten_name(name,symbols):
     global nadd_spaces
@@ -791,6 +811,7 @@ def start_update(update_list):
     upd_str = ""
     savef('','load/upd_filelist')
     for x in update_list:
+        print x
         fh = open('load/upd_filelist', 'a')
         fh.write(x)
         fh.close()
@@ -808,32 +829,90 @@ def autojoiner():
     if autojoin == 1:
             join_server(False)
 
+def updater_updater(ufile):
+    global updater_ver, update_link
+    ## Checks ver
+    temp_list, yes = [], False
+    for x in ufile:
+        x = x.rstrip()
+        temp_list.append(x)
+        
+    if temp_list[0] != updater_ver:
+        yes = True
+    ## Creates dialogue window
+    if yes == True:
+        def update_updater():
+            try:
+                for x in temp_list[1:]:
+                    download_urlfile(temp_list[1])
+                    print x
+                write_settings('updater_ver',temp_list[0])
+                tkMessageBox.showinfo(title='Update', message='Updater has been updated')
+                topwin.destroy()
+                update_checker(update_link)
+            except Exception as e:
+                e = str(e)
+                tkMessageBox.showerror(title='Error', message=str(e))
+        
+        def close_func(*arg):
+            topwin.destroy()
+    
+        topwin = Toplevel()
+        set_winicon(topwin,'icon')
+        topwin.title("Updater updater")
+        topwin.minsize(400,150)
+        topwin.resizable(FALSE,FALSE)
+
+        msg = Message(topwin,width=300, text="Updater has to be updated\nNew version is - ver: "+temp_list[0])
+        msg.config(font=('Arial', 16))
+        msg.pack(pady=15)
+
+            
+        topwin.bind('<Escape>', close_func)
+        
+        button = Button(topwin, text='Update', command=update_updater)
+        button.place(x=80,y=100)
+        button = Button(topwin, text='Close', command=close_func)
+        button.place(x=220,y=100)
+        topwin.lift()
+            
+    return yes
+
 def update_checker(update_link):
     global ver
     strver = str(ver)
     update = False
     strver = '0'+str(ver)
-
+    
+    ## Downloads update information from http://exampleaddr.com/example/win_exe/latest and /latest_updater
     if update_link[-1:] == '/':
         update_link = update_link[:-1]
     b = update_link.find('http://')
     if b is -1:
         update_link = 'http://'+update_link
-    update_link = update_link+'/latest'
-    filehandle = urllib.urlopen(update_link)
+    update_link_file = update_link+'/latest_updater'
+    filehandle = urllib.urlopen(update_link_file)
+    print update_link_file
+    ## Updates updater
+    new_update_ver = updater_updater(filehandle)
 
-    temp = []
-    for x in filehandle:
-        temp.append(x)
-        
-    upd_ver = temp[0]
-    upd_ver = upd_ver.rstrip()
-    if upd_ver != strver:
-        update = True
-    if update == True:
-        update_window(update_link,strver,update,temp,upd_ver)
-    else:
-        autojoiner()
+    ## Checks client version and opens update window if ver is different
+    if new_update_ver == False:
+        update_link_file = update_link+'/latest'
+        filehandle = urllib.urlopen(update_link_file)
+
+        temp = []
+        for x in filehandle:
+            temp.append(x)
+            
+        upd_ver = temp[0]
+        upd_ver = upd_ver.rstrip()
+        if upd_ver != strver:
+            update = True
+        if update == True:
+            update_window(update_link,strver,update,temp,upd_ver)
+        else:
+            autojoiner()
 
 def update_window(update_link,strver,update,temp,upd_ver):
     global font_size, text_font, hide_users
@@ -884,6 +963,7 @@ def update_window(update_link,strver,update,temp,upd_ver):
     downlist= []
     if update == True:
          for x in temp:
+            ## Inserts comments into Text box
             b = x.find('comment,')
             if b is not -1:
                 commentlink = x[len('comment')+1:]
@@ -899,12 +979,19 @@ def update_window(update_link,strver,update,temp,upd_ver):
                         Tbox.insert(END, x,'light-bg')
                     else:
                         Tbox.insert(END, x,'blackcol')
+            ## Passes information to updater
             else:
                 b = x.find('download,')
                 if b is not -1:
                     downlist.append(x)
+                b = x.find('move,')
+                if b is not -1:
+                    downlist.append(x)
     Tbox.config(yscrollcommand=S1.set,state="disabled")
-    
+
+    def close_func(*arg):
+        topwin.destroy()
+    topwin.bind('<Escape>', close_func)
     button = Button(topwin, text='Update', command=lambda: {start_update(downlist)})
     button.place(x=180,y=540)
     button2 = Button(topwin, text='Close', command=lambda: {autojoiner(),topwin.destroy()})
@@ -1591,7 +1678,6 @@ def find_2name(text,name,uname,beeped):
     uname = remove_spaces(uname)
     if uname == username:
         return False, beeped
-    print text, name, uname,beeped
     text = text.lower()
     name = name.lower()
     text = text[:-1]
@@ -2161,6 +2247,7 @@ def Changelog():
     Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size+2, 'normal'), foreground='black')
     Tbox.tag_configure('CL-bg', font=(fontlist[text_font[0]], font_size+2), background='#80ccff',foreground='black')
     Tbox.tag_configure('SE-bg', font=(fontlist[text_font[0]], font_size+2), background='#66cc66',foreground='black')
+    Tbox.tag_configure('UP-bg', font=(fontlist[text_font[0]], font_size+2), background='#FF7373',foreground='black')
     Tbox.tag_configure('dark-bg', font=(fontlist[text_font[0]], font_size+2), background='#cccccc',foreground='black')
     Tbox.tag_configure('light-bg', font=(fontlist[text_font[0]], font_size+2), background='#f3f3f3',foreground='black')
     S1 = Scrollbar(topwin)
@@ -2175,10 +2262,12 @@ def Changelog():
     
     changelogfile = readf('changelog.txt')
     for x in changelogfile:
-        if x[:5] == '## Cl':
+        if x[:6] == '## Cli':
             Tbox.insert(END, x+'\n','CL-bg')
-        elif x[:5] == '## Se':
+        elif x[:6] == '## Ser':
             Tbox.insert(END, x+'\n','SE-bg')
+        elif x[:6] == '## Upd':
+            Tbox.insert(END, x+'\n','UP-bg')
         elif x[:3] == '###':
             Tbox.insert(END, x+'\n','light-bg')
         else:
@@ -2268,9 +2357,10 @@ update_link = str(read_settings('update_link=',''))
 fdl_path = str(read_settings('fdl_path=','downloads/'))
 write_log = int(read_settings('chlog=',1))
 usra_len = int(read_settings('usra_len=',20))
-day_number_old = str(read_settings('day_number=','1'))
+day_number_old = str(read_settings('day_number=','0'))
 window_sizes = []
 window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_settings('win_changelog_y=','500'))]])
+updater_ver = str(read_settings('updater_ver=','1'))
 
 ## Setting global vars
 sound_interval = 0
@@ -2557,19 +2647,23 @@ def task():
                 T.config(yscrollcommand=S.set,state="normal")
                 usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
                     
-                ## Separates words
                 temp_list = []
                 dat = data_list[x][23:]
                 b = dat.find('@@')
                 c = dat.find(']')
+                ## Removes "]" from private message
                 if b is not -1 and c is not -1:
                     dat = dat[:c]+' '+dat[c+1:]
+
+                ## Separates words and append to temp_list
+                dat = dat+' '
                 while True:
                     b = dat.find(' ')
                     temp_list.append(dat[:b]+' ')
                     dat = dat[b+1:]
                     if b is -1:
                         break
+                temp_list[-1] = temp_list[-1][:-2]
 
                 ## Tags words
                 T.insert(END, get_cur_time(),'blackcol')
