@@ -1,3 +1,28 @@
+## Client[1.05]b - 2016-2-8
+### Added
+ - Added script importer function (imports scripts that are specified in lib/loadscripts.ini). After then, main(data_list, thread_message_list, dl_ul_events, entry_mlist) is run, each argument is a global variable.
+ - New icons
+ - New, beautiful "About" window
+ - Autocomplete now adds "]" after username instead of space when it's a private message
+ - Log files have their own time writing setting
+ - Imported list of 1240 top domains for hyperlink manager from iana.org/domains/root/db
+ - Hyperlink manager tags short links without https:// or http:// and/or www
+### Changed
+ - All .cfg files are .ini now
+ - All Tkinter.Toplevel windows have a greyscale icon now
+ - Improved hyperlink manager, doesn't require a global anymore and can be used in any Text.insert function
+ - Moved "Edit" toolbar buttons - "Clear textbox", "Clear Entry box" to Commands
+ - Removed "Edit" toolbar button
+ - Removed duplicate download folder opener toolbar button
+### Fix
+ - Updater updater window won't show up again after a successful update
+ - New lines were not being added to log files after the recent new line removal from recv_thread's data append function (Every new message was added to the same line)
+
+## Server[1.00b] - 2016-2-8
+### Changed
+ - Reduced list sender thread sleep timer (Sped up)
+
+
 ## Client[1.03] - 2016-2-7
 ### Added
  - Updater updater
@@ -16,6 +41,7 @@
  - File manager hotkey is <Control-q> now
 ### Fix
  - Previous recv_thread fix caused recv_thread to skip some messages, it's fixed in 1.02b
+
 
 ## Client[1.02] - 2016-2-6
 ### Added
@@ -260,7 +286,7 @@ Changed
 ## Server[0.86t] - 2015-12-26
 ### Added
  - User levels
- - IP address authentification
+ - IP address authentication
  - Private messages
 
 
@@ -275,7 +301,7 @@ Changed
  - Tkinter error when attempting to color tag text in disabled user window
 
 ## Server[0.86] - 2015-12-26
-### Fixed
- - Duplica username bug
 ###Changed
  - Increased username length to 19 to have space for duplicate renaming
+### Fixed
+ - Duplicate username bug

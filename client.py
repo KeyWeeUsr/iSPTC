@@ -14,6 +14,8 @@ from ttk import Scale
 from ttk import Separator
 from ttk import Treeview
 from ttk import Label
+from ttk import Entry
+##from ttk import Widget
 from ttk import Frame as ttkFrame
 from threading import Thread
 from random import randrange
@@ -22,14 +24,22 @@ from tkFileDialog import askopenfilename
 from tkFileDialog import askdirectory
 from tkColorChooser import askcolor
 from subprocess import *
-import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox
+from PIL import Image as Pillow_image
+from PIL import ImageTk
+import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
 
-ver = '1.03'
+ver = '1.05b'
 
 sys_path = os.getcwd()
-
 OS = platform.system()
 print 'Path ',sys_path
+
+## Top domain list
+sys.path.insert(0, './lib')
+from top_domains import TLDS
+for x in TLDS:
+    x = x.decode('utf-8')
+
 if OS is 'Windows':
     import winsound
 
@@ -81,7 +91,7 @@ def edit_settings(text,text_find,new_value):
 
 def read_settings(*arg):
     global sys_path
-    a = readf('load/settings.cfg')
+    a = readf('load/settings.ini')
     a = get_settings(a,arg[0],arg[1])
     return a
 
@@ -97,17 +107,17 @@ def get_settings(text,text_find,default_value):
             write_settings(text_find[:-1],'\n'+c)
     except:
         c = default_value
-        fh = open('load/settings.cfg', 'a')
+        fh = open('load/settings.ini', 'a')
         fh.write('\n'+str(text_find)+str(c))
         fh.close()
     return c
 
 def write_settings(text_find,new_value):
     global sys_path
-    a = readf('load/settings.cfg')
+    a = readf('load/settings.ini')
     a = edit_settings(a,text_find,new_value)
     text = a = '\n'.join(str(e) for e in a)
-    savef(text,'load/settings.cfg')      
+    savef(text,'load/settings.ini')      
 
 def play_sound(name,ignore):
     if sound_settings[0] == 1:
@@ -124,33 +134,31 @@ def sound_thread(name):
     elif OS == 'Windows':
         winsound.PlaySound(sys_path+"\\"+"load\\"+name,winsound.SND_FILENAME)
 
-linkk = 'aa'
-linklist = []
-
 class HyperlinkManager:
-    def __init__(self, text):
-        global linkk, font_size, text_font
+    def __init__(self, text,override_font):
+        global font_size, text_font
         font = text_font
         fontlist=list(tkFont.families())
         fontlist.sort()
         self.text = text
-        self.text.tag_config("hyper", font=(fontlist[text_font[0]], font_size), foreground='blue', underline=1)
+        if override_font == 'False':
+            self.text.tag_config("hyper", font=(fontlist[text_font[0]], font_size), foreground='blue', underline=1)
+        else:
+            self.text.tag_config("hyper", font=override_font, foreground='blue', underline=1)
         self.text.tag_bind("hyper", "<Enter>", self._enter)
         self.text.tag_bind("hyper", "<Leave>", self._leave)
         self.text.tag_bind("hyper", "<Button-1>", self._click)
-
         self.reset()
 
     def reset(self):
         self.links = {}
 
-    def add(self, action):
+    def add(self, addr):
         # add an action to the manager.  returns tags to use in
         # associated text widget
         tag = "hyper-%d" % len(self.links)
-        self.links[tag] = action
-        self.linksss = linkk
-        linklist.append([tag,linkk])
+        self.links[tag] = addr
+        linklist.append([tag,addr])
         return "hyper", tag
 
     def _enter(self, event):
@@ -162,10 +170,7 @@ class HyperlinkManager:
     def _click(self, event):
         for tag in self.text.tag_names(CURRENT):
             if tag[:6] == "hyper-":
-                for x in linklist:
-                    if x[0] == tag:
-                        print x[1]
-                        webbrowser.open(x[1])
+                open_address_in_webbrowser(self.links[tag])
                 return
 
 class TT(Text):
@@ -246,14 +251,24 @@ def closewin():
             quit
         except:
             pass
+    thread_message_list.append('QUIT::')
 
 def get_cur_time():
     global show_ttime
-    if show_ttime is 1:
+    if show_ttime == 1:
         return ''
-    if show_ttime is 2:
+    if show_ttime == 2:
         return strftime("%H:%M")+' '
-    if show_ttime is 3:
+    if show_ttime == 3:
+        return strftime("%H:%M:%S")+' '
+
+def get_cur_time_log():
+    global show_logtime
+    if show_logtime == 1:
+        return ''
+    if show_logtime == 2:
+        return strftime("%H:%M")+' '
+    if show_logtime == 3:
         return strftime("%H:%M:%S")+' '
 
 def cp_destroy(*arg):
@@ -274,7 +289,7 @@ def open_in_browser_btn():
         done = False
     try:
         copy_text()
-        webbrowser.open(str(root.selection_get(selection="CLIPBOARD")))
+        open_address_in_webbrowser(str(root.selection_get(selection="CLIPBOARD")))
     except:
         print 'Nothing in clipboard'
     if done == True:
@@ -400,14 +415,14 @@ def jlost_reconnect():
 def join_typing():
     global server_list
     server_list = []
-    temp_text = readf('load/serverlist')
+    temp_text = readf('load/serverlist.ini')
     for x in temp_text:
         server_list.append(x)
     joinaddr = str(read_settings('joinaddr=',''))
     jaddr = StringVar()
     jaddr.set(joinaddr)
     jsrv = Toplevel()
-    set_winicon(jsrv,'icon')
+    set_winicon(jsrv,'icon_grey')
     jsrv.title("Server address")
     jsrv.minsize(340,410)
     jsrv.resizable(FALSE,FALSE)
@@ -512,7 +527,13 @@ def scroller_to_end():
         T.yview(END)
 
 def open_address_in_webbrowser(address):
-    webbrowser.open(address)
+    a = address.find('http://')
+    b = address.find('https://')
+    c = address.find('www.')
+    if a == -1 and b == -1 and c == -1:
+        webbrowser.open('http://'+address)
+    else:
+        webbrowser.open(address)
 
 def Tbox_insert_lock(Tbx,Scr,text,tag):
     scroller = Scr.get()
@@ -550,8 +571,9 @@ def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'light-grey-bg')
-    T.insert(END, 'Type:\n/help to see this message \n/u for userlist\n/log for chatlog\n/afk to go afk\n/ll to see all links\n'+
-             '/reg "password" to register\n/auth "password" to authenticate\n/clear to clear textbox\n/share to share a file\n'+
+    T.insert(END, 'Type:\n/help to see this message \n/u to show userlist\n/log to show chatlog\n'+
+             '/afk to go afk\n/ll to see all links\n'+'/reg "password" to register\n'+
+             '/auth "password" to authenticate\n/clear to clear textbox\n/share to share a file\n'+
              '/fm to open file manager\n/fl to show file list\n/files to open download folder\n', 'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
@@ -636,7 +658,7 @@ def t_auth_window(auth_or_register):
     t_passwd = StringVar()
     t_passwd.set(passwd)
     hhw = Toplevel()
-    set_winicon(hhw,'icon')
+    set_winicon(hhw,'icon_grey')
     if auth_or_register == 'register':
         hhw.title("Register")
     if auth_or_register == 'auth':
@@ -843,7 +865,7 @@ def updater_updater(ufile):
         def update_updater():
             try:
                 for x in temp_list[1:]:
-                    download_urlfile(temp_list[1])
+                    download_urlfile(x)
                     print x
                 write_settings('updater_ver',temp_list[0])
                 tkMessageBox.showinfo(title='Update', message='Updater has been updated')
@@ -858,7 +880,7 @@ def updater_updater(ufile):
             topwin.destroy()
     
         topwin = Toplevel()
-        set_winicon(topwin,'icon')
+        set_winicon(topwin,'icon_grey')
         topwin.title("Updater updater")
         topwin.minsize(400,150)
         topwin.resizable(FALSE,FALSE)
@@ -920,7 +942,7 @@ def update_window(update_link,strver,update,temp,upd_ver):
     fontlist.sort()
     global ver
     topwin = Toplevel()
-    set_winicon(topwin,'icon')
+    set_winicon(topwin,'icon_grey')
     topwin.title("Updater")
     topwin.minsize(700,600)
     topwin.resizable(FALSE,FALSE)
@@ -1004,7 +1026,7 @@ def command_window(*arg):
     fontlist=list(tkFont.families())
     fontlist.sort()
     cww = Toplevel()
-    set_winicon(cww,'icon')
+    set_winicon(cww,'icon_grey')
     cww.title("Command..")
     cww.minsize(500,70)
     cww.resizable(FALSE,FALSE)
@@ -1071,16 +1093,17 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
 def username_menu():
     global username, passwd, offline_msg
     uw = Toplevel()
-    t_new_name = StringVar()
-    t_new_name.set(username)
-    t_passwd = StringVar()
-    t_passwd.set(passwd)
-    t_offline_msg = IntVar()
-    t_offline_msg.set(offline_msg)
-    set_winicon(uw,'icon')
+    set_winicon(uw,'icon_grey')
     uw.title("User")
     uw.minsize(250,170)
     uw.resizable(FALSE,FALSE)
+    
+    t_new_name = StringVar()
+    t_new_name.set(username)
+    t_passwd = StringVar()
+    t_offline_msg = IntVar()
+    t_passwd.set(passwd)
+    t_offline_msg.set(offline_msg)
     
     Label(uw, text="Username:").pack(anchor=NW,padx=35,pady=5)
     usrEntry = Entry(uw,textvariable=t_new_name)
@@ -1093,8 +1116,7 @@ def username_menu():
     usrEntry.focus_set()
     Checkbutton(uw, text="Enable offline messages", variable=t_offline_msg).pack(anchor=NW,padx=35)
     button = Button(uw, text='Save', command=lambda: {change_name(t_new_name,t_passwd,
-                                                                            t_offline_msg),
-                                                                uw.destroy()})
+                                                            t_offline_msg),uw.destroy()})
     button.pack(side=BOTTOM,pady=10)
     Label(uw, text="(Requires registration)").pack(anchor=N,padx=35)
     def cmdbind(*arg):
@@ -1107,6 +1129,7 @@ def username_menu():
     
 def change_sound_set(a,b,c,d):
     global dsound_interval
+    ### 0all_sound, 1entry, 2user textbox
     sound_settings[0] = a
     sound_settings[1] = b
     sound_settings[2] = c
@@ -1119,11 +1142,11 @@ def change_sound_set(a,b,c,d):
 def sound_menu():
     global dsound_interval
     sw = Toplevel()
-    set_winicon(sw,'icon')
+    set_winicon(sw,'icon_grey')
     sw.title("Sound settings")
     sw.minsize(280,180)
     sw.resizable(FALSE,FALSE)
-    ### 0all_sound, 1entry, 2user textbox
+
     sound_enabled = IntVar()
     entry_enabled = IntVar()
     user_textbox = IntVar()
@@ -1132,6 +1155,7 @@ def sound_menu():
     sound_enabled.set(sound_settings[0])
     entry_enabled.set(sound_settings[1])
     user_textbox.set(sound_settings[2])
+    
     Checkbutton(sw, text="Enable sound", variable=sound_enabled).grid(row=1, sticky=W,padx=20)
     Checkbutton(sw, text="Entry sound", variable=entry_enabled).grid(row=2, sticky=W,padx=20)
     Checkbutton(sw, text="Textbox sound", variable=user_textbox).grid(row=3, sticky=W,padx=20)
@@ -1152,7 +1176,7 @@ def sound_menu():
 def color_menu():
     global font_size, text_font
     colm = Toplevel()
-    set_winicon(colm,'icon')
+    set_winicon(colm,'icon_grey')
     colm.title("Color settings")
     colm.minsize(700,400)
     colm.resizable(FALSE,FALSE)
@@ -1208,7 +1232,7 @@ def set_font(font,fontlist,t_font_size,t_usra_len):
     
     User_area.config(width=t_usra_len)
     tag_colors()
-    hyperlink = HyperlinkManager(T)
+    hyperlink = HyperlinkManager(T,'False')
     usra_len = t_usra_len
     write_settings('font_size',font_size)
     write_settings('usra_len',usra_len)
@@ -1216,7 +1240,7 @@ def set_font(font,fontlist,t_font_size,t_usra_len):
 def font_menu():
     global font_size, text_font, usra_len
     fom = Toplevel()
-    set_winicon(fom,'icon')
+    set_winicon(fom,'icon_grey')
     fom.title("Font settings")
     fom.minsize(700,400)
     fom.resizable(FALSE,FALSE)
@@ -1227,10 +1251,14 @@ def font_menu():
     frame2.pack_propagate(0)
     frame.pack(anchor=NE,side=LEFT)
     frame2.pack(anchor=NE,side=LEFT)
+
+    t_font_size = IntVar()
+    t_usra_len = IntVar()
+    t_font_size.set(font_size)
+    t_usra_len.set(usra_len)
     
     fonts=list(tkFont.families())
     fonts.sort()
-
     display = Listbox(frame)
     scroll = Scrollbar(frame)
     scroll.pack(side=RIGHT, fill=Y, expand=NO)
@@ -1240,10 +1268,6 @@ def font_menu():
     for item in fonts:
         display.insert(END, item)
 
-    t_font_size = IntVar()
-    t_font_size.set(font_size)
-    t_usra_len = IntVar()
-    t_usra_len.set(usra_len)
     Label(frame2, text="Font size:",justify = LEFT).place(x=20,y=300)
     Efont_size = Entry(frame2,textvariable=t_font_size,width=3).place(x=100,y=300)
     Label(frame2, text="User_area length:",justify = LEFT).place(x=140,y=300)
@@ -1311,17 +1335,19 @@ def save_update_settings(a,b):
 def update_menu():
     global update_enabled,update_link
     upd = Toplevel()
+    set_winicon(upd,'icon_grey')
+    upd.title("Update settings")
+    upd.minsize(500,100)
+    upd.resizable(FALSE,FALSE)
+
+    frame = Frame(upd, height=80,width=460, relief=SUNKEN)
+    frame.pack(side=TOP,pady=20)
+    frame.pack_propagate(0)
+
     t_update_enabled = IntVar()
     t_update_link = StringVar()
     t_update_enabled.set(update_enabled)
     t_update_link.set(update_link)
-    set_winicon(upd,'icon')
-    upd.title("Update settings")
-    upd.minsize(500,100)
-    upd.resizable(FALSE,FALSE)
-    frame = Frame(upd, height=80,width=460, relief=SUNKEN)
-    frame.pack(side=TOP,pady=20)
-    frame.pack_propagate(0)
     
     Checkbutton(frame, text="Check at launch", variable=t_update_enabled).pack(anchor=NW,pady=5)
     Label(frame, text="Update webserver folder:").pack(anchor=NW)
@@ -1348,12 +1374,14 @@ def save_download_settings(a):
 def download_menu():
     global fdl_path, OS
     dwlw = Toplevel()
-    t_fdl_path = StringVar()
-    t_fdl_path.set(fdl_path)
-    set_winicon(dwlw,'icon')
+    set_winicon(dwlw,'icon_grey')
     dwlw.title("Download path")
     dwlw.minsize(500,70)
     dwlw.resizable(FALSE,FALSE)
+
+    t_fdl_path = StringVar()
+    t_fdl_path.set(fdl_path)
+
     frame = Frame(dwlw, height=70,width=460, relief=SUNKEN)
     frame.pack(side=TOP,pady=20)
     frame.pack_propagate(0)
@@ -1378,13 +1406,11 @@ def download_menu():
     dwlw.bind('<Escape>', close_func)  
 
 def file_manager():
-    global OS
+    global OS , s, file_list
     '''
     Here the TreeView widget is configured as a multi-column listbox
     with adjustable column width and column-header-click sorting.
     '''
-    global s, file_list
-    file_list = []
 
     try:
         sender_thread_list.append('RQFILES::')
@@ -1420,8 +1446,8 @@ def file_manager():
                 for x in dl_ul_events[self.dl_ul_event_counter:]:
                     Tbox_insert_lock(Tbox,Scroll,x[0]+' '+x[1]+' '+x[2]+'\n','black')
                     self.dl_ul_event_counter += 1
-##                self.frame_xsize += 1
-##                frame.config(width=self.frame_xsize)
+
+                ## Automatically readjusts frame sizes when window size is changed
                 topwin.after(10,lambda: self.aftertask2(Tbox,Scroll,frame,frame2,frame3))
                 self.windowX = topwin.winfo_width()
                 self.windowY = topwin.winfo_height()
@@ -1434,7 +1460,6 @@ def file_manager():
                 frame.config(width=self.frame_xsize,height=self.frame_ysize)
                 frame2.config(width=self.frame2_xsize,height=self.frame2_ysize)
                 frame3.config(width=self.frame3_xsize,height=self.frame3_ysize)
-##                print self.windowX, self.windowY
                 
             def _setup_widgets(self,frame):
                 s = """\click on header to sort by that column
@@ -1446,7 +1471,7 @@ def file_manager():
                 container = Frame(frame)
                 container.pack(fill='both', expand=True)
                 # create a treeview with dual scrollbars
-                self.tree = Treeview(frame,columns=car_header, show="headings")
+                self.tree = Treeview(frame,columns=multi_header, show="headings")
                 vsb = Scrollbar(frame,orient="vertical",
                     command=self.tree.yview)
                 hsb = Scrollbar(frame,orient="horizontal",
@@ -1461,20 +1486,20 @@ def file_manager():
                 vsb.focus_set()
 
             def _build_tree(self):
-                for col in car_header:
+                for col in multi_header:
                     self.tree.heading(col, text=col.title(),
                         command=lambda c=col: sortby(self.tree, c, 0))
                     # adjust the column's width to the header string
                     self.tree.column(col,
                         width=tkFont.Font().measure(col.title()))
                     
-                for item in car_list:
+                for item in multi_list:
                     self.tree.insert('', 'end', values=item)
                     # adjust column's width if necessary to fit each value
                     for ix, val in enumerate(item):
                         col_w = tkFont.Font().measure(val)
-                        if self.tree.column(car_header[ix],width=None)<col_w:
-                            self.tree.column(car_header[ix], width=col_w)
+                        if self.tree.column(multi_header[ix],width=None)<col_w:
+                            self.tree.column(multi_header[ix], width=col_w)
 
             def delete_all_button(self,Tbox,Scroll):
                 enter_text('command_window','s/clear files')
@@ -1490,7 +1515,7 @@ def file_manager():
                     for key in self.selected.iteritems():
                         if key[0] == 'values':
                             selFilename = str(key[1][0])
-                    enter_text('command_window','/dl '+selFilename)               
+                    enter_text('command_window','/dl '+selFilename)
                 except Exception as e:
                     e = str(e)
                     if e == "'str' object has no attribute 'iteritems'":
@@ -1528,14 +1553,14 @@ def file_manager():
                 else:
                     for x in file_list:
                         try:
-                            car_list.append([x[0],x[1],x[2],x[3],x[4]])
+                            multi_list.append([x[0],x[1],x[2],x[3],x[4]])
                         except Exception as e:
                             e = str(e)
                             print e
                             try:
-                                car_list.append([x[0]])
+                                multi_list.append([x[0]])
                             except:
-                                car_list.append(['Bad list'])
+                                multi_list.append(['Bad list'])
                 msg.destroy()
                 frame = Frame(topwin, height=400,width=500)
                 frame.pack_propagate(0)
@@ -1561,42 +1586,38 @@ def file_manager():
             else:
                 topwin.after(200,file_list_to_MultiColl)
 
-        car_header = ['Name', 'Size MB','Format','Uploaded','Remaining']
-        car_list = []
         topwin = Toplevel()
         topwin.minsize(800,420)
-        set_winicon(topwin,'icon')
-        topwin.title("File manager") 
-        
+        set_winicon(topwin,'icon_grey')
+        topwin.title("File manager")
+
+        multi_list ,file_list  = [],[]
+        multi_header = ['Name', 'Size MB','Format','Uploaded','Remaining']
         msg = Message(topwin, width=550,text = "Downloading file list...")
         msg.config(fg='black',font=('Arial', 26))
         msg.pack(anchor=NW)
         topwin.after(200,file_list_to_MultiColl)
         topwin.lift()
-        topwin.focus_set()  
-        
-    ##    topwin.resizable(FALSE,FALSE)
-    ##
+        topwin.focus_set()
+
         def close_func(*arg):
             topwin.destroy()
-    ##    def focusList(event):
-    ##        display.focus_set()
         topwin.bind('<Escape>', close_func)
-        
     except Exception as e:
         e = str(e)
         if e == "global name 's' is not defined" or e == "'str' object has no attribute 'send'":
             e = 'Not connected!'
         tkMessageBox.showerror(title='Error', message=str(e))
 
-def change_other_settings(a,c,e,f,g,h,i):
+def change_other_settings(a,c,e,f,g,h,i,j):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth
-    global User_area, S2, T, S, E, s, username, write_log
+    global User_area, S2, T, S, E, s, username, write_log, show_logtime
     autojoin = a
     leave_join = c
     nadd_spaces = e
     autoauth = h
     write_log = i
+    show_logtime = j
 
     if hide_users is not g:
         hide_users = g
@@ -1609,65 +1630,72 @@ def change_other_settings(a,c,e,f,g,h,i):
             S.destroy()
             create_widgets()
             user_area_insert()
-    if f is not 0:
-        show_ttime = f
-        write_settings('show_ttime',f)
+    show_ttime = f
+    write_settings('show_ttime',f)
     write_settings('autojoin',a)
     write_settings('leave_join',c)
     write_settings('nadd_spaces',e)
     write_settings('hide_users',g)
     write_settings('autoauth',h)
     write_settings('chlog',i)
+    write_settings('show_logtime',j)
 ##    root.geometry('%sx%s' % (X_size,Y_size))
     
-    
 def other_menu():
-    global autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth, write_log
+    global autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth, write_log, show_logtime
     sm = Toplevel()
-    set_winicon(sm,'icon')
+    set_winicon(sm,'icon_grey')
     sm.title("Other settings")
-    sm.minsize(500,220)
+    sm.minsize(500,250)
     sm.resizable(FALSE,FALSE)
-    frame = Frame(sm, height=210,width=210, relief=SUNKEN)
-    frame2 = Frame(sm, height=210,width=210, relief=SUNKEN)
+    frame = Frame(sm, height=160,width=210, relief=SUNKEN)
     frame.pack_propagate(0)
+    frame.pack(anchor=NE,side=LEFT,padx=10,pady=10)
+    frame2 = Frame(sm, height=160,width=210, relief=SUNKEN)
     frame2.pack_propagate(0)
-    frame.pack(anchor=NE,side=LEFT)
-    frame2.pack(anchor=NE,side=LEFT)
+    frame2.pack(anchor=NE,side=LEFT,padx=10,pady=10)
+    frame3 = Frame(sm, height=40,width=500, relief=SUNKEN)
+    frame3.pack_propagate(0)
+    frame3.place(x=180,y=200)
     
-    leave_join_enabled = IntVar()
-    autoauth_enabled = IntVar()
-    autojoin_enabled = IntVar()
+    t_leave_join = IntVar()
+    t_autoauth = IntVar()
+    t_autojoin = IntVar()
     t_write_log = IntVar()
-    t_write_log.set(write_log)
-    autojoin_enabled.set(autojoin)
-    autoauth_enabled.set(autoauth)
-    leave_join_enabled.set(leave_join)
-    Checkbutton(frame, text="Show leave and join", variable=leave_join_enabled).pack(anchor=NW)
-    Checkbutton(frame, text="Enable autoauthentication", variable=autoauth_enabled).pack(anchor=NW)
-    Checkbutton(frame, text="Enable autojoin", variable=autojoin_enabled).pack(anchor=NW)
-    
-    lenchspaces = IntVar()
+    t_lenghten = IntVar()
     t_hide_users = IntVar()
-    lenchspaces.set(nadd_spaces)
-    t_hide_users.set(hide_users)
-    Checkbutton(frame2, text="Enable log writing", variable=t_write_log).pack(anchor=NW)
-    Checkbutton(frame2, text="Force 19chr length usernames", variable=lenchspaces).pack(anchor=NW)
-    Checkbutton(frame2, text="Hide userbox", variable=t_hide_users).pack(anchor=NW)
     t_box_time = IntVar()
-    t_box_time.set = (show_ttime)
-    Label(frame2, text="Textbox time:",justify = LEFT).pack(anchor=NW)
+    t_log_time = IntVar()
+    t_leave_join.set(leave_join)
+    t_autoauth.set(autoauth)
+    t_autojoin.set(autojoin)
+    t_write_log.set(write_log)
+    t_lenghten.set(nadd_spaces)
+    t_hide_users.set(hide_users)
+    t_box_time.set(show_ttime)
+    t_log_time.set(show_logtime)
+    
+    Checkbutton(frame, text="Show leave and join", variable=t_leave_join).pack(anchor=NW)
+    Checkbutton(frame, text="Enable autoauthentication", variable=t_autoauth).pack(anchor=NW)
+    Checkbutton(frame, text="Enable autojoin", variable=t_autojoin).pack(anchor=NW)
+    Label(frame, text="\nLog file time:",justify = LEFT).pack(anchor=NW)
+    Radiobutton(frame,text="Show full",variable=t_log_time,value=3).pack(anchor=NW)
+    Radiobutton(frame,text="Without seconds",variable=t_log_time,value=2).pack(anchor=NW)
+    Radiobutton(frame,text="Hide",variable=t_log_time,value=1).pack(anchor=NW)
+
+    Checkbutton(frame2, text="Enable log writing", variable=t_write_log).pack(anchor=NW)
+    Checkbutton(frame2, text="Force 19chr length usernames", variable=t_lenghten).pack(anchor=NW)
+    Checkbutton(frame2, text="Hide userbox", variable=t_hide_users).pack(anchor=NW)
+    Label(frame2, text="\nTextbox time:",justify = LEFT).pack(anchor=NW)
     Radiobutton(frame2,text="Show full",variable=t_box_time,value=3).pack(anchor=NW)
     Radiobutton(frame2,text="Without seconds",variable=t_box_time,value=2).pack(anchor=NW)
     Radiobutton(frame2,text="Hide",variable=t_box_time,value=1).pack(anchor=NW)
-    t_box_time.set = (show_ttime)
-    button = Button(frame2, text='Save', command=lambda: {change_other_settings(autojoin_enabled.get(),
-                                                           leave_join_enabled.get(),
-                                                           lenchspaces.get(),t_box_time.get(),
-                                                           t_hide_users.get(),autoauth_enabled.get(),
-                                                           t_write_log.get())
-                                                           ,sm.destroy()})
-    button.pack(side=BOTTOM)
+
+    button = Button(frame3, text='Save', command=lambda: {change_other_settings(t_autojoin.get(),
+                    t_leave_join.get(),t_lenghten.get(),t_box_time.get(),t_hide_users.get(),
+                    t_autoauth.get(),t_write_log.get(),t_log_time.get()),
+                    sm.destroy()})
+    button.pack(side=LEFT)
     def close_func(*arg):
         sm.destroy()
     sm.bind('<Escape>', close_func)
@@ -1858,9 +1886,12 @@ def get_user_color(col,name,add_zero):
     return '0','0'
 
 def find_link(data):
+    global TLDS
     data = data + ' '
+    ## Looks for http, https, www at the beginning of string
     begn = data.find('http://')
     linktext = ''
+    data = data[:-1]
     if begn is not -1:
         while True:
             if data[begn] is not ' ':
@@ -1877,50 +1908,14 @@ def find_link(data):
             else:
                 return linktext
     begn = data.find('www.')        
-    if begn is not -1:
-        while True:
-            if data[begn] is not ' ':
-                linktext = linktext+data[begn]
-                begn+=1
-            else:
-                return 'http://'+linktext
-    data = data[:-1]
-    begn = data.find('.com')
-    if begn is not -1 and len(data) > begn:
-        b = linktext.find('http://')
-        if b is -1:
-            return 'http://'+data
-        else:
-            return linktext
-    begn = data.find('.org')
-    if begn is not -1 and len(data) > begn:
-        b = linktext.find('http://')
-        if b is -1:
-            return 'http://'+data
-        else:
-            return linktext
-    begn = data.find('.net')
-    if begn is not -1 and len(data) > begn:
-        b = linktext.find('http://')
-        if b is -1:
-            return 'http://'+data
-        else:
-            return linktext
-    begn = data.find('.eu')
-    if begn is not -1 and len(data) > begn:
-        b = linktext.find('http://')
-        if b is -1:
-            return 'http://'+data
-        else:
-            return linktext
-    begn = data.find('.nu')
-    if begn is not -1 and len(data) > begn:
-        b = linktext.find('http://')
-        if b is -1:
-            return 'http://'+data
-        else:
-            return linktext
-    return False
+    if begn is not -1 and len(data) > 4:
+        return data
+    ## Compares all top domains when previous are not found
+    for x in TLDS:
+        begn = data.find('.'+x)
+        if begn is not -1 and len(data) > begn:
+            return data
+    return 'False'
 
 def copy_text(*arg):
     try:
@@ -1952,6 +1947,7 @@ def entry_paste(*arg):
         print 'Nothing in clipboard'
 
 def autocomplete_name(*arg):
+    is_private = False
     try:
         ## Finds the last word in entry widget
         if len(USRLIST) > 0:
@@ -1969,6 +1965,7 @@ def autocomplete_name(*arg):
                 text = text[1:]
             if text[0] == '@':
                 text = text[1:]
+                is_private = True
             ## Finds the name in USRLIST
             if text != '' and text != ' ':
                 for x in USRLIST:
@@ -1977,9 +1974,15 @@ def autocomplete_name(*arg):
                             b = x[0].find(text)
                             if b == 0 and x[0] != text:
                                 ## Completes it and moves the cursor to the end
-                                textt.set(textt.get()+x[0][len(text):]+' ')
-                                lentext = textt.get()
-                                E.icursor(len(lentext))
+                                    ## Adds "]" instead of space, if message is private
+                                if is_private == True:
+                                    textt.set(textt.get()+x[0][len(text):]+']')
+                                    lentext = textt.get()
+                                    E.icursor(len(lentext))
+                                else:
+                                    textt.set(textt.get()+x[0][len(text):]+' ')
+                                    lentext = textt.get()
+                                    E.icursor(len(lentext))
                                 break
 
                     except:
@@ -2220,6 +2223,27 @@ def write_logfile(dirpath,filename,text):
         fh.write(text)
         fh.close()
 
+def load_lib_scripts(root):
+    global data_list,thread_message_list,dl_ul_events,entry_mlist
+    if os.path.exists('lib/loadscripts.ini'):
+        scriptlist = readf('lib/loadscripts.ini')
+        for module in scriptlist:
+            module = module.rstrip()
+            try:
+                # because we want to import using a variable, do it this way
+                module_obj = __import__(module)
+                # create a global object containging our module
+                globals()[module] = module_obj
+                globals()[module].main(data_list,thread_message_list,dl_ul_events,entry_mlist)
+                print 'Loaded module: '+module
+##            except ImportError:
+##                sys.stderr.write("ERROR: missing python module: " + module + "\n")
+##                sys.exit(1)
+            except Exception as e:
+                e = str(e)
+                print "ERROR: loading module"
+                print e
+
 def Changelog():
     global font_size, text_font, window_sizes
     def closethis():
@@ -2231,7 +2255,7 @@ def Changelog():
     fontlist=list(tkFont.families())
     fontlist.sort()
     topwin = Toplevel()
-    set_winicon(topwin,'icon')
+    set_winicon(topwin,'icon_grey')
     topwin.title("Changelog")
     topwin.minsize(750,550)
     try:
@@ -2277,38 +2301,109 @@ def Changelog():
     def close_func(*arg):
         topwin.destroy()
     topwin.bind('<Escape>', close_func)
-     
+
+class msg_binder:
+    def __init__(self,_frame,_text,_font,l_width,_color,_bgcolor,function,function_exc,gui_add,*arg):
+        self.msg = Message(_frame, text = _text,width=l_width)
+        self.msg.config(bg=_bgcolor,fg=_color,width=l_width,font=_font)
+        if gui_add == 'pack':
+            self.msg.pack(anchor=NW)
+        elif gui_add == 'place':
+            self.msg.place(x=arg[0][0],y=arg[0][1])
+        self.function = function
+        self.function_exc = function_exc
+        self.msg.bind("<Enter>", self._enter)
+        self.msg.bind("<Leave>", self._leave)
+        self.msg.bind("<Button-1>", self._click)
+
+    def _enter(self, event):
+        self.msg.config(cursor="hand2")
+
+    def _leave(self, event):
+        self.msg.config(cursor="")
+
+    def _click(self, event):
+        if self.function == 'func':
+            self.function_exc()
+        elif self.function == 'link' and self.function_exc != 'none':
+            open_address_in_webbrowser(self.function_exc)
+
 def About():
-    global ver
-    winwi = 350
+    global ver, updater_ver
+                
+    winwi = 650
     aboutwin = Toplevel()
+    aboutwin.minsize(winwi,300)
     aboutwin.resizable(FALSE,FALSE)
-    set_winicon(aboutwin,'icon')
-    aboutwin.title("About..")
-    aboutwin.config()
-    frame = Frame(aboutwin, height=280,width=winwi, relief=SUNKEN,bg='#7F7F7F')
-    frame.pack_propagate(0)
-    frame.pack(side=TOP)
+    set_winicon(aboutwin,'icon_grey')
+
+    font_progname = ('Arial', 26,'bold')
+    font_text = ('Arial', 14,'bold')
+    font_text_small = ('Arial', 12)
+    font_text_smaller = ('Arial', 10)
+    backg1 = '#F9F8F6'
+    backg2 = '#EFEEEC'
+    text_color1 = '#595856'
+    text_blue = '#1569C7'
+    l_width = 350
     
-    Text = ("iSPTC ver%s" % (ver))
-    msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('Arial', 26))
+    aboutwin.title("About iSPTC")
+    aboutwin.config()
+    frame = Frame(aboutwin, height=240,width=winwi*0.4, relief=SUNKEN,bg=backg1)
+    frame.pack_propagate(0)
+    frame.grid(column=1,row=1)
+    frame2 = Frame(aboutwin, height=240,width=winwi*0.6, relief=SUNKEN,bg=backg1)
+    frame2.pack_propagate(0)
+    frame2.grid(column=2,row=1)
+    frame3 = Frame(aboutwin, height=60,width=winwi, relief=SUNKEN,bg=backg2)
+    frame3.pack_propagate(0)
+    frame3.place(x=0,y=240)
+
+    ## Frame 1 - Picture
+    sep = Message(frame, text = " ")
+    sep.config(background=backg1,font=('Arial', 12))
+    sep.pack(side=TOP)
+    img = Pillow_image.open("load/icon3.png")
+    img2 = ImageTk.PhotoImage(img)
+    label = tkLabel(frame,image=img2,bg=backg1)
+    label.image = img2
+    label.pack()
+
+    ## Frame 2 - Title and description
+    sep = Message(frame2, text = " ")
+    sep.config(background=backg1,font=('Arial', 10))
+    sep.pack(side=TOP)
+    
+##    Text = ("iSPTC ver%s" % (ver))
+    Text = ("iSPTC")
+    msg = Message(frame2, text = Text,width=l_width)
+    msg.config(bg=backg1,fg=text_color1,width=l_width,font=font_progname)
     msg.pack(anchor=NW)
 
     Text = ("inSecure Plain Text Chat")
-    msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('Arial', 14))
+    msg = Message(frame2, text = Text,width=l_width)
+    msg.config(bg=backg1,fg=text_color1,width=l_width,font=font_text)
     msg.pack(anchor=NW)
 
-    Text = (" ")
-    msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='#7F7F7F',width=winwi,font=('Arial', 54))
+    Text = ("Client ver: "+ver)
+    msg = Message(frame2, text = Text,width=l_width)
+    msg.config(bg=backg1,fg=text_color1,width=l_width,font=font_text_small)
+    msg.pack(anchor=NW)
+    Text = ("Updater ver: "+updater_ver)
+    msg = Message(frame2, text = Text,width=l_width)
+    msg.config(bg=backg1,fg=text_color1,width=l_width,font=font_text_small)
     msg.pack(anchor=NW)
 
-    Text = ("Github page: github.com/Bakterija")
-    msg = Message(frame, text = Text,width=winwi)
-    msg.config(bg='#7F7F7F',fg='white',width=winwi,font=('Arial', 10))
+    msg = Message(frame2, text = " ",width=l_width)
+    msg.config(background=backg1,width=l_width,font=('Arial', 20))
     msg.pack(anchor=NW)
+
+    
+    git_label = msg_binder(frame2,"Github page: github.com/Bakterija",font_text_smaller,l_width,
+                          text_color1,backg1,'link','https://github.com/Bakterija','pack')
+##    li = msg_binder(frame3,"Li",font_text_smaller,l_width,
+##                          text_blue,backg2,'func',lifunc,'place',[260,10])
+    
     def close_func(*arg):
         aboutwin.destroy()
     aboutwin.bind('<Escape>', close_func)
@@ -2361,9 +2456,11 @@ day_number_old = str(read_settings('day_number=','0'))
 window_sizes = []
 window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_settings('win_changelog_y=','500'))]])
 updater_ver = str(read_settings('updater_ver=','1'))
+show_logtime = int(read_settings('show_logtime=',2))
 
 ## Setting global vars
 sound_interval = 0
+msg_thrd = 0
 action_time = True
 data_list = []
 msg_recv = 0
@@ -2371,8 +2468,8 @@ windowfocus = True
 icon_was_switched = False
 kill_reconnect = False
 connected_server = ''
-sender_thread_list, userlog_list, dl_ul_events = [], [], []
-entry_mlist, file_list = [], []
+sender_thread_list, userlog_list, dl_ul_events, linklist = [], [], [], []
+entry_mlist, file_list, thread_message_list = [], [], []
 day_number = strftime("%d")
 entry_message_arch = 0
 activated_widget = 'E'
@@ -2395,15 +2492,6 @@ menu1.add_separator()
 menu1.add_command(label='Leave', command=leave_server)
 menu1.add_command(label='Quit', command=closewin)
 
-menu2 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Edit',menu=menu2)
-menu2.add_command(label='Copy', command=copy_text)
-menu2.add_command(label='Paste', command=entry_paste)
-menu2.add_separator()
-menu2.add_command(label='Clear Text box', command=reset_textbox)
-menu2.add_command(label='Clear Entry box', command=lambda: textt.set(''))
-
-
 menu3 = Menu(menu,tearoff=0)
 menu.add_cascade(label='Commands',menu=menu3)
 menu3.add_command(label='Command window', command=command_window)
@@ -2413,10 +2501,11 @@ menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
 menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
 menu3.add_separator()
 menu3.add_command(label='Help', command=T_ins_help)
+menu3.add_command(label='Clear chat', command=reset_textbox)
+menu3.add_command(label='Clear entry', command=lambda: textt.set(''))
 menu3.add_command(label='File list', command=lambda: enter_text('command_window','/fl'))
 menu3.add_command(label='Link list', command=T_ins_linklist)
 menu3.add_command(label='Log', command=T_ins_log)
-menu3.add_command(label='Open download folder', command=lambda: enter_text('command_window','/files'))
 menu3.add_command(label='User list', command=T_ins_userlist)
 
 menu4 = Menu(menu,tearoff=0)
@@ -2476,7 +2565,7 @@ def create_widgets():
     User_area.bind( '<Configure>', maxsize )
     T.config(yscrollcommand=S.set,state="disabled")
     E.focus_set()
-    hyperlink = HyperlinkManager(T)
+    hyperlink = HyperlinkManager(T,'False')
     tag_colors()
 def tag_colors():
     global font_size, text_font, hide_users
@@ -2523,7 +2612,7 @@ def focus_entry(*arg):
 def return_break(*arg):
     ## Stops tkinter from tabbing
     return "break"
-def join_server_shortcut():
+def join_server_shortcut(*arg):
     join_server(False)
 def click1(*arg):
     pass
@@ -2534,7 +2623,7 @@ root.bind("<Control-m>",lambda x: open_address_in_webbrowser(fdl_path))
 root.bind('<Control-j>', join_server_shortcut)
 root.bind('<Control-c>', copy_text)
 root.bind('<Control-g>', command_window)
-##root.bind("<Key>", focus_entry)
+##E.bind("<Key>", return_break)
 root.bind('<Return>', enter_text)
 root.bind('<KP_Enter>', enter_text)
 root.bind('<Escape>', reset_entry)
@@ -2555,17 +2644,22 @@ E.bind('<Tab>', autocomplete_name)
 E.bind('<Up>', entrym_BACK)
 E.bind('<Down>', entrym_FORWARD)
 ## Stores name of activated widget for rightclick menu position adjustments
-User_area.bind('<Enter>', set_activated_U)
-T.bind('<Enter>', set_activated_T)
-E.bind('<Enter>', set_activated_E)
-S.bind('<Enter>', set_activated_S)
-S2.bind('<Enter>', set_activated_S2)
+if OS != 'Windows':
+    User_area.bind('<Enter>', set_activated_U)
+    T.bind('<Enter>', set_activated_T)
+    E.bind('<Enter>', set_activated_E)
+    S.bind('<Enter>', set_activated_S)
+    S2.bind('<Enter>', set_activated_S2)
 
 
 def task():
     global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
     global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
-    global file_list
+    global file_list, thread_message_list, msg_thrd
+    for x in thread_message_list[msg_thrd:]:
+        if x[0] == 'command':
+            enter_text('command_window',x[1])
+        msg_thrd+=1
 ##    getsize = 0
 ##    for x in data_list:
 ##        getsize += sys.getsizeof(x)
@@ -2583,7 +2677,7 @@ def task():
                 T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
                 userlog_list.append(get_cur_time()+name+data_list[x][9:])
                 if write_log == 1:
-                        write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
+                        write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
                 T.config(yscrollcommand=S.set,state="disabled")
             ## Private server messages
             elif data_list[x][:9] == 'WSERVER::':
@@ -2592,7 +2686,7 @@ def task():
                 T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','browncol')
                 userlog_list.append(get_cur_time()+name+data_list[x][9:])
                 if write_log == 1:
-                        write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
+                        write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
                 T.config(yscrollcommand=S.set,state="disabled")
             ## Server leave/join messages
             elif data_list[x][:9] == 'SERVELJ::':
@@ -2604,7 +2698,7 @@ def task():
                     T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
                     userlog_list.append(get_cur_time()+name+data_list[x][9:])
                     if write_log == 1:
-                        write_logfile('log/',connected_server,get_cur_time()+name+data_list[x][9:])
+                        write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
                     T.config(yscrollcommand=S.set,state="disabled")
             ## Server closing connection
             elif data_list[x][:9] == 'CLOSING::':
@@ -2639,7 +2733,6 @@ def task():
             ## Messages from users
             else:
                 userlog_list.append(get_cur_time()+remove_spaces(data_list[x][4:23])+': '+data_list[x][23:])
-                global linkk
                 beeped = False
                 mgreen = 'greencol'
                 mblack = 'blackcol'
@@ -2681,19 +2774,21 @@ def task():
                         T.insert(END, x,mgreen)
                     ## Hyperlinks
                     elif nfind is False:
-                        global linkk
                         linkk = find_link(x)
-                        if linkk is not False:
-                            T.insert(END, linkk, hyperlink.add(click1))
+                        if linkk is not 'False':
+                            T.insert(END, linkk, hyperlink.add(linkk))
                             T.insert(END,' ')
-                    if linkk is False and nfind is False:
-                        T.insert(END, x,mblack)       
+                        if linkk is 'False' and nfind is False:
+                            T.insert(END, x,mblack)       
                 T.insert(END,'\n')
                 ## Writes to logfile
                 if write_log == 1:
-                    temppstring = ''.join(userlog_list[-1:])
-                    write_logfile('log/',connected_server,temppstring)
-                      
+                    tstring= get_cur_time_log()
+                    tstring+=remove_spaces(uname)+': '
+                    for x in temp_list:
+                        tstring+=x
+                    write_logfile('log/',connected_server,tstring+'\n')
+                    
                 nfind = False
                 T.config(yscrollcommand=S.set,state="disabled")
                 if windowfocus is False:
@@ -2706,11 +2801,12 @@ def task():
 
 set_winicon(root,'icon')
 root.protocol('WM_DELETE_WINDOW', closewin)
-def update_task():
+def startup_task():
     if update_enabled == 1:
         update_checker(update_link)
     else:
         autojoiner()
+    load_lib_scripts(root)
     root.after(task_loop_interval, task)
-root.after(50, update_task)
+root.after(50, startup_task)
 root.mainloop()

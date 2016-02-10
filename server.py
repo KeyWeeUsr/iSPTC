@@ -9,7 +9,7 @@ welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
 
 def read_server_usr_settings():
-    text = readf('load/server_users.cfg')
+    text = readf('load/server_users.ini')
     level = 9
     for x in range(-1,level+1):
         iplist.append([x])
@@ -76,13 +76,13 @@ def edit_settings(text,text_find,new_value):
     return newlist
 
 def write_settings(text_find,new_value):
-        a = readf('load/server.cfg')
+        a = readf('load/server.ini')
         a = edit_settings(a,text_find,new_value)
         text = a = '\n'.join(str(e) for e in a)
-        savef(text,'load/server.cfg')
+        savef(text,'load/server.ini')
 
 def read_settings(text_find):
-    a = readf('load/server.cfg')
+    a = readf('load/server.ini')
     a = get_settings(a,text_find)
     return a
 
@@ -198,9 +198,9 @@ def register_user(username,usr_pass,add_user):
         regwrite.append('')
         level+=1
     # Overwrites and appends to file
-    savef('','load/server_users.cfg')
+    savef('','load/server_users.ini')
     for x in regwrite:
-        fh = open('load/server_users.cfg', 'a')
+        fh = open('load/server_users.ini', 'a')
         fh.write(str(x)+'\n')
         fh.close()
 
@@ -335,7 +335,7 @@ def list_sender_thread(conn,lisst,typ):
     else:
         for x in lisst:
             event_list.append(['Send-Thread',conn,'WSERVER::'+str(x)])
-            sleep(0.02)
+            sleep(0.005)
 
 def remove_offline_usr(username2):
     cnt = 0
@@ -447,11 +447,13 @@ def clientHandler(i):
         data = recieveData(conn,4096)
         if data != 'kpALIVE::' and data != 'TIMEOUT::':
             chatmlog.append([get_cur_time(),username,data])
-        ##Normal messages
+        ## User messages
         if data[0:9] == 'MESSAGE::' and username_set is True:
             timeouts = 0
+            ## Prints message (if enabled)
             if msgprint_enabled == 1:
                 print get_cur_time(),username2,data[9:]
+            ## Server commands lvl 7+
             if data[9:11] == 's/' and level > 7:
                 if data == 'MESSAGE::s/log':
                     event_list.append(['Send-Thread',conn,'WSERVER::Sending '+str(len(chatlog))+' lines'])
@@ -467,24 +469,32 @@ def clientHandler(i):
                         fh.write(x[1])
                         fh.close()
                     event_list.append(['Send-Thread',conn,'WSERVER::Saved'])
+            ## Server commands lvl 3+
             if data[9:11] == 's/' and level > 3:
                 if data == 'MESSAGE::s/help':
-                    event_list.append(['Send-Thread',conn,'WSERVER::Available commands to lvl 4+\ns/log - log\ns/mlog - message log\ns/threadip - thread list\ns/fld - save all files to disk\ns/clear files - clear all shared files from RAM\ns/filelist - returns list of shared files'])
+                    event_list.append(['Send-Thread',conn,'WSERVER::Available commands to lvl 4+\n'+
+                                       's/log - log\ns/mlog - message log\ns/threadip - thread list\n'+
+                                       's/fld - save all files to disk\n'+
+                                       's/clear files - clear all shared files from RAM\n'+
+                                       's/filelist - returns list of shared files'])
                 elif data == 'MESSAGE::s/clear files':
                     shared_filelist = []
                     event_list.append(['SEND','SSERVER::'+username2+' cleared all shared files'])
                 elif data == 'MESSAGE::s/filelist':
                     Thread(target=list_sender_thread,args=(conn,threadip,'filelist-message',)).start()
+            ## Low lvl warning
             elif data[9:11] == 's/' and level < 4:
                 event_list.append(['Send-Thread',conn,'WSERVER::Level too low'])
-                
+
+            ## Private user messages
             elif data[9:11] == '@@' and data[11] is not " ":
                 b = data[:].find(']')
                 if b is -1:
-                    event_list.append(['Send-Thread',conn,'WSERVER::] has to be at the end of username'])
+                    event_list.append(['Send-Thread',conn,'WSERVER::"]" has to be at the end of username'])
                 else:
                     usr_to_send = data[11:b]
                     event_list.append(['SEND-PRIVATE',conn,usr_to_send, 'm:'+sendlevel+username+'@@'+usr_to_send+data[b:]])
+            ## User channel messages
             else:
                 event_list.append(['SEND','m:'+sendlevel+username+data[9:]])
         ## Leaving
