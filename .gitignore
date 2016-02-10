@@ -1,2 +1,4 @@
-load/serverlist
-load/server_users.cfg
+load/serverlist.ini
+load/server_users.ini
+load/settings.ini
+
