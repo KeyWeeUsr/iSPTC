@@ -14,7 +14,8 @@ cx_Freeze.setup(
                            "include_files":["load/icon.ico","load/beep1.wav","load/icon.png","load/settings.ini",
                                             "load/server.ini","load/icon2.png","load/icon2.ico","load/serverlist.ini",
                                             "changelog.txt","lib/top_domains.py","load/icon_grey.ico",
-                                            "load/icon3.png","lib/loadscripts.ini","lib/__init__.py"]}},
+                                            "load/icon3.png","lib/loadscripts.ini","lib/__init__.py",
+                                            "load/themes/Default"]}},
     executables = executables
     )
 

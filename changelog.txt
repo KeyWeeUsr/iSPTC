@@ -1,3 +1,15 @@
+## Client[1.05]b - 2016-2-14
+### Added
+ - Theme menu
+### Changed
+ - <Tab> focuses entry widget
+ - Selected text will now always be color tagged
+
+## Updater[2] - 2016-2-14
+### Fixed
+ - Will move and modify all files correctly
+
+
 ## Client[1.05]b - 2016-2-8
 ### Added
  - Added script importer function (imports scripts that are specified in lib/loadscripts.ini). After then, main(data_list, thread_message_list, dl_ul_events, entry_mlist) is run, each argument is a global variable.

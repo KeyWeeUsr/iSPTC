@@ -393,6 +393,7 @@ def eventThread():
     current_event = 0
     while True:
         cnt = 0
+        current_event = 0
         for x in event_list[current_event:]:
             ## 1Message
             if x[0] == 'SEND':
@@ -419,8 +420,12 @@ def eventThread():
                 Thread(target=clientHandler,args=(x[5],)).start()
             current_event += 1
             cnt += 1
-        if cnt < 30:
-            sleep(0.05)
+##        print cnt
+##        if cnt < 30:
+##            sleep(0.03)
+        for x in range(0,cnt):
+            del event_list[0]
+        sleep(0.05)
     
 
 def clientHandler(i):

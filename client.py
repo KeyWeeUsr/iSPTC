@@ -134,6 +134,23 @@ def sound_thread(name):
     elif OS == 'Windows':
         winsound.PlaySound(sys_path+"\\"+"load\\"+name,winsound.SND_FILENAME)
 
+def list_from_file(path,delimiter):
+    file_str = readf(path)
+    templist = []
+    cnt = 0
+    for x in file_str:
+        templist.append([])
+        while True:
+            b = x.find(delimiter)
+            if b != -1:
+                templist[cnt].append(x[:b])
+                x = x[b+1:]
+            else:
+                templist[cnt].append(x)
+                break
+        cnt += 1
+    return templist
+
 class HyperlinkManager:
     def __init__(self, text,override_font):
         global font_size, text_font
@@ -234,7 +251,6 @@ def closewin():
     try:
         sender_thread_list.append('close::')
         action_time = False
-##        s.send('close::')
         sleep(0.2)
         s.close()
         root.quit()
@@ -274,10 +290,6 @@ def get_cur_time_log():
 def cp_destroy(*arg):
     try:
         bb1.destroy()
-        bb2.destroy()
-        bb3.destroy()
-        bb4.destroy()
-        bb5.destroy()
     except:
         pass
 
@@ -296,55 +308,51 @@ def open_in_browser_btn():
         E.clipboard_clear()
         E.clipboard_append(clipboardData)    
 
+def focus_hover_widget(*arg):
+    global activated_widget
+    activated_widget[1].focus_set()
+
 def copy_paste_buttons_del_thread(*arg):
-    sleep(0.2)
-##    try:
+    focus_hover_widget()
+    sleep(0.1)
     cp_destroy()
-##    except:
-##        pass
 
 def copy_paste_buttons_del(*arg):
     Thread(target=copy_paste_buttons_del_thread).start()
 
 def copy_paste_buttons(*arg):
-    global bb2, bb1, bb3, bb4, bb5, m_x, m_y, activated_widget, usra_len, X_size, Y_size, hide_users
-    if activated_widget == 'T' and hide_users == 0:
+    global bb1,m_x, m_y, activated_widget, usra_len, X_size, Y_size, hide_users
+    if activated_widget[0] == 'T' and hide_users == 0:
         m_x += usra_len*8
-    elif activated_widget == 'E':
+    elif activated_widget[0] == 'E':
         m_y += Y_size-130
         if hide_users == 0:
             m_x += usra_len*8
-    elif activated_widget == 'S2' and hide_users == 0:
+    elif activated_widget[0] == 'S2' and hide_users == 0:
         m_x += usra_len*7
         
     if m_x > X_size-130:
         m_x = X_size-130
     if m_y > Y_size - 130:
         m_y = Y_size - 130
-    try:
-        cp_destroy()
-    except:
-        pass
-    bb1 = tkButton(root, text='Open in browser', width=50,
-                    command=lambda: {open_in_browser_btn(),cp_destroy()})
-    bb1.place(x=m_x, y=m_y,width=120, height=26)
-    bb2 = tkButton(root, text='Command window', width=50,
-                    command=lambda: {command_window(),cp_destroy()})
-    bb2.place(x=m_x, y=m_y+26,width=120, height=26)
-    bb3 = tkButton(root, text='Clear', width=50,
-                    command=lambda: {textt.set(''),cp_destroy()})
-    bb3.place(x=m_x, y=m_y+52,width=120, height=26)   
-    bb4 = tkButton(root, text='Copy', width=50,
-                    command=lambda: {copy_text(),cp_destroy()})
-    bb4.place(x=m_x, y=m_y+78,width=120, height=26)
-    bb5 = tkButton(root, text='Paste', width=50,
-                    command=lambda: {entry_paste(),cp_destroy()})
-    bb5.place(x=m_x, y=m_y+104,width=120, height=26)
-##    bb1.config(relief=SUNKEN,bd=1)
-##    bb2.config(relief=SUNKEN,bd=1)
-##    bb3.config(relief=SUNKEN,bd=1)
-##    bb4.config(relief=SUNKEN,bd=1)
-##    bb5.config(relief=SUNKEN,bd=1)
+        
+    cp_destroy()
+    bb1 = Frame(root, height=108,width=142,borderwidth=2,relief=RIDGE)
+    bb1.pack_propagate(0)
+    bb1.place(x=m_x-2, y=m_y-2)
+    
+    bb2 = tkButton(bb1, text='Command window',justify=LEFT, width=20, command=lambda: {command_window(),cp_destroy()})
+    bb2.pack()
+    bb3 = tkButton(bb1, text='Clear', width=20,anchor=W, justify=LEFT, command=lambda: {textt.set(''),cp_destroy()})
+    bb3.pack()
+    bb4 = tkButton(bb1, text='Copy', width=20,anchor=W, justify=LEFT, command=lambda: {copy_text(),cp_destroy()})
+    bb4.pack()
+    bb5 = tkButton(bb1, text='Paste', width=20,anchor=W, justify=LEFT, command=lambda: {entry_paste(),cp_destroy()})
+    bb5.pack()
+    bb2.config(bd=0)
+    bb3.config(bd=0)
+    bb4.config(bd=0)
+    bb5.config(bd=0)
 
 def sender_thread():
     global sender_thread_list, s, action_time
@@ -505,12 +513,9 @@ def join_server(typing):
         Thread(target=sender_thread).start()
         if passwd is '' or autoauth is 0:
             sender_thread_list.append('USRINFO::'+username)
-##            s.send('USRINFO::'+username)
         else:
             sender_thread_list.append('USRINFO::'+username+']'+passwd)
-##            s.send('USRINFO::'+username+']'+passwd)
         sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
-##        s.send('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
         kill_reconnect = True
     except Exception as e:
         e = str(e)
@@ -525,6 +530,9 @@ def scroller_to_end():
     scroller = S.get()
     if scroller[1] == 1.0:  
         T.yview(END)
+
+def open_address_no_http(address):
+    webbrowser.open(address)
 
 def open_address_in_webbrowser(address):
     a = address.find('http://')
@@ -786,7 +794,6 @@ def enter_text(*arg):
                     mesig = unicode('MESSAGE::'+text)
                     mesig = mesig.encode('utf-8')
                     sender_thread_list.append(mesig)
-##                    s.send(mesig)
                 except Exception as ee:
                     T_ins_warning(T,S,str(ee))
     T.yview(END)
@@ -798,11 +805,11 @@ def clear_textbox(clt,disable):
         User_area.config(yscrollcommand=S.set,state="disabled")
 
 def leave_server():
-    global s,action_time
+    global s,action_time, username
+    root.title("iSPTC - "+username)
     war = lenghten_name('WARNING: ',21)
     try:
         sender_thread_list.append('close::')
-##        s.send('close::')
         action_time = False
         sleep(0.2)
         s.close()
@@ -839,11 +846,11 @@ def start_update(update_list):
     if OS == 'Windows':
         if os.path.exists('updater.exe') == True:
             INPUT = 'updater.exe'
-    else:
+    elif OS == 'Linux':
         INPUT = 'python updater.py'
     Popen([INPUT], shell=True,
              stdin=None, stdout=None, stderr=None, close_fds=True)
-    root.quit() 
+    closewin()
 
 def autojoiner():
     global autojoin
@@ -1003,12 +1010,7 @@ def update_window(update_link,strver,update,temp,upd_ver):
                         Tbox.insert(END, x,'blackcol')
             ## Passes information to updater
             else:
-                b = x.find('download,')
-                if b is not -1:
-                    downlist.append(x)
-                b = x.find('move,')
-                if b is not -1:
-                    downlist.append(x)
+                downlist.append(x)
     Tbox.config(yscrollcommand=S1.set,state="disabled")
 
     def close_func(*arg):
@@ -1073,10 +1075,8 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
             try:
                 if passwd is '':
                     sender_thread_list.append('USRINFO::'+username)
-##                    s.send('USRINFO::'+username)
                 else:
                     sender_thread_list.append('USRINFO::'+username+']'+passwd)
-##                    s.send('USRINFO::'+username+']'+passwd)
             except:
                 pass
         
@@ -1086,7 +1086,6 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
         write_settings('offline_msg',offline_msg)
         try:
             sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg))
-##            s.send('CONFIGR::offmsg='+str(offline_msg))
         except:
             pass
 
@@ -1174,50 +1173,183 @@ def sound_menu():
     
 
 def color_menu():
-    global font_size, text_font
-    colm = Toplevel()
-    set_winicon(colm,'icon_grey')
-    colm.title("Color settings")
-    colm.minsize(700,400)
-    colm.resizable(FALSE,FALSE)
+    global font_size, text_font, colorbutton_list
+    class Change_color_button(object):
+        def __init__(self,frame2):
+            self.ffg = 'red'
+            self.fbg = 'white'
+            self.make_buttons()
+            self.theme_name = 'Default'
+            listbox.bind('<Button-1>',lambda x: self.reset_colorbutton())
+            listbox_theme.bind('<Button-1>',lambda x: self.theme_loader())
 
-##    frame = Frame(colm, height=380,width=300, relief=SUNKEN)
-##    frame2 = Frame(colm, height=400,width=400, relief=SUNKEN)
-##    frame.pack_propagate(0)
-##    frame2.pack_propagate(0)
-##    frame.pack(anchor=NE,side=LEFT)
-##    frame2.pack(anchor=NE,side=LEFT)
-    def callback(*arg):
-        print arg
-        gotcol = askcolor()
-##        print gotcol
-    colorbutton_list = []
-    colorbutton_list2 = [['red','red','white'],['Blue','blue','white'],['Green','#009900','white'],
-                         ['Purple','purple','white'],['Grey','#7F7F7F','white'],['Black','black','white'],
-                         ['Pink','pink','white'],['Orange','orange','white'],['Link','blue','white'],
-                         ['Time','black','white'],['Brown','#862d2d','white'],['Cyocol','#007f80','white'],
-                         ['Private','white','#262626'],['Private green','#00cc00','#262626'],
-                         ['Private link','#4d93ff','#262626'],['Dark background','black','#c8d9ea'],
-                         ['Light background','black','#eaeefa']]
-    for x in colorbutton_list2:
-        colorbutton_list.append(x)
-    cnt = 0
-    col = 0
-    for x in colorbutton_list:
-        if x[2] is not '':
-            tkButton(colm, text=x[0], fg=x[1], bg=x[2],width=11,
-                   command=lambda: callback(str(x[1]),str(x[2]))).place(x=20+col*116,y=20+cnt*30)
-        else:
-            tkButton(colm, text=x[0], fg=x[1],width=11,
-                   command=lambda: callback(x[1])).place(x=20+col*116,y=20+cnt*30)
-        cnt += 1
-        if cnt == 4:
-            col += 1
+        def theme_loader_after(self,*arg):
+            num2 = listbox_theme.curselection()
+            num = num2[0]
+            self.theme_name = theme_list[num]
+            load_theme(self.theme_name)
+            self.reset_colorbutton()
+            theme_var.set(self.theme_name)
+        def theme_loader(self,*arg):
+            topwin.after(10, self.theme_loader_after)
+            
+        def color_picker(self,which):
+            Xpos = str(topwin.winfo_rootx())
+            Ypos = str(topwin.winfo_rooty())
+            try:
+                num2 = listbox.curselection()
+                num = num2[0]
+                self.ffg=colorbutton_list[num][2]
+                self.fbg=colorbutton_list[num][3]
+                topwin.withdraw()
+                if which == 'Foreground':
+                    colorbutton_list[num][2] = askcolor(self.ffg)[1]
+                elif which == 'Background':
+                    colorbutton_list[num][3] = askcolor(self.fbg)[1]
+                elif which == 'All backgrounds':
+                    newcol = askcolor()[1]
+                    for x in colorbutton_list:
+                        x[3] = newcol
+                self.reset_colorbutton()
+                restore_window(Xpos,Ypos)
+            except Exception as e:
+                e = str(e)
+                print e
+                if e == 'tuple index out of range':
+                    topwin.withdraw()
+                    tkMessageBox.showerror(title='Error', message='Select a color')
+                    restore_window(Xpos,Ypos)
+
+        def set_default_colors(self):
+            global colorbutton_list, default_colors_list
+            colorbutton_list = []
+            for x in default_colors_list:
+                colorbutton_list.append(list(x))
+            self.reset_colorbutton()
+            tag_colors()
+            
+        def make_buttons(self):
+            self.resbt = tkButton(frame2,text='Reset default', fg='black', bg='white',width=40,height=3,command=self.set_default_colors)
+            self.resbt.pack(side=TOP,pady=15)
+            self.frameb = Frame(frame2, height=380,width=450, relief=SUNKEN)
+            self.frameb.pack_propagate(0)
+            self.frameb.pack(side=BOTTOM,padx=50)
+            self.button = tkButton(self.frameb,text='Foreground', fg=self.ffg, bg=self.fbg,width=10,height=3,
+                                    command=lambda : self.color_picker('Foreground'))
+            self.button.pack(side=LEFT,padx=5)
+            self.button = tkButton(self.frameb,text='Background', fg=self.ffg, bg=self.fbg,width=10,height=3,
+                                    command=lambda : self.color_picker('Background'))
+            self.button.pack(side=LEFT,padx=5)
+            self.button = tkButton(self.frameb,text='All backgrounds', fg='black', bg='white',width=10,height=3,
+                                    command=lambda : self.color_picker('All backgrounds'))
+            self.button.pack(side=LEFT,padx=5)
+
+            
+        def reset_colorbutton(self,*arg):
+            topwin.after(10, self.after_timer)
+            
+        def after_timer(self):
+            self.resbt.destroy()
+            self.frameb.destroy()
+            num2 = listbox.curselection()
+            if num2 == ():
+                num = 1
+            else:
+                num = num2[0]
+            self.ffg=colorbutton_list[num][2]
+            self.fbg=colorbutton_list[num][3]
+            self.make_buttons()
             cnt = 0
+            for x in colorbutton_list:
+                listbox.itemconfig(cnt, bg=x[3])
+                listbox.itemconfig(cnt, foreground=x[2])
+                cnt += 1
+            topwin.lift()
+            
+    def restore_window(Xpos,Ypos):
+        topwin.wm_state('normal')
+        topwin.lift()
+        topwin.geometry('+'+Xpos+'+'+Ypos) 
+
+    def load_theme(saved_theme):
+        templist = list_from_file('load/themes/'+saved_theme,',')
+        global colorbutton_list
+        colorbutton_list = []
+        for x in templist:
+            colorbutton_list.append(list(x))
+        if colorbutton_list == []:
+            colorbutton_list = list(default_colors_list)
+        
+    def save_theme(*arg):
+        savef('','load/themes/'+theme_var.get())
+        fh = open('load/themes/'+theme_var.get(), 'a')
+        for x in colorbutton_list:
+            fh.write(x[0]+','+x[1]+','+x[2]+','+x[3]+'\n')
+        fh.close()
+        write_settings('theme',cColor_obj.theme_name)
+            
+    topwin = Toplevel()
+    set_winicon(topwin,'icon_grey')
+    topwin.title("Color settings")
+    topwin.minsize(700,400)
+    topwin.resizable(FALSE,FALSE)
+
+    frame = Frame(topwin, height=380,width=400, relief=SUNKEN)
+    frame.pack_propagate(0)
+    frame.pack(anchor=NW,side=LEFT,padx=20,pady=15)
+    frame5 = Frame(frame, height=380,width=195, relief=SUNKEN)
+    frame5.pack_propagate(0)
+    frame5.pack(side=LEFT)
+    frame6 = Frame(frame, height=380,width=195, relief=SUNKEN)
+    frame6.pack_propagate(0)
+    frame6.pack(side=RIGHT)
+    
+    frame2 = Frame(topwin, height=380,width=450, relief=SUNKEN)
+    frame2.pack_propagate(0)
+    frame2.pack(anchor=NW,side=LEFT,padx=20)
+    frame3 = Frame(frame2, height=30,width=450, relief=SUNKEN)
+    frame3.pack_propagate(0)
+    frame3.pack(side=BOTTOM)
+    frame4 = Frame(frame2, height=40,width=450, relief=SUNKEN)
+    frame4.pack_propagate(0)
+    frame4.pack(side=TOP,pady=15)
+
+    Label(frame5,text='Theme').pack()
+    listbox_theme = Listbox(frame5)
+    listbox_theme.pack(expand=1, fill="both")
+    Label(frame6,text='Color').pack()
+    listbox = Listbox(frame6)
+    listbox.pack(expand=1, fill="both")
+    theme_list = os.listdir('load/themes/')
+
+    for x in theme_list:
+        listbox_theme.insert("end", x)
+    for x in colorbutton_list:
+        listbox.insert("end", x[0])
+    cnt = 0
+    for x in colorbutton_list:
+        listbox.itemconfig(cnt, bg=x[3])
+        listbox.itemconfig(cnt, foreground=x[2])
+        cnt += 1
             
     def close_func(*arg):
-        colm.destroy()
-    colm.bind('<Escape>', close_func)
+        topwin.destroy()
+    topwin.bind('<Escape>', close_func)
+
+    lb = Label(frame4,text='Theme name')
+    lb.pack(side=TOP)
+
+    theme_var = StringVar()
+    theme_var.set("Default")
+    themeEntry = Entry(frame4, textvariable=theme_var)
+    themeEntry.textvariable = theme_var
+    themeEntry.pack()
+    
+    cColor_obj = Change_color_button(frame2)
+    button = Button(frame3, text='Apply', command=tag_colors)
+    button.pack(side=LEFT,padx=70)
+    button = Button(frame3, text='Save', command=lambda: {save_theme(),tag_colors(), topwin.destroy()})
+    button.pack(side=LEFT,padx=50)
     
 
 def set_font(font,fontlist,t_font_size,t_usra_len):
@@ -2043,6 +2175,7 @@ def rClicker(e):
     except TclError:
         print ' - rClick menu, something wrong'
         pass
+    focus_hover_widget()
     return "break"
 
 def rClickbinder(r):
@@ -2241,8 +2374,8 @@ def load_lib_scripts(root):
 ##                sys.exit(1)
             except Exception as e:
                 e = str(e)
-                print "ERROR: loading module"
-                print e
+                T_ins_warning(T, S, 'ERROR: loading '+module+'\n')
+                T_ins_warning(T, S, e)
 
 def Changelog():
     global font_size, text_font, window_sizes
@@ -2274,6 +2407,8 @@ def Changelog():
     Tbox.tag_configure('UP-bg', font=(fontlist[text_font[0]], font_size+2), background='#FF7373',foreground='black')
     Tbox.tag_configure('dark-bg', font=(fontlist[text_font[0]], font_size+2), background='#cccccc',foreground='black')
     Tbox.tag_configure('light-bg', font=(fontlist[text_font[0]], font_size+2), background='#f3f3f3',foreground='black')
+    Tbox.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
+    Tbox.tag_raise("sel")
     S1 = Scrollbar(topwin)
     Tbox.focus_set()
     Tbox.config(yscrollcommand=S1.set,state="normal")
@@ -2298,9 +2433,14 @@ def Changelog():
             Tbox.insert(END, x+'\n','blackcol')
     Tbox.config(yscrollcommand=S1.set,state="normal")
     topwin.protocol('WM_DELETE_WINDOW', closethis)
+    def widget_sel_all(*arg):
+        Tbox.tag_add(SEL, "1.0", END)
+        Tbox.mark_set(INSERT, "1.0")
+        Tbox.see(INSERT)
     def close_func(*arg):
         topwin.destroy()
     topwin.bind('<Escape>', close_func)
+    topwin.bind("<Control-a>", widget_sel_all)
 
 class msg_binder:
     def __init__(self,_frame,_text,_font,l_width,_color,_bgcolor,function,function_exc,gui_add,*arg):
@@ -2410,19 +2550,19 @@ def About():
 
 def set_activated_T(*arg):
     global activated_widget
-    activated_widget = 'T'
+    activated_widget = ('T',T)
 def set_activated_U(*arg):
     global activated_widget
-    activated_widget = 'U'
+    activated_widget = ('U',User_area)
 def set_activated_E(*arg):
     global activated_widget
-    activated_widget = 'E'
+    activated_widget = ('E',E)
 def set_activated_S(*arg):
     global activated_widget
-    activated_widget = 'S'
+    activated_widget = ('S',S)
 def set_activated_S2(*arg):
     global activated_widget
-    activated_widget = 'S2'
+    activated_widget = ('S2',S2)
 
 ## Loading from settings file
 ### 0all_sound, 1entry, 2username mention in textbox
@@ -2457,6 +2597,24 @@ window_sizes = []
 window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_settings('win_changelog_y=','500'))]])
 updater_ver = str(read_settings('updater_ver=','1'))
 show_logtime = int(read_settings('show_logtime=',2))
+saved_theme = str(read_settings('theme=','Default'))
+default_colors_list = [['Warnings','redcol','red','white'],['Server msg','bluecol','blue','white'],
+        ['Username','greencol','#009900','white'],['High lvl msg','purplecol','purple','white'],
+        ['AFK','greycol','#7F7F7F','white'],['Offline','offcol','#7F7F7F','white'],
+        ['Normal msg','blackcol','black','white'],
+        ['Pink col','pinkcol','pink','white'],['Lvl 3/4 msg','orangecol','orange','white'],
+        ['Links','blue_link','blue','white'],['Time','timecol','black','white'],
+        ['Server warnings','browncol','#862d2d','white'],['Cyocol','cycol','#007f80','white'],
+        ['Private msg','privatecol','white','#262626'],['Private username','privatgreen','#00cc00','#262626'],
+        ['Private link','privatlink','#4d93ff','#262626'],['Dark background','olfo-backgr','black','#c8d9ea'],
+        ['Bright background','light-grey-bg','black','#eaeefa']]
+if saved_theme == 'Default':
+    colorbutton_list = list(default_colors_list)
+else:
+    colorbutton_list = list_from_file('load/themes/'+saved_theme,',')
+
+if colorbutton_list == []:
+    colorbutton_list = list(default_colors_list)
 
 ## Setting global vars
 sound_interval = 0
@@ -2472,7 +2630,8 @@ sender_thread_list, userlog_list, dl_ul_events, linklist = [], [], [], []
 entry_mlist, file_list, thread_message_list = [], [], []
 day_number = strftime("%d")
 entry_message_arch = 0
-activated_widget = 'E'
+USRLIST = []
+
 ## Tkinter below
 root = Tk()
 root.title("iSPTC - "+username)
@@ -2512,7 +2671,7 @@ menu4 = Menu(menu,tearoff=0)
 menu.add_cascade(label='File',menu=menu4)
 menu4.add_command(label='Download manager', command=file_manager)
 menu4.add_separator()
-menu4.add_command(label='Open folder', command=lambda: open_address_in_webbrowser(fdl_path))
+menu4.add_command(label='Open folder', command=lambda: open_address_no_http(fdl_path))
 menu4.add_command(label='Share', command=share_file)
 
 menu5 = Menu(menu,tearoff=0)
@@ -2558,6 +2717,7 @@ def create_widgets():
         User_area.pack(side=LEFT,fill=Y)
         S2.pack(side=LEFT, fill=Y)
     E.pack(side=BOTTOM,fill=X)
+    activated_widget = ('E',E)
     T.pack(side=BOTTOM,fill=BOTH,expand=1)
     S.config(command=T.yview)
     S2.config(command=User_area.yview)
@@ -2568,37 +2728,33 @@ def create_widgets():
     hyperlink = HyperlinkManager(T,'False')
     tag_colors()
 def tag_colors():
-    global font_size, text_font, hide_users
+    global font_size, text_font, hide_users, colorbutton_list, default_colors_list
     fontlist=list(tkFont.families())
     fontlist.sort()
-    T.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
-    T.tag_configure('bluecol', font=(fontlist[text_font[0]], font_size), foreground='blue')
-    T.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='#009900')
-    T.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
-    T.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
-    T.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    T.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
-    T.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
-    T.tag_configure('blue_link', font=(fontlist[text_font[0]], font_size), foreground='blue')
-    T.tag_configure('timecol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    T.tag_configure('browncol', font=(fontlist[text_font[0]], font_size), foreground='#862d2d')
-    T.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
-    T.tag_configure('privatecol', font=(fontlist[text_font[0]], font_size), background='#262626',foreground='white')
-    T.tag_configure('privatgreen', font=(fontlist[text_font[0]], font_size), background='#262626',foreground='#00cc00')
-    T.tag_configure('privatlink', font=(fontlist[text_font[0]], font_size), background='#4d93ff',foreground='blue')
-    T.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
-    T.tag_configure('light-grey-bg', font=(fontlist[text_font[0]], font_size), background='#eaeefa',foreground='black')
-##    T.configure(selectbackground="red", inactiveselectbackground="green")
+    for x in default_colors_list:
+        T.tag_configure(x[1], font=(fontlist[text_font[0]], font_size), background=x[3], foreground=x[2])
+        if hide_users is not 1:
+            User_area.tag_configure(x[1], font=(fontlist[text_font[0]], font_size), background=x[3], foreground=x[2])
+    for x in colorbutton_list:
+        try:
+            T.tag_configure(x[1], font=(fontlist[text_font[0]], font_size), background=x[3], foreground=x[2])
+        except Exception as e:
+            e = str(e)
+            T_ins_warning(T, S, 'ERROR: loading color tags\n')
+            T_ins_warning(T, S, e+'\n')
+##    selectbackground="red",highlightbackground="red"
+    T.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
+    T.tag_raise("sel")
     if hide_users is not 1:
-        User_area.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
-        User_area.tag_configure('cycol', font=(fontlist[text_font[0]], font_size), foreground='#007f80')
-        User_area.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
-        User_area.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-        User_area.tag_configure('pinkcol', font=(fontlist[text_font[0]], font_size), foreground='pink')
-        User_area.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
-        User_area.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
-        User_area.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
-        User_area.tag_configure('offcol', font=(fontlist[text_font[0]], font_size), foreground='#66CCFF')
+        for x in colorbutton_list:
+            try:
+                User_area.tag_configure(x[1], font=(fontlist[text_font[0]], font_size), background=x[3], foreground=x[2])
+            except Exception as e:
+                e = str(e)
+                T_ins_warning(T, S, 'ERROR: loading color tags\n')
+                T_ins_warning(T, S, e+'\n')
+        User_area.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
+        User_area.tag_raise("sel")
     E.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
 
 create_widgets()
@@ -2609,6 +2765,7 @@ def focusT(event):
 ##        print event
 def focus_entry(*arg):
     E.focus_set()
+    return "break"
 def return_break(*arg):
     ## Stops tkinter from tabbing
     return "break"
@@ -2616,8 +2773,23 @@ def join_server_shortcut(*arg):
     join_server(False)
 def click1(*arg):
     pass
+def widget_sel_all(*arg):
+##    global activated_widget
+    activated_widget = root.focus_get() 
+    try:
+        if activated_widget == E:
+            activated_widget.select_range(0, END)
+        else:
+            activated_widget.tag_add(SEL, "1.0", END)
+            activated_widget.mark_set(INSERT, "1.0")
+            activated_widget.see(INSERT)
+            activated_widget.config(yscrollcommand=S.set,state="disabled")
+    except:
+        pass
+    return "break"
 
-root.bind("<Tab>", return_break)
+root.bind("<Control-a>", widget_sel_all)
+root.bind("<Tab>", focus_entry)
 root.bind("<Control-q>",lambda x: file_manager())
 root.bind("<Control-m>",lambda x: open_address_in_webbrowser(fdl_path))
 root.bind('<Control-j>', join_server_shortcut)

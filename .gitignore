@@ -1,4 +1,4 @@
 load/serverlist.ini
 load/server_users.ini
 load/settings.ini
-
+lib/ddscript_lists.py

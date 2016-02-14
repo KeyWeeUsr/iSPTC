@@ -1,0 +1,18 @@
+Warnings,redcol,red,white
+Server msg,bluecol,blue,white
+Username,greencol,#009900,white
+High lvl msg,purplecol,purple,white
+AFK,greycol,#7F7F7F,white
+Offline,offcol,#7F7F7F,white
+Normal msg,blackcol,black,white
+Pink col,pinkcol,pink,white
+Lvl 3/4 msg,orangecol,orange,white
+Links,blue_link,blue,white
+Time,timecol,black,white
+Server warnings,browncol,#862d2d,white
+Cyocol,cycol,#007f80,white
+Private msg,privatecol,white,#262626
+Private username,privatgreen,#00cc00,#262626
+Private link,privatlink,#4d93ff,#262626
+Dark background,olfo-backgr,black,#c8d9ea
+Bright background,light-grey-bg,black,#eaeefa
