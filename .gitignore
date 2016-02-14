@@ -2,3 +2,4 @@ load/serverlist.ini
 load/server_users.ini
 load/settings.ini
 lib/ddscript_lists.py
+lib/top_domains.pyc

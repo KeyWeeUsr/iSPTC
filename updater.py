@@ -8,7 +8,7 @@ import platform, urllib, urllib2, os
 from threading import Thread
 from ttk import Button
 from ttk import Scrollbar
-v = '2'
+v = '3'
 
 OS = platform.system()
 
@@ -155,23 +155,27 @@ def worker_thread():
     cnt = 0
     try:
         for x in tlist:
-            T.config(yscrollcommand=S.set,state="normal")
-            if x[:8] == 'download':
-                T.insert(END, 'Downloading '+x[len('download,'):]+'\n','blackcol')
-                download(x[len('download,'):])
-            elif x[:8] == 'movefile':
-                b = x[9:].find(',')
-                source = x[9:b+9]
-                target = x[b+10:]
-                templist = [[source],[target]]
-                T.insert(END, 'Moving '+source+' to '+target+'\n','blackcol')
-                move_file(source,target)
-            elif x[:8] == 'mkfolder':
-                try:
-                    os.stat(x[9:])
-                except:
-                    os.mkdir(x[9:])
-                    T.insert(END, 'Making folder - '+x[9:]+'\n','blackcol')
+            try:
+                T.config(yscrollcommand=S.set,state="normal")
+                if x[:8] == 'download':
+                    T.insert(END, 'Downloading '+x[len('download,'):]+'\n','blackcol')
+                    download(x[len('download,'):])
+                elif x[:8] == 'movefile':
+                    b = x[9:].find(',')
+                    source = x[9:b+9]
+                    target = x[b+10:]
+                    templist = [[source],[target]]
+                    T.insert(END, 'Moving '+source+' to '+target+'\n','blackcol')
+                    move_file(source,target)
+                elif x[:8] == 'mkfolder':
+                    try:
+                        os.stat(x[9:])
+                    except:
+                        os.mkdir(x[9:])
+                        T.insert(END, 'Making folder - '+x[9:]+'\n','blackcol')
+            except Exception as e:
+                e = str(e)
+                T.insert(END, e+'\n','redcol')
                     
         savef('','load/upd_filelist')
         T.config(yscrollcommand=S.set,state="normal")

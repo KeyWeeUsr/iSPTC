@@ -28,7 +28,7 @@ from PIL import Image as Pillow_image
 from PIL import ImageTk
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
 
-ver = '1.05b'
+ver = '1.06'
 
 sys_path = os.getcwd()
 OS = platform.system()
@@ -309,8 +309,11 @@ def open_in_browser_btn():
         E.clipboard_append(clipboardData)    
 
 def focus_hover_widget(*arg):
-    global activated_widget
-    activated_widget[1].focus_set()
+    try:
+        global activated_widget
+        activated_widget[1].focus_set()
+    except:
+        pass
 
 def copy_paste_buttons_del_thread(*arg):
     focus_hover_widget()
@@ -515,6 +518,7 @@ def join_server(typing):
             sender_thread_list.append('USRINFO::'+username)
         else:
             sender_thread_list.append('USRINFO::'+username+']'+passwd)
+        sleep(0.2)
         sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
         kill_reconnect = True
     except Exception as e:
@@ -866,10 +870,12 @@ def updater_updater(ufile):
         temp_list.append(x)
         
     if temp_list[0] != updater_ver:
+        print temp_list[0] , updater_ver
         yes = True
     ## Creates dialogue window
     if yes == True:
         def update_updater():
+            global updater_ver
             try:
                 for x in temp_list[1:]:
                     download_urlfile(x)
@@ -908,7 +914,7 @@ def updater_updater(ufile):
     return yes
 
 def update_checker(update_link):
-    global ver
+    global ver, updater_ver
     strver = str(ver)
     update = False
     strver = '0'+str(ver)
@@ -2787,6 +2793,10 @@ def widget_sel_all(*arg):
     except:
         pass
     return "break"
+def deselect_widgets(*arg):
+    T.tag_remove(SEL, "1.0", END)
+    E.select_clear()
+    User_area.tag_remove(SEL, "1.0", END)
 
 root.bind("<Control-a>", widget_sel_all)
 root.bind("<Tab>", focus_entry)
@@ -2802,6 +2812,7 @@ root.bind('<Escape>', reset_entry)
 root.bind('<FocusIn>', winf_is)
 root.bind('<FocusOut>', winf_isnt)
 root.bind('<Motion>', motion)
+root.bind('<Button-1>', deselect_widgets)
 if OS != 'Windows':
     root.bind('<Button-3>', copy_paste_buttons)
     root.bind("<Button-4>", focusT)
