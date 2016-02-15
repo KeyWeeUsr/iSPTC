@@ -1,0 +1,26 @@
+chat,Warnings,redcol,red,#1e1e1e
+chat,Server msg,bluecol,#0089ff,#1e1e1e
+chat,Server warnings,browncol,#a46280,#1e1e1e
+chat,Username,greencol,#009900,#1e1e1e
+chat,Normal msg,blackcol,#e6e6e6,#1e1e1e
+chat,User lvl3,pinkcol,pink,#1e1e1e
+chat,User lvl4,orangecol,#e65b00,#1e1e1e
+chat,High lvl msg,purplecol,#c92be4,#1e1e1e
+chat,AFK,greycol,#7F7F7F,#1e1e1e
+chat,Offline,offcol,#7F7F7F,#1e1e1e
+chat,Links,blue_link,#009bff,#1e1e1e
+chat,Cyocol,cycol,#007f80,#1e1e1e
+chat,Private msg,privatecol,#ffffff,#1e1e1e
+chat,Private username,privatgreen,#00cc00,#1e1e1e
+chat,Private link,privatlink,#4d93ff,#1e1e1e
+chat,Dark background,olfo-backgr,#e6e6e6,#464646
+chat,Bright background,light-grey-bg,#e6e6e6,#5f5f5f
+window,Rootcolor,rootcolor,#00c900,#1e1e1e
+window,Text widget,text-widget,#00ff00,#1e1e1e
+window,Entry widget,entry-widget,#ffffff,#1e1e1e
+window,Border-text,border-text,#00ff00,#1e1e1e
+window,Border-entry,border-entry,#ffffff,#828282
+window,Troughcolor,troughcolor,#0fff0f,#1e1e1e
+window,Toolbar,toolbar,#e6e6e6,#1e1e1e
+window,Toolbar-selected,toolbar-selected,#ffffff,#828282
+window,Toolbar-menu,toolbar-menu,#ffffff,#828282

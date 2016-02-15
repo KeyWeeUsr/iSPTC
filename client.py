@@ -5,7 +5,7 @@ from Tkinter import Button as tkButton
 from Tkinter import Label as tkLabel
 from ttk import Style as ttkStyle
 from ttk import Button
-from ttk import Scrollbar
+##from ttk import Scrollbar
 from ttk import Checkbutton
 from ttk import Radiobutton
 from ttk import Combobox
@@ -14,7 +14,7 @@ from ttk import Scale
 from ttk import Separator
 from ttk import Treeview
 from ttk import Label
-from ttk import Entry
+##from ttk import Entry
 ##from ttk import Widget
 from ttk import Frame as ttkFrame
 from threading import Thread
@@ -28,7 +28,7 @@ from PIL import Image as Pillow_image
 from PIL import ImageTk
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
 
-ver = '1.06'
+ver = '1.07'
 
 sys_path = os.getcwd()
 OS = platform.system()
@@ -371,11 +371,11 @@ def sender_thread():
         else:
             if action_time == False:
                 break
-        tim+=(0.07)
+        tim+=(0.15)
         if tim > 6:
             sender_thread_list.append('kpALIVE::')
             tim = 0
-        sleep(0.07)
+        sleep(0.15)
         
 def recv_thread():
     global action_time, s, connected_server
@@ -586,6 +586,7 @@ def T_ins_help():
     T.insert(END, 'Type:\n/help to see this message \n/u to show userlist\n/log to show chatlog\n'+
              '/afk to go afk\n/ll to see all links\n'+'/reg "password" to register\n'+
              '/auth "password" to authenticate\n/clear to clear textbox\n/share to share a file\n'+
+             '/dl "filename" to download\n'+
              '/fm to open file manager\n/fl to show file list\n/files to open download folder\n', 'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
@@ -698,7 +699,7 @@ def T_ins_file_list():
         T.config(yscrollcommand=S.set,state="normal")
         T.insert(END, '[File list]\n', 'light-grey-bg')
         for x in file_list:
-            T.insert(END, str(x)+'\n', 'light-grey-bg')
+            T.insert(END, x[0]+' - '+x[1]+'\n', 'light-grey-bg')
         T.config(yscrollcommand=S.set,state="disabled")
         T.yview(END)
     root.after(300, append_files)
@@ -738,7 +739,7 @@ def chat_commands(text):
     elif text == '/fl':
         T_ins_file_list()
     elif text == '/files':
-        open_address_in_webbrowser(fdl_path)
+        open_address_no_http(fdl_path)
     else:
         return True
     return False
@@ -1177,9 +1178,27 @@ def sound_menu():
         sw.destroy()
     sw.bind('<Escape>', close_func)
     
+def color_asker(color):
+    global default_os_color
+    try:
+        if color == 'default':
+            color = default_os_color
+        color2 = askcolor(color)[1]
+    except:
+        print 'Unknown color, using default'
+        color2 = askcolor()[1]
+    if color2 == None:
+        return color
+    return color2
+
+            
+def restore_window(name,Xpos,Ypos):
+    name.wm_state('normal')
+    name.lift()
+    name.geometry('+'+Xpos+'+'+Ypos) 
 
 def color_menu():
-    global font_size, text_font, colorbutton_list
+    global font_size, text_font, chat_color_list, saved_theme, default_os_color
     class Change_color_button(object):
         def __init__(self,frame2):
             self.ffg = 'red'
@@ -1205,48 +1224,65 @@ def color_menu():
             try:
                 num2 = listbox.curselection()
                 num = num2[0]
-                self.ffg=colorbutton_list[num][2]
-                self.fbg=colorbutton_list[num][3]
+                self.ffg=chat_color_list[num][3]
+                self.fbg=chat_color_list[num][4]
                 topwin.withdraw()
                 if which == 'Foreground':
-                    colorbutton_list[num][2] = askcolor(self.ffg)[1]
+                    chat_color_list[num][3] = color_asker(self.ffg)
                 elif which == 'Background':
-                    colorbutton_list[num][3] = askcolor(self.fbg)[1]
+                    chat_color_list[num][4] = color_asker(self.fbg)
                 elif which == 'All backgrounds':
                     newcol = askcolor()[1]
-                    for x in colorbutton_list:
-                        x[3] = newcol
+                    if newcol == None:
+                        pass
+                    else:
+                        normalcol = chat_color_list[4][4]
+                        answer = tkMessageBox.askquestion(title='W', message='Replace '+normalcol+' color only?')
+                        if answer == 'yes':
+                            for x in chat_color_list:
+                                if x[4] == normalcol:
+                                    x[4] = newcol
+                        else:
+                            for x in chat_color_list:
+                                    x[4] = newcol
                 self.reset_colorbutton()
-                restore_window(Xpos,Ypos)
+                restore_window(topwin,Xpos,Ypos)
             except Exception as e:
                 e = str(e)
                 print e
                 if e == 'tuple index out of range':
                     topwin.withdraw()
                     tkMessageBox.showerror(title='Error', message='Select a color')
-                    restore_window(Xpos,Ypos)
+                    restore_window(topwin,Xpos,Ypos)
 
         def set_default_colors(self):
-            global colorbutton_list, default_colors_list
-            colorbutton_list = []
+            global chat_color_list, default_colors_list
+            chat_color_list = []
             for x in default_colors_list:
-                colorbutton_list.append(list(x))
+                chat_color_list.append(list(x))
             self.reset_colorbutton()
             tag_colors()
             
         def make_buttons(self):
+            global default_os_color
             self.resbt = tkButton(frame2,text='Reset default', fg='black', bg='white',width=40,height=3,command=self.set_default_colors)
             self.resbt.pack(side=TOP,pady=15)
             self.frameb = Frame(frame2, height=380,width=450, relief=SUNKEN)
             self.frameb.pack_propagate(0)
             self.frameb.pack(side=BOTTOM,padx=50)
-            self.button = tkButton(self.frameb,text='Foreground', fg=self.ffg, bg=self.fbg,width=10,height=3,
+            normalc = (chat_color_list[4][3], chat_color_list[4][4])
+            if normalc[1] == 'default':
+                normalc = default_os_color
+            fbg = self.fbg
+            if fbg =='default':
+                fbg = default_os_color
+            self.button = tkButton(self.frameb,text='Foreground', fg=self.ffg, bg=fbg,width=10,height=3,
                                     command=lambda : self.color_picker('Foreground'))
             self.button.pack(side=LEFT,padx=5)
-            self.button = tkButton(self.frameb,text='Background', fg=self.ffg, bg=self.fbg,width=10,height=3,
+            self.button = tkButton(self.frameb,text='Background', fg=self.ffg, bg=fbg,width=10,height=3,
                                     command=lambda : self.color_picker('Background'))
             self.button.pack(side=LEFT,padx=5)
-            self.button = tkButton(self.frameb,text='All backgrounds', fg='black', bg='white',width=10,height=3,
+            self.button = tkButton(self.frameb,text='All backgrounds', fg=normalc[0], bg=normalc[1],width=10,height=3,
                                     command=lambda : self.color_picker('All backgrounds'))
             self.button.pack(side=LEFT,padx=5)
 
@@ -1262,37 +1298,48 @@ def color_menu():
                 num = 1
             else:
                 num = num2[0]
-            self.ffg=colorbutton_list[num][2]
-            self.fbg=colorbutton_list[num][3]
+            self.ffg=chat_color_list[num][3]
+            self.fbg=chat_color_list[num][4]
             self.make_buttons()
             cnt = 0
-            for x in colorbutton_list:
-                listbox.itemconfig(cnt, bg=x[3])
-                listbox.itemconfig(cnt, foreground=x[2])
+            for x in chat_color_list:
+                try:
+                    listbox.itemconfig(cnt, bg=x[4])
+                except:
+                    listbox.itemconfig(cnt, bg='#DBDBDB')
+                listbox.itemconfig(cnt, foreground=x[3])
                 cnt += 1
             topwin.lift()
-            
-    def restore_window(Xpos,Ypos):
-        topwin.wm_state('normal')
-        topwin.lift()
-        topwin.geometry('+'+Xpos+'+'+Ypos) 
 
     def load_theme(saved_theme):
         templist = list_from_file('load/themes/'+saved_theme,',')
-        global colorbutton_list
-        colorbutton_list = []
+        global chat_color_list
+        chat_color_list = []
         for x in templist:
-            colorbutton_list.append(list(x))
-        if colorbutton_list == []:
-            colorbutton_list = list(default_colors_list)
+            chat_color_list.append(list(x))
+        if chat_color_list == []:
+            chat_color_list = list(default_colors_list)
         
     def save_theme(*arg):
+        global saved_theme
         savef('','load/themes/'+theme_var.get())
         fh = open('load/themes/'+theme_var.get(), 'a')
-        for x in colorbutton_list:
-            fh.write(x[0]+','+x[1]+','+x[2]+','+x[3]+'\n')
+        for x in chat_color_list:
+            fh.write(x[0]+','+x[1]+','+x[2]+','+x[3]+','+x[4]+'\n')
         fh.close()
+        saved_theme = cColor_obj.theme_name
         write_settings('theme',cColor_obj.theme_name)
+
+    def delete_theme(*arg):
+        answer = tkMessageBox.askquestion(title='Delete theme', message='Are you sure?')
+        if answer == 'yes':
+            name = cColor_obj.theme_name
+            os.remove('load/themes/'+name)
+            listbox_theme.delete(0, END)
+            theme_list = os.listdir('load/themes/')
+            for x in theme_list:
+                listbox_theme.insert("end", x)
+        
             
     topwin = Toplevel()
     set_winicon(topwin,'icon_grey')
@@ -1321,41 +1368,59 @@ def color_menu():
     frame4.pack(side=TOP,pady=15)
 
     Label(frame5,text='Theme').pack()
+    scroll = Scrollbar(frame5)
+    scroll.pack(side=RIGHT, fill=Y, expand=NO)
     listbox_theme = Listbox(frame5)
     listbox_theme.pack(expand=1, fill="both")
+    scroll.configure(command=listbox_theme.yview)
+    listbox_theme.configure(yscrollcommand=scroll.set)
+    
     Label(frame6,text='Color').pack()
+    scroll2 = Scrollbar(frame6)
+    scroll2.pack(side=RIGHT, fill=Y, expand=NO)
     listbox = Listbox(frame6)
     listbox.pack(expand=1, fill="both")
+    scroll2.configure(command=listbox.yview)
+    listbox.configure(yscrollcommand=scroll2.set)
     theme_list = os.listdir('load/themes/')
 
     for x in theme_list:
         listbox_theme.insert("end", x)
-    for x in colorbutton_list:
-        listbox.insert("end", x[0])
+    for x in chat_color_list:
+        listbox.insert("end", x[1])
     cnt = 0
-    for x in colorbutton_list:
-        listbox.itemconfig(cnt, bg=x[3])
-        listbox.itemconfig(cnt, foreground=x[2])
+    for x in chat_color_list:
+        try:
+            listbox.itemconfig(cnt, bg=x[4])
+        except:
+            listbox.itemconfig(cnt, bg='#DBDBDB')
+        listbox.itemconfig(cnt, foreground=x[3])
         cnt += 1
             
     def close_func(*arg):
         topwin.destroy()
+    def set_global_ntag(*arg):
+        global saved_theme
+        saved_theme = cColor_obj.theme_name
+        tag_colors()
     topwin.bind('<Escape>', close_func)
 
     lb = Label(frame4,text='Theme name')
     lb.pack(side=TOP)
 
     theme_var = StringVar()
-    theme_var.set("Default")
+    theme_var.set(saved_theme)
     themeEntry = Entry(frame4, textvariable=theme_var)
     themeEntry.textvariable = theme_var
     themeEntry.pack()
     
     cColor_obj = Change_color_button(frame2)
-    button = Button(frame3, text='Apply', command=tag_colors)
-    button.pack(side=LEFT,padx=70)
+    button = Button(frame3, text='Delete', command=delete_theme)
+    button.pack(side=LEFT,padx=55)
+    button = Button(frame3, text='Apply', command=set_global_ntag)
+    button.pack(side=LEFT,padx=10)
     button = Button(frame3, text='Save', command=lambda: {save_theme(),tag_colors(), topwin.destroy()})
-    button.pack(side=LEFT,padx=50)
+    button.pack(side=LEFT,padx=10)
     
 
 def set_font(font,fontlist,t_font_size,t_usra_len):
@@ -1640,8 +1705,14 @@ def file_manager():
                             self.tree.column(multi_header[ix], width=col_w)
 
             def delete_all_button(self,Tbox,Scroll):
-                enter_text('command_window','s/clear files')
-                Tbox_insert_lock(Tbox,Scroll,get_cur_time()+'Deleting files'+'\n','red')
+                Xpos = str(topwin.winfo_rootx())
+                Ypos = str(topwin.winfo_rooty())
+                topwin.withdraw()
+                answer = tkMessageBox.askquestion(title='Delete all files', message='Are you sure?')
+                if answer == 'yes':
+                    enter_text('command_window','s/clear files')
+                    Tbox_insert_lock(Tbox,Scroll,get_cur_time()+'Deleting files'+'\n','red')
+                restore_window(topwin,Xpos,Ypos)
                 topwin.lift()
 
             def share_button(self,Tbox,Scroll):
@@ -1655,10 +1726,14 @@ def file_manager():
                             selFilename = str(key[1][0])
                     enter_text('command_window','/dl '+selFilename)
                 except Exception as e:
+                    Xpos = str(topwin.winfo_rootx())
+                    Ypos = str(topwin.winfo_rooty())
+                    topwin.withdraw()
                     e = str(e)
                     if e == "'str' object has no attribute 'iteritems'":
                         e = 'No file selected!'
                     tkMessageBox.showerror(title='Error', message=str(e))
+                    restore_window(topwin,Xpos,Ypos)
                 topwin.lift()
 
             def setup_buttons(self,frame,Tbox,Scroll):
@@ -1687,7 +1762,12 @@ def file_manager():
         def file_list_to_MultiColl(*arg):
             if len(file_list) > 0:
                 if file_list == ['EMPTY-LIST']:
+                    Xpos = str(topwin.winfo_rootx())
+                    Ypos = str(topwin.winfo_rooty())
+                    topwin.withdraw()
                     tkMessageBox.showerror(title='File list', message='File list is empty')
+                    restore_window(topwin,Xpos,Ypos)
+                    topwin.lift()
                 else:
                     for x in file_list:
                         try:
@@ -1742,10 +1822,15 @@ def file_manager():
             topwin.destroy()
         topwin.bind('<Escape>', close_func)
     except Exception as e:
+        Xpos = str(topwin.winfo_rootx())
+        Ypos = str(topwin.winfo_rooty())
+        topwin.withdraw()
         e = str(e)
         if e == "global name 's' is not defined" or e == "'str' object has no attribute 'send'":
             e = 'Not connected!'
         tkMessageBox.showerror(title='Error', message=str(e))
+        restore_window(topwin,Xpos,Ypos)
+        topwin.lift()
 
 def change_other_settings(a,c,e,f,g,h,i,j):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth
@@ -1961,7 +2046,7 @@ def user_area_insert():
                 usercol = get_user_color(x[2],x[0],False)
                 ## Offline color
                 if x[1] == 'Offline':
-                    User_area.insert(END, x[0]+'\n','greycol')
+                    User_area.insert(END, x[0]+'\n','offcol')
                 ## Online and Offline
                 elif x[1] == 'olfo-':
                     User_area.insert(END, x[0]+'\n','olfo-backgr')
@@ -2062,20 +2147,20 @@ def copy_text(*arg):
             T.clipboard_clear()
             text = T.get("sel.first", "sel.last")
             T.clipboard_append(text)
-            T.config(state="disabled")
         except:
             try:
                 User_area.config(state="normal")
                 User_area.clipboard_clear()
                 text = User_area.get("sel.first", "sel.last")
                 User_area.clipboard_append(text)
-                User_area.config(state="disabled")
             except:
                 E.clipboard_clear()
                 text = E.selection_get()
                 E.clipboard_append(text)
     except:
         pass
+    T.config(state="disabled")
+    User_area.config(state="disabled")
 
 def entry_paste(*arg):
     try:
@@ -2604,23 +2689,39 @@ window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_se
 updater_ver = str(read_settings('updater_ver=','1'))
 show_logtime = int(read_settings('show_logtime=',2))
 saved_theme = str(read_settings('theme=','Default'))
-default_colors_list = [['Warnings','redcol','red','white'],['Server msg','bluecol','blue','white'],
-        ['Username','greencol','#009900','white'],['High lvl msg','purplecol','purple','white'],
-        ['AFK','greycol','#7F7F7F','white'],['Offline','offcol','#7F7F7F','white'],
-        ['Normal msg','blackcol','black','white'],
-        ['Pink col','pinkcol','pink','white'],['Lvl 3/4 msg','orangecol','orange','white'],
-        ['Links','blue_link','blue','white'],['Time','timecol','black','white'],
-        ['Server warnings','browncol','#862d2d','white'],['Cyocol','cycol','#007f80','white'],
-        ['Private msg','privatecol','white','#262626'],['Private username','privatgreen','#00cc00','#262626'],
-        ['Private link','privatlink','#4d93ff','#262626'],['Dark background','olfo-backgr','black','#c8d9ea'],
-        ['Bright background','light-grey-bg','black','#eaeefa']]
+default_colors_list = [['chat','Warnings','redcol','red','white'],
+                    ['chat','Server msg','bluecol','blue','white'],
+                    ['chat','Server warnings','browncol','#862d2d','white'],
+                    ['chat','Username','greencol','#009900','white'],
+                    ['chat','Normal msg','blackcol','black','white'],
+                    ['chat','User lvl3','pinkcol','pink','white'],
+                    ['chat','User lvl4','orangecol','#e65b00','white'],
+                    ['chat','High lvl msg','purplecol','purple','white'],
+                    ['chat','AFK','greycol','#7F7F7F','white'],
+                    ['chat','Offline','offcol','#7F7F7F','white'],
+                    ['chat','Links','blue_link','blue','white'],
+                    ['chat','Cyocol','cycol','#007f80','white'],
+                    ['chat','Private msg','privatecol','white','#262626'],
+                    ['chat','Private username','privatgreen','#00cc00','#262626'],
+                    ['chat','Private link','privatlink','#4d93ff','#262626'],
+                    ['chat','Dark background','olfo-backgr','black','#c8d9ea'],
+                    ['chat','Bright background','light-grey-bg','black','#eaeefa'],
+                    ['window','Rootcolor','rootcolor','black','default'],
+                    ['window','Text widget','text-widget','black','white'],
+                    ['window','Entry widget','entry-widget','black','white'],
+                    ['window','Border-text','border-text','black','default'],
+                    ['window','Border-entry','border-entry','black','default'],
+                    ['window','Troughcolor','troughcolor','black','default'],
+                    ['window','Toolbar','toolbar','black','default'],
+                    ['window','Toolbar-selected','toolbar-selected','black','default'],
+                    ['window','Toolbar-menu','toolbar-menu','black','default'],
+                       ]
 if saved_theme == 'Default':
-    colorbutton_list = list(default_colors_list)
+    chat_color_list = list(default_colors_list)
 else:
-    colorbutton_list = list_from_file('load/themes/'+saved_theme,',')
-
-if colorbutton_list == []:
-    colorbutton_list = list(default_colors_list)
+    chat_color_list = list_from_file('load/themes/'+saved_theme,',')
+if chat_color_list == []:
+    chat_color_list = list(default_colors_list)
 
 ## Setting global vars
 sound_interval = 0
@@ -2637,6 +2738,7 @@ entry_mlist, file_list, thread_message_list = [], [], []
 day_number = strftime("%d")
 entry_message_arch = 0
 USRLIST = []
+default_os_color = ''
 
 ## Tkinter below
 root = Tk()
@@ -2697,7 +2799,7 @@ helpmenu.add_command(label='About..', command=About)
 
 ### Window widgets
 def create_widgets():
-    global T,E,User_area,S,S2,hyperlink, usra_len
+    global T,E,User_area,S,S2,hyperlink, usra_len, default_os_color
     E = Entry(textvariable=textt)
     User_area = Text(root, height=44, width=usra_len)
     S = Scrollbar(root)
@@ -2705,16 +2807,22 @@ def create_widgets():
     T = Text(root, height=46, width=114,wrap=WORD)
     ## bordercolors
 ##    root.configure(background='red')
-##    widliste = [T,E,User_area, S, S2]
+    widliste = [T,User_area, S, S2]
 ##    widliste = [S,S2]
 ##    for x in widliste:
 ##        x.config(background='black')
-##    for x in widliste:
-##        x.config(highlightthickness=0)
+    for x in widliste:
+        try:
+            x.config(highlightthickness=0)
+        except:
+            pass
 ##    for x in widliste:
 ##        x.config(highlightbackground='black')
-##    for x in widliste:
-##        x.config(bd=0)
+    for x in widliste:
+        try:
+            x.config(bd=0)
+        except:
+            pass
 ##    for x in widliste:
 ##        x.config(troughcolor='black')
 
@@ -2732,36 +2840,82 @@ def create_widgets():
     T.config(yscrollcommand=S.set,state="disabled")
     E.focus_set()
     hyperlink = HyperlinkManager(T,'False')
+    default_os_color = root.cget('bg')
     tag_colors()
 def tag_colors():
-    global font_size, text_font, hide_users, colorbutton_list, default_colors_list
+    global font_size, text_font, hide_users, chat_color_list, default_colors_list, T,E,User_area, menu,S,S2
+    global menu1, menu3, menu4, menu5, helpmenu, default_os_color
     fontlist=list(tkFont.families())
     fontlist.sort()
-    for x in default_colors_list:
-        T.tag_configure(x[1], font=(fontlist[text_font[0]], font_size), background=x[3], foreground=x[2])
-        if hide_users is not 1:
-            User_area.tag_configure(x[1], font=(fontlist[text_font[0]], font_size), background=x[3], foreground=x[2])
-    for x in colorbutton_list:
-        try:
-            T.tag_configure(x[1], font=(fontlist[text_font[0]], font_size), background=x[3], foreground=x[2])
-        except Exception as e:
-            e = str(e)
-            T_ins_warning(T, S, 'ERROR: loading color tags\n')
-            T_ins_warning(T, S, e+'\n')
+    widliste = (T,E,User_area,S,S2)
+    text_widgets = (T,User_area)
+    menuliste = (menu1, menu3, menu4, menu5, helpmenu)
+    ## Tags default colors
+    #Chat
+    ## Attempts to replace default colors with saved theme
+    #Chat
+    for x in chat_color_list:
+        if x[0] == 'chat':
+            try:
+                T.tag_configure(x[2], font=(fontlist[text_font[0]], font_size), background=x[4], foreground=x[3])
+                if hide_users is not 1:
+                    User_area.tag_configure(x[2], font=(fontlist[text_font[0]], font_size), background=x[4], foreground=x[3])
+            except Exception as e:
+                e = str(e)
+                T_ins_warning(T, S, 'ERROR: loading color tags')
+                T_ins_warning(T, S, e)
+        # Window
+        elif x[0] == 'window':
+            bgcol = x[4]
+            if bgcol == 'default':
+                bgcol = default_os_color
+            fgcol = x[3]
+            if bgcol == 'default':
+                bgcol= 'black'
+            try:# Root
+                if x[2] == 'rootcolor':
+                    root.configure(background=bgcol)
+                # Text and entry widgets
+                elif x[2] == 'text-widget':
+                    for dd in text_widgets:
+                        try:
+                            dd.config(background=bgcol)
+                        except:
+                            print dd,' has no background color'
+                elif x[2] == 'entry-widget':
+                    E.config(fg=x[3],insertbackground=fgcol,bg=bgcol)
+                # Borders
+                elif x[2] == 'border-text':
+                    for dd in text_widgets:
+                        dd.config(highlightbackground=bgcol)
+                elif x[2] == 'border-entry':
+                    E.config(highlightbackground=bgcol)
+                # Menu color
+                elif x[2] == 'toolbar':
+                    menu.config(bg=bgcol,fg=fgcol)
+                elif x[2] == 'toolbar-selected':
+                    menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
+                elif x[2] == 'toolbar-menu':
+                    for dd in menuliste:
+                        dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
+                # Scrollbars
+                elif x[2] == 'troughcolor':
+                    try:
+                        S.config(bg=bgcol,troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
+                        S2.config(bg=bgcol,troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
+                    except Exception as e:
+                        e = str(e)
+                        print e
+            except Exception as e:
+                e = str(e)
+                T_ins_warning(T, S, 'ERROR: loading color tags')
+                T_ins_warning(T, S, e)
 ##    selectbackground="red",highlightbackground="red"
     T.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
     T.tag_raise("sel")
-    if hide_users is not 1:
-        for x in colorbutton_list:
-            try:
-                User_area.tag_configure(x[1], font=(fontlist[text_font[0]], font_size), background=x[3], foreground=x[2])
-            except Exception as e:
-                e = str(e)
-                T_ins_warning(T, S, 'ERROR: loading color tags\n')
-                T_ins_warning(T, S, e+'\n')
-        User_area.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
-        User_area.tag_raise("sel")
-    E.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
+    User_area.tag_raise("sel")
+    User_area.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
+    E.configure(font=(fontlist[text_font[0]], font_size))
 
 create_widgets()
     
