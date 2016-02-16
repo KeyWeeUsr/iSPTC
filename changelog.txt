@@ -11,7 +11,7 @@
  - <Tab> focuses entry widget
  - Selected text will now always be highlighted
 
-## Updater[2] - 2016-2-14
+## Updater[3] - 2016-2-14
 ### Fixed
  - Will move and modify all files correctly
 

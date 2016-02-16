@@ -5,7 +5,7 @@ from Tkinter import Button as tkButton
 from Tkinter import Label as tkLabel
 from ttk import Style as ttkStyle
 from ttk import Button
-##from ttk import Scrollbar
+from ttk import Scrollbar
 from ttk import Checkbutton
 from ttk import Radiobutton
 from ttk import Combobox
@@ -15,7 +15,7 @@ from ttk import Separator
 from ttk import Treeview
 from ttk import Label
 ##from ttk import Entry
-##from ttk import Widget
+from ttk import Widget
 from ttk import Frame as ttkFrame
 from threading import Thread
 from random import randrange
@@ -584,10 +584,15 @@ def T_ins_help():
     T.config(yscrollcommand=S.set,state="normal")
     T.insert(END, '[Help]\n', 'light-grey-bg')
     T.insert(END, 'Type:\n/help to see this message \n/u to show userlist\n/log to show chatlog\n'+
-             '/afk to go afk\n/ll to see all links\n'+'/reg "password" to register\n'+
-             '/auth "password" to authenticate\n/clear to clear textbox\n/share to share a file\n'+
-             '/dl "filename" to download\n'+
-             '/fm to open file manager\n/fl to show file list\n/files to open download folder\n', 'light-grey-bg')
+                '/afk to go afk\n/ll to see all links\n'+'/reg "password" to register\n'+
+                '/auth "password" to authenticate\n/clear to clear textbox\n/share to share a file\n'+
+                '/dl "filename" to download\n'+
+                '/fm or /file_manager to open file manager\n/fl or /file_list to show file list\n'+
+                '/files to open download folder\n'+
+                '/join to open server join window\n/ljoin to join last server\n'+
+                '/leave to leave\n/quit or /exit to close this application\n/about to open about window\n'+
+                '/changelog to open changelog\n'
+                , 'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
@@ -734,12 +739,24 @@ def chat_commands(text):
         reset_textbox()
     elif text == '/share':
         share_file()
-    elif text == '/fm':
+    elif text == '/fm' or text == '/file_manager':
         file_manager()
-    elif text == '/fl':
+    elif text == '/fl' or text == '/file_list':
         T_ins_file_list()
     elif text == '/files':
         open_address_no_http(fdl_path)
+    elif text == '/join':
+        join_typing()
+    elif text == '/ljoin':
+        join_server(False)
+    elif text == '/leave':
+        leave_server()
+    elif text == '/quit' or text == '/exit':
+        closewin()
+    elif text == '/changelog' or text == '/changes':
+        Changelog()
+    elif text == '/about':
+        About()
     else:
         return True
     return False
@@ -2171,18 +2188,31 @@ def entry_paste(*arg):
 
 def autocomplete_name(*arg):
     is_private = False
+    commandli = ('/help','/users','/log','/afk','/reg','/auth','/clear','/share','/file','/files','/file_list',
+                '/join','/ljoin','/leave','/changelog','/about','/quit','/exit')
     try:
-        ## Finds the last word in entry widget
-        if len(USRLIST) > 0:
-            text = textt.get()
-            text = text[::-1]
-            cnt = 0
-            for x in text:
-                if x == ' ':
-                    text = text[:cnt]
+    ## Finds the last word in entry widget
+        text = textt.get()
+        text = text[::-1]
+        cnt = 0
+        for x in text:
+            if x == ' ':
+                text = text[:cnt]
+                break
+            cnt += 1
+        text = text[::-1]
+        ## Selects command loop or user name loop
+        if text[0] == '/':
+            ## Finds the name in commandli
+            for x in commandli:
+                b = x.find(text)
+                if b == 0:
+                    ## Completes it and moves the cursor to the end
+                    textt.set(textt.get()+x[len(text):])
+                    lentext = textt.get()
+                    E.icursor(len(lentext))
                     break
-                cnt += 1
-            text = text[::-1]
+        elif len(USRLIST) > 0:
             ## Removes "@"
             if text[0] == '@':
                 text = text[1:]
@@ -2749,57 +2779,60 @@ maxsize = "5x5"
 textt = StringVar()
 textt.set("")
 ###Toolbar
-menu = Menu(root,tearoff=0,borderwidth=0)
-root.config(menu=menu)
-menu1 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Server',menu=menu1)
-menu1.add_command(label='Join', command=join_typing)
-menu1.add_command(label='Join last', command=lambda: join_server(False))
-menu1.add_separator()
-menu1.add_command(label='Leave', command=leave_server)
-menu1.add_command(label='Quit', command=closewin)
+def create_toolbar(*arg):
+    global menu, menu1, menu3, menu4, menu5, helpmenu
+    menu = Menu(root,tearoff=0,borderwidth=0)
+    root.config(menu=menu)
+    menu1 = Menu(menu,tearoff=0)
+    menu.add_cascade(label='Server',menu=menu1)
+    menu1.add_command(label='Join', command=join_typing)
+    menu1.add_command(label='Join last', command=lambda: join_server(False))
+    menu1.add_separator()
+    menu1.add_command(label='Leave', command=leave_server)
+    menu1.add_command(label='Quit', command=closewin)
 
-menu3 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Commands',menu=menu3)
-menu3.add_command(label='Command window', command=command_window)
-menu3.add_separator()
-menu3.add_command(label='Go afk', command=send_afk)
-menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
-menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
-menu3.add_separator()
-menu3.add_command(label='Help', command=T_ins_help)
-menu3.add_command(label='Clear chat', command=reset_textbox)
-menu3.add_command(label='Clear entry', command=lambda: textt.set(''))
-menu3.add_command(label='File list', command=lambda: enter_text('command_window','/fl'))
-menu3.add_command(label='Link list', command=T_ins_linklist)
-menu3.add_command(label='Log', command=T_ins_log)
-menu3.add_command(label='User list', command=T_ins_userlist)
+    menu3 = Menu(menu,tearoff=0)
+    menu.add_cascade(label='Commands',menu=menu3)
+    menu3.add_command(label='Command window', command=command_window)
+    menu3.add_separator()
+    menu3.add_command(label='Go afk', command=send_afk)
+    menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
+    menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
+    menu3.add_separator()
+    menu3.add_command(label='Help', command=T_ins_help)
+    menu3.add_command(label='Clear chat', command=reset_textbox)
+    menu3.add_command(label='Clear entry', command=lambda: textt.set(''))
+    menu3.add_command(label='File list', command=lambda: enter_text('command_window','/fl'))
+    menu3.add_command(label='Link list', command=T_ins_linklist)
+    menu3.add_command(label='Log', command=T_ins_log)
+    menu3.add_command(label='User list', command=T_ins_userlist)
 
-menu4 = Menu(menu,tearoff=0)
-menu.add_cascade(label='File',menu=menu4)
-menu4.add_command(label='Download manager', command=file_manager)
-menu4.add_separator()
-menu4.add_command(label='Open folder', command=lambda: open_address_no_http(fdl_path))
-menu4.add_command(label='Share', command=share_file)
+    menu4 = Menu(menu,tearoff=0)
+    menu.add_cascade(label='File',menu=menu4)
+    menu4.add_command(label='Download manager', command=file_manager)
+    menu4.add_separator()
+    menu4.add_command(label='Open folder', command=lambda: open_address_no_http(fdl_path))
+    menu4.add_command(label='Share', command=share_file)
 
-menu5 = Menu(menu,tearoff=0)
-menu.add_cascade(label='Settings',menu=menu5)
-menu5.add_command(label='Set user', command=username_menu)
-menu5.add_command(label='Set font', command=font_menu)
-menu5.add_command(label='Set download path', command=download_menu)
-menu5.add_command(label='Color settings', command=color_menu)
-menu5.add_command(label='Update settings', command=update_menu)
-menu5.add_command(label='Sound settings', command=sound_menu)
-menu5.add_command(label='Other settings', command=other_menu)
+    menu5 = Menu(menu,tearoff=0)
+    menu.add_cascade(label='Settings',menu=menu5)
+    menu5.add_command(label='Set user', command=username_menu)
+    menu5.add_command(label='Set font', command=font_menu)
+    menu5.add_command(label='Set download path', command=download_menu)
+    menu5.add_command(label='Color settings', command=color_menu)
+    menu5.add_command(label='Update settings', command=update_menu)
+    menu5.add_command(label='Sound settings', command=sound_menu)
+    menu5.add_command(label='Other settings', command=other_menu)
 
-helpmenu = Menu(menu,tearoff=0)
-menu.add_cascade(label='Help', menu=helpmenu)
-helpmenu.add_command(label='Changelog', command=Changelog)
-helpmenu.add_command(label='About..', command=About)
+    helpmenu = Menu(menu,tearoff=0)
+    menu.add_cascade(label='Help', menu=helpmenu)
+    helpmenu.add_command(label='Changelog', command=Changelog)
+    helpmenu.add_command(label='About..', command=About)
 
 ### Window widgets
 def create_widgets():
     global T,E,User_area,S,S2,hyperlink, usra_len, default_os_color
+    create_toolbar()
     E = Entry(textvariable=textt)
     User_area = Text(root, height=44, width=usra_len)
     S = Scrollbar(root)
@@ -2807,24 +2840,28 @@ def create_widgets():
     T = Text(root, height=46, width=114,wrap=WORD)
     ## bordercolors
 ##    root.configure(background='red')
-    widliste = [T,User_area, S, S2]
+##    widliste = [T,User_area, S, S2]
 ##    widliste = [S,S2]
 ##    for x in widliste:
-##        x.config(background='black')
-    for x in widliste:
-        try:
-            x.config(highlightthickness=0)
-        except:
-            pass
+##        try:
+##            x.config(background='red')
+##        except:
+##            pass
 ##    for x in widliste:
-##        x.config(highlightbackground='black')
-    for x in widliste:
-        try:
-            x.config(bd=0)
-        except:
-            pass
+##        try:
+##            x.config(highlightthickness=0)
+##        except:
+##            pass
 ##    for x in widliste:
-##        x.config(troughcolor='black')
+##        try:
+##            x.config(highlightbackground='black')
+##        except:
+##            pass
+##    for x in widliste:
+##        try:
+##            x.config(bd=0)
+##        except:
+##            pass
 
     S.pack(side=RIGHT, fill=Y)
     if hide_users == 0:
@@ -2849,7 +2886,10 @@ def tag_colors():
     fontlist.sort()
     widliste = (T,E,User_area,S,S2)
     text_widgets = (T,User_area)
-    menuliste = (menu1, menu3, menu4, menu5, helpmenu)
+    try:
+        menuliste = (menu1, menu3, menu4, menu5, helpmenu)
+    except:
+        pass
     ## Tags default colors
     #Chat
     ## Attempts to replace default colors with saved theme
@@ -2864,14 +2904,19 @@ def tag_colors():
                 e = str(e)
                 T_ins_warning(T, S, 'ERROR: loading color tags')
                 T_ins_warning(T, S, e)
+        if x[2] == ('toolbar'):
+            if x[4] != 'default':
+                tcol = x[4]
+            else:
+                tcol = default_os_color
         # Window
         elif x[0] == 'window':
             bgcol = x[4]
             if bgcol == 'default':
                 bgcol = default_os_color
             fgcol = x[3]
-            if bgcol == 'default':
-                bgcol= 'black'
+            if fgcol == 'default':
+                fgcol= 'black'
             try:# Root
                 if x[2] == 'rootcolor':
                     root.configure(background=bgcol)
@@ -2891,15 +2936,19 @@ def tag_colors():
                 elif x[2] == 'border-entry':
                     E.config(highlightbackground=bgcol)
                 # Menu color
-                elif x[2] == 'toolbar':
-                    menu.config(bg=bgcol,fg=fgcol)
-                elif x[2] == 'toolbar-selected':
-                    menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
-                elif x[2] == 'toolbar-menu':
-                    for dd in menuliste:
-                        dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
+                try:
+                    if x[2] == 'toolbar':
+                        menu.config(bg=bgcol,fg=fgcol)
+                    if x[2] == 'toolbar-selected':
+                        menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
+                    if x[2] == 'toolbar-menu':
+                        for dd in menuliste:
+                            dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol,activeforeground=fgcol,activebackground=tcol,
+                                  )
+                except:
+                    print 'No toolbar'
                 # Scrollbars
-                elif x[2] == 'troughcolor':
+                if x[2] == 'troughcolor':
                     try:
                         S.config(bg=bgcol,troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
                         S2.config(bg=bgcol,troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
@@ -2969,12 +3018,12 @@ root.bind('<Motion>', motion)
 root.bind('<Button-1>', deselect_widgets)
 if OS != 'Windows':
     root.bind('<Button-3>', copy_paste_buttons)
-    root.bind("<Button-4>", focusT)
-    root.bind("<Button-5>", focusT)
+    E.bind("<Button-4>", focusT)
+    E.bind("<Button-5>", focusT)
     root.bind('<Button-1>', copy_paste_buttons_del)
 if OS == 'Windows':
     root.bind('<Button-3>',rClicker, add='')
-    root.bind("<MouseWheel>", focusT)
+    E.bind("<MouseWheel>", focusT)
 
 E.bind('<Tab>', autocomplete_name)
 ## Entry log
