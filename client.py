@@ -5,7 +5,6 @@ from Tkinter import Button as tkButton
 from Tkinter import Label as tkLabel
 from ttk import Style as ttkStyle
 from ttk import Button
-from ttk import Scrollbar
 from ttk import Checkbutton
 from ttk import Radiobutton
 from ttk import Combobox
@@ -16,7 +15,7 @@ from ttk import Treeview
 from ttk import Label
 ##from ttk import Entry
 from ttk import Widget
-from ttk import Frame as ttkFrame
+##from ttk import Frame as ttkFrame
 from threading import Thread
 from random import randrange
 from time import strftime,gmtime,sleep,time
@@ -28,7 +27,7 @@ from PIL import Image as Pillow_image
 from PIL import ImageTk
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
 
-ver = '1.07'
+ver = '1.08'
 
 sys_path = os.getcwd()
 OS = platform.system()
@@ -152,19 +151,31 @@ def list_from_file(path,delimiter):
     return templist
 
 class HyperlinkManager:
-    def __init__(self, text,override_font):
+    def __init__(self, text,override_font,overridecol,tag):
+        self.text = text
+        self.tag_hyper_colors(tag,override_font,overridecol)
+        self.tagname = tag
+
+    def tag_hyper_colors(self,hyper,override_font,overridecol):
         global font_size, text_font
         font = text_font
         fontlist=list(tkFont.families())
-        fontlist.sort()
-        self.text = text
-        if override_font == 'False':
-            self.text.tag_config("hyper", font=(fontlist[text_font[0]], font_size), foreground='blue', underline=1)
+        fontlist.sort() 
+        if overridecol == ('False','False'):
+            fgcol = blue
         else:
-            self.text.tag_config("hyper", font=override_font, foreground='blue', underline=1)
-        self.text.tag_bind("hyper", "<Enter>", self._enter)
-        self.text.tag_bind("hyper", "<Leave>", self._leave)
-        self.text.tag_bind("hyper", "<Button-1>", self._click)
+            bgcol = overridecol[1]
+            fgcol = overridecol[0]
+            if bgcol == 'default':
+                bgcol = 'white'
+        if override_font == 'False':
+            self.text.tag_config(hyper, font=(fontlist[text_font[0]], font_size),background=bgcol, foreground=fgcol, underline=1)
+        else:
+            self.text.tag_config(hyper, font=override_font,background=bgcol, foreground=fgcol, underline=1)
+
+        self.text.tag_bind(hyper, "<Enter>", self._enter)
+        self.text.tag_bind(hyper, "<Leave>", self._leave)
+        self.text.tag_bind(hyper, "<Button-1>", self._click)
         self.reset()
 
     def reset(self):
@@ -173,10 +184,10 @@ class HyperlinkManager:
     def add(self, addr):
         # add an action to the manager.  returns tags to use in
         # associated text widget
-        tag = "hyper-%d" % len(self.links)
+        tag = self.tagname+"-%d" % len(self.links)
         self.links[tag] = addr
         linklist.append([tag,addr])
-        return "hyper", tag
+        return self.tagname, tag
 
     def _enter(self, event):
         self.text.config(cursor="hand2")
@@ -186,7 +197,7 @@ class HyperlinkManager:
 
     def _click(self, event):
         for tag in self.text.tag_names(CURRENT):
-            if tag[:6] == "hyper-":
+            if tag[:6] == self.tagname+"-" or tag[:7] == self.tagname+"-":
                 open_address_in_webbrowser(self.links[tag])
                 return
 
@@ -324,14 +335,14 @@ def copy_paste_buttons_del(*arg):
     Thread(target=copy_paste_buttons_del_thread).start()
 
 def copy_paste_buttons(*arg):
-    global bb1,m_x, m_y, activated_widget, usra_len, X_size, Y_size, hide_users
-    if activated_widget[0] == 'T' and hide_users == 0:
+    global bb1,m_x, m_y, activated_widget, usra_len, X_size, Y_size, show_users
+    if activated_widget[0] == 'T' and show_users == 1:
         m_x += usra_len*8
     elif activated_widget[0] == 'E':
         m_y += Y_size-130
-        if hide_users == 0:
+        if show_users == 0:
             m_x += usra_len*8
-    elif activated_widget[0] == 'S2' and hide_users == 0:
+    elif activated_widget[0] == 'S2' and show_users == 1:
         m_x += usra_len*7
         
     if m_x > X_size-130:
@@ -363,7 +374,7 @@ def sender_thread():
     while True:
         if len(sender_thread_list) > 0:
             try:
-                s.send(sender_thread_list[0])
+                s.send(sender_thread_list[0]+'<e%$>')
                 sender_thread_list.pop(0)
             except Exception as e:
                 print str(e)
@@ -379,9 +390,11 @@ def sender_thread():
         
 def recv_thread():
     global action_time, s, connected_server
+    buff = ''
     while action_time is True:
         try:
-            data = s.recv(4096)
+            data = buff+s.recv(4096)
+            buff = ''
             if not data:
                 if action_time is True:
                     action_time = False
@@ -396,6 +409,8 @@ def recv_thread():
                     if len(data[b:]) > 4:
                         data = data[b+len('<e%$>'):]
                 else:
+                    if len(data) > 0:
+                        buff += data
                     break
                 cnt+= 1
                 if cnt == 500:
@@ -488,16 +503,17 @@ def join_srv_check(curselection,jaddr):
         join_server(jaddr)
                 
 def join_server(typing):
-    global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server, ver
+    global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server, ver, sender_thread_list
     scroller = S.get()
     try:
         action_time = False
-        s.send('close::')
-        sleep(0.2)
+        s.send('close::'+'<e%$>')
+        sleep(0.3)
         s.close()
     except:
         pass
     try:
+        sender_thread_list = []
         if typing is not False:
             TCP_IP = typing
             TCP_PORT = 44671
@@ -513,12 +529,12 @@ def join_server(typing):
         s.connect((TCP_IP, TCP_PORT))
         action_time = True
         Thread(target=recv_thread).start()
-        Thread(target=sender_thread).start()
         if passwd is '' or autoauth is 0:
-            sender_thread_list.append('USRINFO::'+username)
+            s.send('USRINFO::'+username+'<e%$>')
         else:
-            sender_thread_list.append('USRINFO::'+username+']'+passwd)
-        sleep(0.2)
+            s.send('USRINFO::'+username+']'+passwd+'<e%$>')
+        sleep(0.3)
+        Thread(target=sender_thread).start()
         sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
         kill_reconnect = True
     except Exception as e:
@@ -622,7 +638,7 @@ def T_ins_linklist():
 
 def send_afk():
     try:
-        s.send('aAFKAFK::')
+        sender_thread_list.append('aAFKAFK::')
     except:
         pass
 
@@ -631,7 +647,7 @@ def attempt_registration(s,authps):
         T_ins_warning(T,S,'Too short')
     else:
         try:
-            s.send('aUSRREG::'+authps)
+            sender_thread_list.append('aUSRREG::'+authps)
         except Exception as e:
             T.config(yscrollcommand=S.set,state="normal")
             war = lenghten_name('WARNING: ',21)
@@ -644,7 +660,7 @@ def attempt_registration(s,authps):
 
 def attempt_auth(s,authps):
     try:
-        s.send('USRLOGI::'+authps)
+        sender_thread_list.append('USRLOGI::'+authps)
     except Exception as e:
         T.config(yscrollcommand=S.set,state="normal")
         war = lenghten_name('WARNING: ',21)
@@ -968,7 +984,7 @@ def update_checker(update_link):
             autojoiner()
 
 def update_window(update_link,strver,update,temp,upd_ver):
-    global font_size, text_font, hide_users
+    global font_size, text_font, show_users
     fontlist=list(tkFont.families())
     fontlist.sort()
     global ver
@@ -1452,7 +1468,7 @@ def set_font(font,fontlist,t_font_size,t_usra_len):
     
     User_area.config(width=t_usra_len)
     tag_colors()
-    hyperlink = HyperlinkManager(T,'False')
+    hyperlink = HyperlinkManager(T,'False',('False','False'))
     usra_len = t_usra_len
     write_settings('font_size',font_size)
     write_settings('usra_len',usra_len)
@@ -1849,19 +1865,50 @@ def file_manager():
         restore_window(topwin,Xpos,Ypos)
         topwin.lift()
 
-def change_other_settings(a,c,e,f,g,h,i,j):
-    global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth
-    global User_area, S2, T, S, E, s, username, write_log, show_logtime
+def configure_border_size(widget,size):
+    try:
+        widget.config(bd=size)
+    except:
+        print 'Can not change '+str(widget)+' border'
+    try:
+        widget.config(highlightthickness=0)
+    except:
+        print 'Can not change '+str(widget)+' highlightthickness'
+    
+
+def change_other_settings(a,c,e,f,g,h,i,j,k,l):
+    global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, show_users, autoauth
+    global User_area, S2, T, S, E, s, username, write_log, show_logtime, use_ttk_scroll
+    global E_borderlen, T_borderlen, S_borderlen
+    widliste = (T,User_area, S, S2)
     autojoin = a
     leave_join = c
     nadd_spaces = e
     autoauth = h
     write_log = i
     show_logtime = j
+    use_ttk_scroll = k
+    try:
+        for x in l:
+            x = int(x)
+        E_borderlen, T_borderlen, S_borderlen = l[0],l[1],l[2]
+        configure_border_size(E,E_borderlen)
+        configure_border_size(T,T_borderlen)
+        try:
+            configure_border_size(User_area,T_borderlen)
+            configure_border_size(S2,S_borderlen)
+        except:
+            pass
+        configure_border_size(S,S_borderlen)
+    except:
+        T_ins_warning(T,S,'Not a number')
 
-    if hide_users is not g:
-        hide_users = g
-        if g == 1:
+
+    
+
+    if show_users is not g:
+        show_users = g
+        if g == 0:
             User_area.destroy()
             S2.destroy()
         else:
@@ -1875,14 +1922,19 @@ def change_other_settings(a,c,e,f,g,h,i,j):
     write_settings('autojoin',a)
     write_settings('leave_join',c)
     write_settings('nadd_spaces',e)
-    write_settings('hide_users',g)
+    write_settings('show_users',g)
     write_settings('autoauth',h)
     write_settings('chlog',i)
     write_settings('show_logtime',j)
+    write_settings('use_ttk_scroll',k)
+    write_settings('E_borderlen',E_borderlen)
+    write_settings('T_borderlen',T_borderlen)
+    write_settings('S_borderlen',S_borderlen)
 ##    root.geometry('%sx%s' % (X_size,Y_size))
     
 def other_menu():
-    global autojoin, leave_join, nadd_spaces, show_ttime, hide_users, autoauth, write_log, show_logtime
+    global autojoin, leave_join, nadd_spaces, show_ttime, show_users, autoauth, write_log, show_logtime
+    global use_ttk_scroll, E_borderlen, T_borderlen, S_borderlen
     sm = Toplevel()
     set_winicon(sm,'icon_grey')
     sm.title("Other settings")
@@ -1897,23 +1949,33 @@ def other_menu():
     frame3 = Frame(sm, height=40,width=500, relief=SUNKEN)
     frame3.pack_propagate(0)
     frame3.place(x=180,y=200)
+    frame4 = Frame(sm, height=160,width=210, relief=SUNKEN)
+    frame4.pack_propagate(0)
+    frame4.pack(anchor=NE,side=LEFT,padx=10,pady=10)
     
     t_leave_join = IntVar()
     t_autoauth = IntVar()
     t_autojoin = IntVar()
     t_write_log = IntVar()
     t_lenghten = IntVar()
-    t_hide_users = IntVar()
+    t_show_users = IntVar()
     t_box_time = IntVar()
     t_log_time = IntVar()
+    t_E_borderlen, t_T_borderlen, t_S_borderlen = StringVar(),StringVar(),StringVar()
+    t_use_ttk_scroll = IntVar()
     t_leave_join.set(leave_join)
     t_autoauth.set(autoauth)
     t_autojoin.set(autojoin)
     t_write_log.set(write_log)
     t_lenghten.set(nadd_spaces)
-    t_hide_users.set(hide_users)
+    t_show_users.set(show_users)
     t_box_time.set(show_ttime)
     t_log_time.set(show_logtime)
+    t_use_ttk_scroll.set(use_ttk_scroll)
+    t_E_borderlen.set(E_borderlen)
+    t_T_borderlen.set(T_borderlen)
+    t_S_borderlen.set(S_borderlen)
+    
     
     Checkbutton(frame, text="Show leave and join", variable=t_leave_join).pack(anchor=NW)
     Checkbutton(frame, text="Enable autoauthentication", variable=t_autoauth).pack(anchor=NW)
@@ -1925,15 +1987,24 @@ def other_menu():
 
     Checkbutton(frame2, text="Enable log writing", variable=t_write_log).pack(anchor=NW)
     Checkbutton(frame2, text="Force 19chr length usernames", variable=t_lenghten).pack(anchor=NW)
-    Checkbutton(frame2, text="Hide userbox", variable=t_hide_users).pack(anchor=NW)
-    Label(frame2, text="\nTextbox time:",justify = LEFT).pack(anchor=NW)
+    Label(frame2, text="\n\nText box time:",justify = LEFT).pack(anchor=NW)
     Radiobutton(frame2,text="Show full",variable=t_box_time,value=3).pack(anchor=NW)
     Radiobutton(frame2,text="Without seconds",variable=t_box_time,value=2).pack(anchor=NW)
     Radiobutton(frame2,text="Hide",variable=t_box_time,value=1).pack(anchor=NW)
 
+    Checkbutton(frame4, text="Show user box", variable=t_show_users).pack(anchor=NW)
+    Checkbutton(frame4, text="Use system scrollbar", variable=t_use_ttk_scroll).pack(anchor=NW)
+    Label(frame4, text="Entry widget border:",justify = LEFT).pack(anchor=NW)
+    E_border = Entry(frame4,textvariable=t_E_borderlen).pack(anchor=NW)
+    Label(frame4, text="Text widget border:",justify = LEFT).pack(anchor=NW)
+    T_border = Entry(frame4,textvariable=t_T_borderlen).pack(anchor=NW)
+    Label(frame4, text="Scrollbar widget border:",justify = LEFT).pack(anchor=NW)
+    S_border = Entry(frame4,textvariable=t_S_borderlen).pack(anchor=NW)
+
     button = Button(frame3, text='Save', command=lambda: {change_other_settings(t_autojoin.get(),
-                    t_leave_join.get(),t_lenghten.get(),t_box_time.get(),t_hide_users.get(),
-                    t_autoauth.get(),t_write_log.get(),t_log_time.get()),
+                    t_leave_join.get(),t_lenghten.get(),t_box_time.get(),t_show_users.get(),
+                    t_autoauth.get(),t_write_log.get(),t_log_time.get(),t_use_ttk_scroll.get(),
+                    (t_E_borderlen.get(),t_T_borderlen.get(),t_S_borderlen.get())),
                     sm.destroy()})
     button.pack(side=LEFT)
     def close_func(*arg):
@@ -1996,7 +2067,7 @@ def organise_file_list(data):
     string_to_list(file_list)
 
 def organise_USRLIST(data):
-    global USRLIST, hide_users
+    global USRLIST, show_users
     USRLIST, temp_list, off_usr, on_usr = [], [], [], []
     while True:
         ## Separates user strings and puts them in a temp. list
@@ -2048,7 +2119,7 @@ def organise_USRLIST(data):
     for x in off_usr:
         USRLIST.append(x)
 
-    if hide_users == 0:
+    if show_users == 1:
         user_area_insert()
 
 def user_area_insert():
@@ -2189,7 +2260,7 @@ def entry_paste(*arg):
 def autocomplete_name(*arg):
     is_private = False
     commandli = ('/help','/users','/log','/afk','/reg','/auth','/clear','/share','/file','/files','/file_list',
-                '/join','/ljoin','/leave','/changelog','/about','/quit','/exit')
+                '/join','/ljoin','/leave','/changelog','/about','/quit','/exit','/datal')
     try:
     ## Finds the last word in entry widget
         text = textt.get()
@@ -2700,7 +2771,7 @@ username = str(read_settings('username=','User'+str(randrange(1,999,1))))
 if len(username) < 1:
     username = 'User'+str(randrange(1,999,1))
 autojoin = int(read_settings('autojoin=',0))
-hide_users = int(read_settings('hide_users=',0))
+show_users = int(read_settings('show_users=',1))
 X_size = int(read_settings('X_size=',800))
 Y_size = int(read_settings('Y_size=',600))
 font_size = int(read_settings('font_size=',10))
@@ -2719,6 +2790,12 @@ window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_se
 updater_ver = str(read_settings('updater_ver=','1'))
 show_logtime = int(read_settings('show_logtime=',2))
 saved_theme = str(read_settings('theme=','Default'))
+use_ttk_scroll = int(read_settings('use_ttk_scroll=',1))
+if use_ttk_scroll == 1:
+    from ttk import Scrollbar
+E_borderlen = int(read_settings('E_borderlen=',1))
+T_borderlen = int(read_settings('T_borderlen=',1))
+S_borderlen = int(read_settings('S_borderlen=',1))
 default_colors_list = [['chat','Warnings','redcol','red','white'],
                     ['chat','Server msg','bluecol','blue','white'],
                     ['chat','Server warnings','browncol','#862d2d','white'],
@@ -2742,10 +2819,18 @@ default_colors_list = [['chat','Warnings','redcol','red','white'],
                     ['window','Border-text','border-text','black','default'],
                     ['window','Border-entry','border-entry','black','default'],
                     ['window','Troughcolor','troughcolor','black','default'],
-                    ['window','Toolbar','toolbar','black','default'],
-                    ['window','Toolbar-selected','toolbar-selected','black','default'],
-                    ['window','Toolbar-menu','toolbar-menu','black','default'],
+                    ['window','Toolbar','toolbar','black','SystemMenu'],
+                    ['window','Toolbar-selected','toolbar-selected','SystemHighlightText','SystemHighlight'],
+                    ['window','Toolbar-menu','toolbar-menu','black','SystemMenu'],
                        ]
+## Windows seems to be the only system that supports these colors, they have to be replaced
+## Will hardcode for now and fix some day in the future *tm
+if OS != 'Windows':
+    default_colors_list[23][4] = '#d9d9d9'
+    default_colors_list[24][3] = 'black'
+    default_colors_list[24][4] = '#d9d9d9'
+    default_colors_list[25][4] = '#d9d9d9'
+    
 if saved_theme == 'Default':
     chat_color_list = list(default_colors_list)
 else:
@@ -2831,40 +2916,24 @@ def create_toolbar(*arg):
 
 ### Window widgets
 def create_widgets():
-    global T,E,User_area,S,S2,hyperlink, usra_len, default_os_color
+    global T,E,User_area,S,S2,hyperlink, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen
     create_toolbar()
     E = Entry(textvariable=textt)
     User_area = Text(root, height=44, width=usra_len)
     S = Scrollbar(root)
     S2 = Scrollbar(root)
     T = Text(root, height=46, width=114,wrap=WORD)
-    ## bordercolors
-##    root.configure(background='red')
-##    widliste = [T,User_area, S, S2]
-##    widliste = [S,S2]
-##    for x in widliste:
-##        try:
-##            x.config(background='red')
-##        except:
-##            pass
-##    for x in widliste:
-##        try:
-##            x.config(highlightthickness=0)
-##        except:
-##            pass
-##    for x in widliste:
-##        try:
-##            x.config(highlightbackground='black')
-##        except:
-##            pass
-##    for x in widliste:
-##        try:
-##            x.config(bd=0)
-##        except:
-##            pass
+    configure_border_size(E,E_borderlen)
+    configure_border_size(T,T_borderlen)
+    try:
+        configure_border_size(User_area,T_borderlen)
+        configure_border_size(S2,S_borderlen)
+    except:
+        pass
+    configure_border_size(S,S_borderlen)
 
     S.pack(side=RIGHT, fill=Y)
-    if hide_users == 0:
+    if show_users == 1:
         User_area.pack(side=LEFT,fill=Y)
         S2.pack(side=LEFT, fill=Y)
     E.pack(side=BOTTOM,fill=X)
@@ -2875,12 +2944,12 @@ def create_widgets():
     User_area.config(yscrollcommand=S2.set,state="disabled",wrap='none')
     User_area.bind( '<Configure>', maxsize )
     T.config(yscrollcommand=S.set,state="disabled")
-    E.focus_set()
-    hyperlink = HyperlinkManager(T,'False')
+    E.focus_set()   
     default_os_color = root.cget('bg')
     tag_colors()
+    
 def tag_colors():
-    global font_size, text_font, hide_users, chat_color_list, default_colors_list, T,E,User_area, menu,S,S2
+    global font_size, text_font, show_users, chat_color_list, default_colors_list, T,E,User_area, menu,S,S2
     global menu1, menu3, menu4, menu5, helpmenu, default_os_color
     fontlist=list(tkFont.families())
     fontlist.sort()
@@ -2897,18 +2966,19 @@ def tag_colors():
     for x in chat_color_list:
         if x[0] == 'chat':
             try:
+                if x[2] == 'blue_link':
+                    global hyperlink_obj
+                    hyperlink_obj = HyperlinkManager(T,'False',(x[3],x[4]),'hyper')
+                if x[2] == 'privatlink':
+                    global hyperlink_obj2
+                    hyperlink_obj2 = HyperlinkManager(T,'False',(x[3],x[4]),'hyper2')
                 T.tag_configure(x[2], font=(fontlist[text_font[0]], font_size), background=x[4], foreground=x[3])
-                if hide_users is not 1:
+                if show_users is not 0:
                     User_area.tag_configure(x[2], font=(fontlist[text_font[0]], font_size), background=x[4], foreground=x[3])
             except Exception as e:
                 e = str(e)
                 T_ins_warning(T, S, 'ERROR: loading color tags')
                 T_ins_warning(T, S, e)
-        if x[2] == ('toolbar'):
-            if x[4] != 'default':
-                tcol = x[4]
-            else:
-                tcol = default_os_color
         # Window
         elif x[0] == 'window':
             bgcol = x[4]
@@ -2928,7 +2998,7 @@ def tag_colors():
                         except:
                             print dd,' has no background color'
                 elif x[2] == 'entry-widget':
-                    E.config(fg=x[3],insertbackground=fgcol,bg=bgcol)
+                    E.config(fg=fgcol,insertbackground=fgcol,bg=bgcol)
                 # Borders
                 elif x[2] == 'border-text':
                     for dd in text_widgets:
@@ -2936,19 +3006,18 @@ def tag_colors():
                 elif x[2] == 'border-entry':
                     E.config(highlightbackground=bgcol)
                 # Menu color
-                try:
-                    if x[2] == 'toolbar':
-                        menu.config(bg=bgcol,fg=fgcol)
-                    if x[2] == 'toolbar-selected':
-                        menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
-                    if x[2] == 'toolbar-menu':
-                        for dd in menuliste:
-                            dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol,activeforeground=fgcol,activebackground=tcol,
-                                  )
-                except:
-                    print 'No toolbar'
+                elif x[2] == 'toolbar':
+                    tcol = bgcol
+                    menu.config(bg=bgcol,fg=fgcol)
+                elif x[2] == 'toolbar-selected':
+                    menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
+                    for dd in menuliste:
+                        dd.config(activeforeground=fgcol,activebackground=bgcol)
+                elif x[2] == 'toolbar-menu':
+                    for dd in menuliste:
+                        dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol)
                 # Scrollbars
-                if x[2] == 'troughcolor':
+                elif x[2] == 'troughcolor':
                     try:
                         S.config(bg=bgcol,troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
                         S2.config(bg=bgcol,troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
@@ -3162,7 +3231,10 @@ def task():
                     elif nfind is False:
                         linkk = find_link(x)
                         if linkk is not 'False':
-                            T.insert(END, linkk, hyperlink.add(linkk))
+                            if mlink == 'privatlink':
+                                T.insert(END, linkk,hyperlink_obj2.add(linkk))
+                            else:
+                                T.insert(END, linkk, hyperlink_obj.add(linkk))
                             T.insert(END,' ')
                         if linkk is 'False' and nfind is False:
                             T.insert(END, x,mblack)       

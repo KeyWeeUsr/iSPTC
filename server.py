@@ -3,7 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 from time import sleep
-ver = '1.00b'
+ver = '1.02'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -249,26 +249,34 @@ def send_user_list(s,conn,oldusername,username,addr,level):
 
 def recieveData(conn,bitr):# function to recieve data
     conn.settimeout(30)
+    data_list = []
+    buff = ''
     try:
-        data = conn.recv(bitr) # waits for data and stores it in data
+        data = buff+conn.recv(bitr) # waits for data and stores it in data
+        buff = ''
+        cnt = 0
         while True:
             b = data.find('<e%$>')
             if b is not -1:
-                dtmp = []
-                dtmp.append(data)
-                dtmp[b],dtmp[b+1],dtmp[b+2],dtmp[b+3],dtmp[b+4] = '', '', '', '', ''
-                data = ''
-                for x in dtmp:
-                    data = data+x
+                data_list.append(data[:b])
+                data = data[b+len('<e%$>'):]
             else:
+                if cnt == 0:
+                    if len(data) > 1:
+                        data_list = [data]
+                elif len(data) > 0:
+                    buff += data
+                break
+            cnt += 1
+            if cnt == 100:
                 break
     except Exception as e:
         e = str(e)
         if e == 'timed out':
-            return 'TIMEOUT::'
+            return ['TIMEOUT::']
         else:
-            data = 'close::'
-    return data; # returns the contents of data
+            data_list = ['close::']
+    return data_list; # returns the contents of data
 
 def broadcastPrivate(conn,user, data):
     is_online = False
@@ -390,11 +398,11 @@ def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,r
 
 def eventThread():
     global threadip
-    current_event = 0
+    user_count = 0
+    sleep_more = 0
     while True:
         cnt = 0
-        current_event = 0
-        for x in event_list[current_event:]:
+        for x in event_list:
             ## 1Message
             if x[0] == 'SEND':
                 broadcastData(x[1])
@@ -410,22 +418,25 @@ def eventThread():
             ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk,6client version
             elif x[0] == 'USR-APPEND':
                 threadip.append([x[1],x[2],x[3],x[4],x[5],x[6],x[7]])
+                user_count += 1
             elif x[0] == 'USR-REM':
                 usrLeaving(x[1],x[2],x[3],x[4],x[5],x[6],x[7],x[8],x[9])
+                user_count -= 1
                 try:
                     x[1].close()
                 except Exception as e:
                     e = str(e)
                     print e
                 Thread(target=clientHandler,args=(x[5],)).start()
-            current_event += 1
             cnt += 1
-##        print cnt
-##        if cnt < 30:
-##            sleep(0.03)
         for x in range(0,cnt):
             del event_list[0]
         sleep(0.05)
+        if user_count < 1000:
+            sleep_more = 0.002*user_count
+            sleep(sleep_more)
+        else:
+            sleep(2)
     
 
 def clientHandler(i):
@@ -448,260 +459,266 @@ def clientHandler(i):
         if cnt == 15:
             break
     event_list.append(['Send-Thread',conn,welcome_msg])
-    while 1:
-        data = recieveData(conn,4096)
-        if data != 'kpALIVE::' and data != 'TIMEOUT::':
-            chatmlog.append([get_cur_time(),username,data])
-        ## User messages
-        if data[0:9] == 'MESSAGE::' and username_set is True:
-            timeouts = 0
-            ## Prints message (if enabled)
-            if msgprint_enabled == 1:
-                print get_cur_time(),username2,data[9:]
-            ## Server commands lvl 7+
-            if data[9:11] == 's/' and level > 7:
-                if data == 'MESSAGE::s/log':
-                    event_list.append(['Send-Thread',conn,'WSERVER::Sending '+str(len(chatlog))+' lines'])
-                    Thread(target=list_sender_thread,args=(conn,chatlog,'',)).start()
-                elif data == 'MESSAGE::s/mlog':
-                    event_list.append(['Send-Thread',conn,'WSERVER::Sending '+str(len(chatmlog))+' lines'])
-                    Thread(target=list_sender_thread,args=(conn,chatmlog,'',)).start()
-                elif data == 'MESSAGE::s/threadip':
-                    Thread(target=list_sender_thread,args=(conn,threadip,'',)).start()
-                elif data == 'MESSAGE::s/fld':
-                    for x in shared_filelist:
-                        fh = open(x[0], 'a')
-                        fh.write(x[1])
-                        fh.close()
-                    event_list.append(['Send-Thread',conn,'WSERVER::Saved'])
-            ## Server commands lvl 3+
-            if data[9:11] == 's/' and level > 3:
-                if data == 'MESSAGE::s/help':
-                    event_list.append(['Send-Thread',conn,'WSERVER::Available commands to lvl 4+\n'+
-                                       's/log - log\ns/mlog - message log\ns/threadip - thread list\n'+
-                                       's/fld - save all files to disk\n'+
-                                       's/clear files - clear all shared files from RAM\n'+
-                                       's/filelist - returns list of shared files'])
-                elif data == 'MESSAGE::s/clear files':
-                    shared_filelist = []
-                    event_list.append(['SEND','SSERVER::'+username2+' cleared all shared files'])
-                elif data == 'MESSAGE::s/filelist':
-                    Thread(target=list_sender_thread,args=(conn,threadip,'filelist-message',)).start()
-            ## Low lvl warning
-            elif data[9:11] == 's/' and level < 4:
-                event_list.append(['Send-Thread',conn,'WSERVER::Level too low'])
+    looping = True
+    while looping:
+        data_list = recieveData(conn,4096)
+        if data_list == []:
+            data_list = ['close::']
+        for data in data_list:
+            if data != 'kpALIVE::' and data != 'TIMEOUT::':
+                chatmlog.append([get_cur_time(),username,data])
+            ## User messages
+            if data[0:9] == 'MESSAGE::' and username_set is True:
+                timeouts = 0
+                ## Prints message (if enabled)
+                if msgprint_enabled == 1:
+                    print get_cur_time(),username2,data[9:]
+                ## Server commands lvl 7+
+                if data[9:11] == 's/' and level > 7:
+                    if data == 'MESSAGE::s/log':
+                        event_list.append(['Send-Thread',conn,'WSERVER::Sending '+str(len(chatlog))+' lines'])
+                        Thread(target=list_sender_thread,args=(conn,chatlog,'',)).start()
+                    elif data == 'MESSAGE::s/mlog':
+                        event_list.append(['Send-Thread',conn,'WSERVER::Sending '+str(len(chatmlog))+' lines'])
+                        Thread(target=list_sender_thread,args=(conn,chatmlog,'',)).start()
+                    elif data == 'MESSAGE::s/threadip':
+                        Thread(target=list_sender_thread,args=(conn,threadip,'',)).start()
+                    elif data == 'MESSAGE::s/fld':
+                        for x in shared_filelist:
+                            fh = open(x[0], 'a')
+                            fh.write(x[1])
+                            fh.close()
+                        event_list.append(['Send-Thread',conn,'WSERVER::Saved'])
+                ## Server commands lvl 3+
+                if data[9:11] == 's/' and level > 3:
+                    if data == 'MESSAGE::s/help':
+                        event_list.append(['Send-Thread',conn,'WSERVER::Available commands to lvl 4+\n'+
+                                           's/log - log\ns/mlog - message log\ns/threadip - thread list\n'+
+                                           's/fld - save all files to disk\n'+
+                                           's/clear files - clear all shared files from RAM\n'+
+                                           's/filelist - returns list of shared files'])
+                    elif data == 'MESSAGE::s/clear files':
+                        shared_filelist = []
+                        event_list.append(['SEND','SSERVER::'+username2+' cleared all shared files'])
+                    elif data == 'MESSAGE::s/filelist':
+                        Thread(target=list_sender_thread,args=(conn,threadip,'filelist-message',)).start()
+                ## Low lvl warning
+                elif data[9:11] == 's/' and level < 4:
+                    event_list.append(['Send-Thread',conn,'WSERVER::Level too low'])
 
-            ## Private user messages
-            elif data[9:11] == '@@' and data[11] is not " ":
-                b = data[:].find(']')
-                if b is -1:
-                    event_list.append(['Send-Thread',conn,'WSERVER::"]" has to be at the end of username'])
-                else:
-                    usr_to_send = data[11:b]
-                    event_list.append(['SEND-PRIVATE',conn,usr_to_send, 'm:'+sendlevel+username+'@@'+usr_to_send+data[b:]])
-            ## User channel messages
-            else:
-                event_list.append(['SEND','m:'+sendlevel+username+data[9:]])
-        ## Leaving
-        elif not data:
-            event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no'])
-            break
-        ## Leaving2
-        elif data == 'close::' or data == 'TIMEOUT::':
-            if data == 'close::':
-                event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no'])
-            else:
-                event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::'])
-            break
-        ## Requesting file list
-        elif data[0:9] == 'RQFILES::':
-            Thread(target=list_sender_thread,args=(conn,threadip,'filelist-list',)).start()
-        ## Registration
-        elif data[0:9] == 'aUSRREG::':
-            registered = check_if_registered(username2,addr[0],False)
-            if registered == True:
-                event_list.append(['Send-Thread',conn,'WSERVER::Already registered'])
-            else:
-                usr_pass = data[9:]
-                if len(usr_pass) > 10:
-                    usr_pass = usr_pass[:10]
-                    event_list.append(['Send-Thread',conn,'SSERVER::Max length is 10, changed to: '+usr_pass])
-                illeg_chk = check_for_illegal_chr([' ','[',']'],usr_pass)
-                if illeg_chk == True:
-                    event_list.append(['Send-Thread',conn,'WSERVER::Spaces, "[", "]" are not allowed'])
-                else:
-                    event_list.append(['Send-Thread',conn,'WSERVER::Registering '+username2+' with '+usr_pass])
-                    register_user(username2,usr_pass,True)
-        ## User auth with passwd
-        elif data[0:9] == 'USRLOGI::':
-            usr_pass = data[9:]
-            if len(usr_pass) > 15:
-                usr_pass = usr_pass[:15]
-            registered = check_if_registered(username2,addr,True)
-            if registered[0] == True and usr_pass == registered[1]:
-                level = set_threadip(str(i),addr[0],username2,True)
-                ## Sendlevel string is used by clients to color the username in messages
-                if len(str(level)) == 1:
-                        sendlevel = '0'+str(level)
-                else:
-                    sendlevel = str(level)
-                event_list.append(['SEND','SSERVER::'+remove_spaces(username)+' is level'+str(level)])
-                for x in threadip:
-                    if x[0] == str(i):
-                        x[2] = username2
-                        x[4] = level
-                        break
-                username_set, authed_user = True, True
-                remove_offline_usr(username2)
-                send_ulist_only()
-                event_list.append(['Send-Thread',conn,'WSERVER::Accepted'])
-                send_offline_msg(username_set,authed_user,username2,conn)
-                event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
-            else:
-                event_list.append(['Send-Thread',conn,'WSERVER::Wrong pass'])
-        ## Configure offline msg and client version
-        elif data[0:9] == 'CONFIGR::':
-            if username_set is True and authed_user is True:
-                b = data.find('offmsg=')
-                if b is not -1:
-                    off_msg = data[b+len('offmsg=')]
-                    for levels in iplist:
-                        for x in levels[1]:
-                            if x[0] == username2:
-                                x[2] = off_msg
-                    register_user('a','a',False)
-                    event_list.append(['Send-Thread',conn,'WSERVER::off_msg set to: '+off_msg])
-            b = data.find('ver=')
-            if b is not -1:
-                usr_ver = data[b+len('ver='):]
-                b = usr_ver.find(' ')
-                if b is not -1:
-                    usr_ver = usr_ver[:b]
-                if len(usr_ver) > 50:
-                    usr_ver = usr_ver[:50]
-                for x in threadip:
-                    if x[0] == str(i):
-                        x[6] = usr_ver
-                send_ulist_only()
-                        
-            else:
-##                sleep(0.1)
-##                conn.send('WSERVER::You have no power here')
-                pass
-        ## AFK
-        elif data[0:9] == 'aAFKAFK::':
-            for x in threadip:
-                if x[0] == str(i):
-                    if x[5] == '1':
-                        event_list.append(['SEND','SSERVER::'+username2+' is afk'])
-                        newval = '0'
+                ## Private user messages
+                elif data[9:11] == '@@' and data[11] is not " ":
+                    b = data[:].find(']')
+                    if b is -1:
+                        event_list.append(['Send-Thread',conn,'WSERVER::"]" has to be at the end of username'])
                     else:
-                        event_list.append(['SEND','SSERVER::'+username2+' is no longer afk'])
-                        newval = '1'
-                    x[5] = newval
-            send_ulist_only()
-        ## Username
-        elif data[0:9] == 'USRINFO::':
-            data = data.rstrip()
-            oldusername = str(username)
-            for x in oldusername:
-                if x == ' ':
-                    oldusername = oldusername[1:]
+                        usr_to_send = data[11:b]
+                        event_list.append(['SEND-PRIVATE',conn,usr_to_send, 'm:'+sendlevel+username+'@@'+usr_to_send+data[b:]])
+                ## User channel messages
                 else:
+                    event_list.append(['SEND','m:'+sendlevel+username+data[9:]])
+            ## Leaving
+            elif not data:
+                event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no'])
+                looping = False
+                break
+            ## Leaving2
+            elif data == 'close::' or data == 'TIMEOUT::':
+                if data == 'close::':
+                    event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no'])
+                else:
+                    event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::'])
+                looping = False
+                break
+            ## Requesting file list
+            elif data[0:9] == 'RQFILES::':
+                Thread(target=list_sender_thread,args=(conn,threadip,'filelist-list',)).start()
+            ## Registration
+            elif data[0:9] == 'aUSRREG::':
+                registered = check_if_registered(username2,addr[0],False)
+                if registered == True:
+                    event_list.append(['Send-Thread',conn,'WSERVER::Already registered'])
+                else:
+                    usr_pass = data[9:]
+                    if len(usr_pass) > 10:
+                        usr_pass = usr_pass[:10]
+                        event_list.append(['Send-Thread',conn,'SSERVER::Max length is 10, changed to: '+usr_pass])
+                    illeg_chk = check_for_illegal_chr([' ','[',']'],usr_pass)
+                    if illeg_chk == True:
+                        event_list.append(['Send-Thread',conn,'WSERVER::Spaces, "[", "]" are not allowed'])
+                    else:
+                        event_list.append(['Send-Thread',conn,'WSERVER::Registering '+username2+' with '+usr_pass])
+                        register_user(username2,usr_pass,True)
+            ## User auth with passwd
+            elif data[0:9] == 'USRLOGI::':
+                usr_pass = data[9:]
+                if len(usr_pass) > 15:
+                    usr_pass = usr_pass[:15]
+                registered = check_if_registered(username2,addr,True)
+                if registered[0] == True and usr_pass == registered[1]:
+                    level = set_threadip(str(i),addr[0],username2,True)
+                    ## Sendlevel string is used by clients to color the username in messages
+                    if len(str(level)) == 1:
+                            sendlevel = '0'+str(level)
+                    else:
+                        sendlevel = str(level)
+                    event_list.append(['SEND','SSERVER::'+remove_spaces(username)+' is level'+str(level)])
+                    for x in threadip:
+                        if x[0] == str(i):
+                            x[2] = username2
+                            x[4] = level
+                            break
+                    username_set, authed_user = True, True
+                    remove_offline_usr(username2)
+                    send_ulist_only()
+                    event_list.append(['Send-Thread',conn,'WSERVER::Accepted'])
+                    send_offline_msg(username_set,authed_user,username2,conn)
+                    event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
+                else:
+                    event_list.append(['Send-Thread',conn,'WSERVER::Wrong pass'])
+            ## Configure offline msg and client version
+            elif data[0:9] == 'CONFIGR::':
+                if username_set is True and authed_user is True:
+                    b = data.find('offmsg=')
+                    if b is not -1:
+                        off_msg = data[b+len('offmsg=')]
+                        for levels in iplist:
+                            for x in levels[1]:
+                                if x[0] == username2:
+                                    x[2] = off_msg
+                        register_user('a','a',False)
+                        event_list.append(['Send-Thread',conn,'WSERVER::off_msg set to: '+off_msg])
+                b = data.find('ver=')
+                if b is not -1:
+                    usr_ver = data[b+len('ver='):]
+                    b = usr_ver.find(' ')
+                    if b is not -1:
+                        usr_ver = usr_ver[:b]
+                    if len(usr_ver) > 50:
+                        usr_ver = usr_ver[:50]
+                    for x in threadip:
+                        if x[0] == str(i):
+                            x[6] = usr_ver
+                    send_ulist_only()
+                            
+                else:
+    ##                sleep(0.1)
+    ##                conn.send('WSERVER::You have no power here')
                     pass
-            ## Gets userpass
-            b = data.find(']')
-            if b is not -1 and len(data[b:]) > 2:
-                usr_pass = data[b+1:]
-                ## Removes it from data string
-                data = data[:b]
-            else:
-                usr_pass = False
-                ## Checks length
-            if len(data) > 11:
-                username = data[9:]
-                if len(username) > 15:
-                    username = username[:15]
-                    event_list.append(['Send-Thread',conn,'WSERVER::Name too long, shortened to 15 characters'])
-                ## Username gets changed
-                if username_set is True:
-                    for x in threadip:
-                        if x[0] == str(i):
-                            username2 = remove_spaces(username)
-                            username2 = rm_illegal_chr(username2)
-                            x[2] = ''
-                            username2 = check_duplicate(username2,conn)
-                            username = add_spaces(username2)
-                            registered = check_if_registered(username2,addr,True)
-                            if registered[0] == True and usr_pass == registered[1]:
-                                level = set_threadip(str(i),addr[0],username2,True)
-                                x[2] = username2
-                                username_set, authed_user = True, True
-                            elif registered[0] == True and usr_pass != registered[1]:
-                                event_list.append(['Send-Thread',conn,'WSERVER::Name is registered, waiting for auth'])
-                                level = 0
-                                x[4] = level
-                                username_set, authed_user = False, False
-                            else:
-                                x[2] = (username2)
-                                level = 1
-                                x[4] = level
-                                username_set, authed_user = True, False
-                            ## Sendlevel string is used by clients to color the username in messages
-                            if len(str(level)) == 1:
-                                sendlevel = '0'+str(level)
-                            else:
-                                sendlevel = str(level)
-                            if username_set is True:
-                                chatlog.append([get_cur_time(),addr[0],' is level ',level,' !'])
-                                
-                                if authed_user is True:
-                                    remove_offline_usr(username2)
-                                send_user_list(s,conn,'',username2,addr[0],level)
-                                event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
-                ## Login username received
+            ## AFK
+            elif data[0:9] == 'aAFKAFK::':
+                for x in threadip:
+                    if x[0] == str(i):
+                        if x[5] == '1':
+                            event_list.append(['SEND','SSERVER::'+username2+' is afk'])
+                            newval = '0'
+                        else:
+                            event_list.append(['SEND','SSERVER::'+username2+' is no longer afk'])
+                            newval = '1'
+                        x[5] = newval
+                send_ulist_only()
+            ## Username
+            elif data[0:9] == 'USRINFO::':
+                data = data.rstrip()
+                oldusername = str(username)
+                for x in oldusername:
+                    if x == ' ':
+                        oldusername = oldusername[1:]
+                    else:
+                        pass
+                ## Gets userpass
+                b = data.find(']')
+                if b is not -1 and len(data[b:]) > 2:
+                    usr_pass = data[b+1:]
+                    ## Removes it from data string
+                    data = data[:b]
                 else:
-                    for x in threadip:
-                        if x[0] == str(i):
-                            username2 = remove_spaces(username)
-                            username2 = rm_illegal_chr(username2)
-                            x[2] = ''
-                            username2 = check_duplicate(username2,conn)
-                            username = add_spaces(username2)
-                            registered = check_if_registered(username2,addr,True)
-                            if registered[0] == True and usr_pass == registered[1]:
-                                level = set_threadip(str(i),addr[0],username2,True)
-                                x[2] = username2
-                                username_set, authed_user = True, True
-                            elif registered[0] == True and usr_pass != registered[1]:
-                                event_list.append(['Send-Thread',conn,'WSERVER::Name is registered, waiting for auth'])
-                                level = 0
-                                x[4] = level
-                                username_set, authed_user = False, False
-                            else:
-                                x[2] = (username2)
-                                level = 1
-                                x[4] = level
-                                username_set, authed_user = True, False
-                            ## Sendlevel string is used by clients to color the username in messages
-                            if len(str(level)) == 1:
-                                sendlevel = '0'+str(level)
-                            else:
-                                sendlevel = str(level)
-                            if username_set is True:
-                                chatlog.append([get_cur_time(),addr[0],' is level ',level,' !'])
-                                if authed_user is True:
-                                    remove_offline_usr(username2)
-                                send_user_list(s,conn,'',username2,addr[0],level)
-                                event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
-                send_offline_msg(username_set,authed_user,username2,conn)
-    
-        else:
-            if data == 'kpALIVE::':
-                pass
+                    usr_pass = False
+                    ## Checks length
+                if len(data) > 11:
+                    username = data[9:]
+                    if len(username) > 15:
+                        username = username[:15]
+                        event_list.append(['Send-Thread',conn,'WSERVER::Name too long, shortened to 15 characters'])
+                    ## Username gets changed
+                    if username_set is True:
+                        for x in threadip:
+                            if x[0] == str(i):
+                                username2 = remove_spaces(username)
+                                username2 = rm_illegal_chr(username2)
+                                x[2] = ''
+                                username2 = check_duplicate(username2,conn)
+                                username = add_spaces(username2)
+                                registered = check_if_registered(username2,addr,True)
+                                if registered[0] == True and usr_pass == registered[1]:
+                                    level = set_threadip(str(i),addr[0],username2,True)
+                                    x[2] = username2
+                                    username_set, authed_user = True, True
+                                elif registered[0] == True and usr_pass != registered[1]:
+                                    event_list.append(['Send-Thread',conn,'WSERVER::Name is registered, waiting for auth'])
+                                    level = 0
+                                    x[4] = level
+                                    username_set, authed_user = False, False
+                                else:
+                                    x[2] = (username2)
+                                    level = 1
+                                    x[4] = level
+                                    username_set, authed_user = True, False
+                                ## Sendlevel string is used by clients to color the username in messages
+                                if len(str(level)) == 1:
+                                    sendlevel = '0'+str(level)
+                                else:
+                                    sendlevel = str(level)
+                                if username_set is True:
+                                    chatlog.append([get_cur_time(),addr[0],' is level ',level,' !'])
+                                    
+                                    if authed_user is True:
+                                        remove_offline_usr(username2)
+                                    send_user_list(s,conn,'',username2,addr[0],level)
+                                    event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
+                    ## Login username received
+                    else:
+                        for x in threadip:
+                            if x[0] == str(i):
+                                username2 = remove_spaces(username)
+                                username2 = rm_illegal_chr(username2)
+                                x[2] = ''
+                                username2 = check_duplicate(username2,conn)
+                                username = add_spaces(username2)
+                                registered = check_if_registered(username2,addr,True)
+                                if registered[0] == True and usr_pass == registered[1]:
+                                    level = set_threadip(str(i),addr[0],username2,True)
+                                    x[2] = username2
+                                    username_set, authed_user = True, True
+                                elif registered[0] == True and usr_pass != registered[1]:
+                                    event_list.append(['Send-Thread',conn,'WSERVER::Name is registered, waiting for auth'])
+                                    level = 0
+                                    x[4] = level
+                                    username_set, authed_user = False, False
+                                else:
+                                    x[2] = (username2)
+                                    level = 1
+                                    x[4] = level
+                                    username_set, authed_user = True, False
+                                ## Sendlevel string is used by clients to color the username in messages
+                                if len(str(level)) == 1:
+                                    sendlevel = '0'+str(level)
+                                else:
+                                    sendlevel = str(level)
+                                if username_set is True:
+                                    chatlog.append([get_cur_time(),addr[0],' is level ',level,' !'])
+                                    if authed_user is True:
+                                        remove_offline_usr(username2)
+                                    send_user_list(s,conn,'',username2,addr[0],level)
+                                    event_list.append(['Send-Thread',conn,'DUPLICT::'+username2])
+                    send_offline_msg(username_set,authed_user,username2,conn)
+        
             else:
-                sleep(0.05)
-                event_list.append(['Send-Thread',conn,"WSERVER::We don't accept this"])
+                if data == 'kpALIVE::':
+                    pass
+                else:
+                    sleep(0.05)
+                    event_list.append(['Send-Thread',conn,"WSERVER::We don't accept this"])
     
 def fileserv_thread(i):
     global threadip, msgprint_enabled, logging_enabled, iplist, action_time, sf

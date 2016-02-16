@@ -1,7 +1,36 @@
+## Client[1.08] - 2016-2-17
+### Added
+ - Added a received message buffer (can receive and process long messages)
+ - New menu option - "Use system scrollbar" (Switches between tk and ttk scrollbars)
+ - New menu option - "Entry widget border width"
+ - New menu option - "Text widget border width"
+ - New menu option - "Scrollbar widget border width"
+ - New blue theme
+### Changed
+ - Replaced "Hide user box" with "Show user box" to increase intuitiveness
+ - Improved theme menu and themes
+
+## Server[1.02] - 2016-2-17
+### Added
+ - Added a received message buffer (can receive and process long messages)
+### Changed
+ - eventThread sleep timer is no longer 0.05 sec. Now it changes dynamically when a new user joins. Current formula is 0.05 sec. + 0.002 sec. for every connected user (Up to 2 sec. ar 1000 users)
+
+
 ## Client[1.07] - 2016-2-16
 ### Added
  - Themes
  - Theme options
+ - Autocomplete commands
+ - New command - /join (Opens server join window)
+ - New command - /ljoin (Joins last server)
+ - New command - /leave (Leaves server)
+ - New command - /quit (Closes this application)
+ - New command - /exit (Closes this application)
+ - New command - /file_manager (Opens file manager)
+ - New command - /file_list (Shows file list)
+ - New command - /about (Shows about window)
+ - New command - /changelog (Shows changelog window)
 
 
 ## Client[1.06] - 2016-2-14
