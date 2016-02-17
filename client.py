@@ -595,6 +595,25 @@ def T_ins_userlist():
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
 
+def restore_toolbar():
+    global show_toolbar, use_alternative_tlb, T, E, S, S2, User_area, toolbar
+    if show_toolbar == 0:    
+        if show_users == 1:
+            User_area.destroy()
+        T.destroy()
+        E.destroy()
+        S.destroy()
+        S2.destroy()
+
+        show_toolbar = 1
+        create_widgets()
+        user_area_insert()
+        write_settings('show_toolbar',show_toolbar)
+    else:
+        toolbar.destroy()
+        show_toolbar = 0
+        write_settings('show_toolbar',show_toolbar)
+
 def T_ins_help():
     global USRLIST
     T.config(yscrollcommand=S.set,state="normal")
@@ -607,7 +626,7 @@ def T_ins_help():
                 '/files to open download folder\n'+
                 '/join to open server join window\n/ljoin to join last server\n'+
                 '/leave to leave\n/quit or /exit to close this application\n/about to open about window\n'+
-                '/changelog to open changelog\n'
+                '/changelog to open changelog\n/toolbar to restore toolbar when hidden'
                 , 'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
@@ -773,6 +792,8 @@ def chat_commands(text):
         Changelog()
     elif text == '/about':
         About()
+    elif text == '/toolbar':
+        restore_toolbar()
     else:
         return True
     return False
@@ -1468,7 +1489,7 @@ def set_font(font,fontlist,t_font_size,t_usra_len):
     
     User_area.config(width=t_usra_len)
     tag_colors()
-    hyperlink = HyperlinkManager(T,'False',('False','False'))
+    hyperlink = HyperlinkManager(T,'False',('False','False'),'hyper')
     usra_len = t_usra_len
     write_settings('font_size',font_size)
     write_settings('usra_len',usra_len)
@@ -1876,10 +1897,10 @@ def configure_border_size(widget,size):
         print 'Can not change '+str(widget)+' highlightthickness'
     
 
-def change_other_settings(a,c,e,f,g,h,i,j,k,l):
+def change_other_settings(a,c,e,f,g,h,i,j,k,l,m,n):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, show_users, autoauth
-    global User_area, S2, T, S, E, s, username, write_log, show_logtime, use_ttk_scroll
-    global E_borderlen, T_borderlen, S_borderlen
+    global User_area, S2, T, S, E, s, username, write_log, show_logtime, use_ttk_scroll, toolbar
+    global E_borderlen, T_borderlen, S_borderlen, show_toolbar, use_alternative_tlb
     widliste = (T,User_area, S, S2)
     autojoin = a
     leave_join = c
@@ -1888,6 +1909,7 @@ def change_other_settings(a,c,e,f,g,h,i,j,k,l):
     write_log = i
     show_logtime = j
     use_ttk_scroll = k
+    # Configures border length for E, T, S
     try:
         for x in l:
             x = int(x)
@@ -1903,20 +1925,24 @@ def change_other_settings(a,c,e,f,g,h,i,j,k,l):
     except:
         T_ins_warning(T,S,'Not a number')
 
-
-    
-
-    if show_users is not g:
-        show_users = g
-        if g == 0:
+    # Removes all root window widgets and adds new
+    if show_users is not g or show_toolbar is not m or use_alternative_tlb is not n:
+        if show_users == 1:
             User_area.destroy()
-            S2.destroy()
-        else:
-            T.destroy()
-            E.destroy()
-            S.destroy()
-            create_widgets()
-            user_area_insert()
+        if show_toolbar == 1:
+            toolbar.destroy()
+        show_users = g
+        show_toolbar = m
+        use_alternative_tlb = n
+        T.destroy()
+        E.destroy()
+        S.destroy()
+        S2.destroy()
+        create_widgets()
+        user_area_insert()
+        if show_toolbar == 0:
+            T_ins_warning(T,S,'Toolbar can be restored by typing /toolbar')
+        
     show_ttime = f
     write_settings('show_ttime',f)
     write_settings('autojoin',a)
@@ -1930,26 +1956,28 @@ def change_other_settings(a,c,e,f,g,h,i,j,k,l):
     write_settings('E_borderlen',E_borderlen)
     write_settings('T_borderlen',T_borderlen)
     write_settings('S_borderlen',S_borderlen)
+    write_settings('show_toolbar',show_toolbar)
+    write_settings('use_alternative_tlb',use_alternative_tlb)
 ##    root.geometry('%sx%s' % (X_size,Y_size))
     
 def other_menu():
     global autojoin, leave_join, nadd_spaces, show_ttime, show_users, autoauth, write_log, show_logtime
-    global use_ttk_scroll, E_borderlen, T_borderlen, S_borderlen
+    global use_ttk_scroll, E_borderlen, T_borderlen, S_borderlen, show_toolbar, use_alternative_tlb
     sm = Toplevel()
     set_winicon(sm,'icon_grey')
     sm.title("Other settings")
-    sm.minsize(500,250)
+    sm.minsize(500,300)
     sm.resizable(FALSE,FALSE)
-    frame = Frame(sm, height=160,width=210, relief=SUNKEN)
+    frame = Frame(sm, height=220,width=210, relief=SUNKEN)
     frame.pack_propagate(0)
     frame.pack(anchor=NE,side=LEFT,padx=10,pady=10)
-    frame2 = Frame(sm, height=160,width=210, relief=SUNKEN)
+    frame2 = Frame(sm, height=220,width=210, relief=SUNKEN)
     frame2.pack_propagate(0)
     frame2.pack(anchor=NE,side=LEFT,padx=10,pady=10)
     frame3 = Frame(sm, height=40,width=500, relief=SUNKEN)
     frame3.pack_propagate(0)
     frame3.place(x=180,y=200)
-    frame4 = Frame(sm, height=160,width=210, relief=SUNKEN)
+    frame4 = Frame(sm, height=220,width=210, relief=SUNKEN)
     frame4.pack_propagate(0)
     frame4.pack(anchor=NE,side=LEFT,padx=10,pady=10)
     
@@ -1963,6 +1991,8 @@ def other_menu():
     t_log_time = IntVar()
     t_E_borderlen, t_T_borderlen, t_S_borderlen = StringVar(),StringVar(),StringVar()
     t_use_ttk_scroll = IntVar()
+    t_show_toolbar = IntVar()
+    t_use_alternative_tlb = IntVar()
     t_leave_join.set(leave_join)
     t_autoauth.set(autoauth)
     t_autojoin.set(autojoin)
@@ -1975,7 +2005,8 @@ def other_menu():
     t_E_borderlen.set(E_borderlen)
     t_T_borderlen.set(T_borderlen)
     t_S_borderlen.set(S_borderlen)
-    
+    t_show_toolbar.set(show_toolbar)
+    t_use_alternative_tlb.set(use_alternative_tlb)
     
     Checkbutton(frame, text="Show leave and join", variable=t_leave_join).pack(anchor=NW)
     Checkbutton(frame, text="Enable autoauthentication", variable=t_autoauth).pack(anchor=NW)
@@ -1993,7 +2024,10 @@ def other_menu():
     Radiobutton(frame2,text="Hide",variable=t_box_time,value=1).pack(anchor=NW)
 
     Checkbutton(frame4, text="Show user box", variable=t_show_users).pack(anchor=NW)
+    Checkbutton(frame4, text="Show toolbar", variable=t_show_toolbar).pack(anchor=NW)
+    Checkbutton(frame4, text="Use alternative toolbar", variable=t_use_alternative_tlb).pack(anchor=NW)
     Checkbutton(frame4, text="Use system scrollbar", variable=t_use_ttk_scroll).pack(anchor=NW)
+
     Label(frame4, text="Entry widget border:",justify = LEFT).pack(anchor=NW)
     E_border = Entry(frame4,textvariable=t_E_borderlen).pack(anchor=NW)
     Label(frame4, text="Text widget border:",justify = LEFT).pack(anchor=NW)
@@ -2004,7 +2038,8 @@ def other_menu():
     button = Button(frame3, text='Save', command=lambda: {change_other_settings(t_autojoin.get(),
                     t_leave_join.get(),t_lenghten.get(),t_box_time.get(),t_show_users.get(),
                     t_autoauth.get(),t_write_log.get(),t_log_time.get(),t_use_ttk_scroll.get(),
-                    (t_E_borderlen.get(),t_T_borderlen.get(),t_S_borderlen.get())),
+                    (t_E_borderlen.get(),t_T_borderlen.get(),t_S_borderlen.get()),
+                     t_show_toolbar.get(),t_use_alternative_tlb.get()),
                     sm.destroy()})
     button.pack(side=LEFT)
     def close_func(*arg):
@@ -2260,7 +2295,7 @@ def entry_paste(*arg):
 def autocomplete_name(*arg):
     is_private = False
     commandli = ('/help','/users','/log','/afk','/reg','/auth','/clear','/share','/file','/files','/file_list',
-                '/join','/ljoin','/leave','/changelog','/about','/quit','/exit','/datal')
+                '/join','/ljoin','/leave','/changelog','/about','/quit','/exit','/datal', '/toolbar')
     try:
     ## Finds the last word in entry widget
         text = textt.get()
@@ -2796,6 +2831,8 @@ if use_ttk_scroll == 1:
 E_borderlen = int(read_settings('E_borderlen=',1))
 T_borderlen = int(read_settings('T_borderlen=',1))
 S_borderlen = int(read_settings('S_borderlen=',1))
+show_toolbar = int(read_settings('show_toolbar=',1))
+use_alternative_tlb = int(read_settings('use_alternative_tlb=',0))
 default_colors_list = [['chat','Warnings','redcol','red','white'],
                     ['chat','Server msg','bluecol','blue','white'],
                     ['chat','Server warnings','browncol','#862d2d','white'],
@@ -2864,10 +2901,32 @@ maxsize = "5x5"
 textt = StringVar()
 textt.set("")
 ###Toolbar
-def create_toolbar(*arg):
-    global menu, menu1, menu3, menu4, menu5, helpmenu
-    menu = Menu(root,tearoff=0,borderwidth=0)
-    root.config(menu=menu)
+class toolbar_alternative:
+    def __init__(self):
+        self.frame = Frame(root, height=40,width=X_size)
+        self.frame.pack_propagate(0)
+        self.frame.pack(side=TOP,fill=Y)
+        self.menu_btn= tkButton(self.frame,text='Menu', command=self.open_submenu,bd=0)
+        self.menu_btn.pack(side=LEFT)
+        self.menu = Menu(None, tearoff=0, takefocus=0)
+        self.submenus = toolbar_menus(self.menu)
+        
+    def open_submenu(self):
+        self.menu.tk_popup(self.menu_btn.winfo_rootx()+55, self.menu_btn.winfo_rooty()+40,entry="0")
+
+    def destroy(self):
+        self.frame.destroy()
+        
+class toolbar_default:
+    def __init__(self):
+        self.menu = Menu(root,tearoff=0,borderwidth=0)
+        root.config(menu=self.menu)
+        self.submenus = toolbar_menus(self.menu)
+        
+    def destroy(self):
+        self.menu.destroy()
+    
+def toolbar_menus(menu):
     menu1 = Menu(menu,tearoff=0)
     menu.add_cascade(label='Server',menu=menu1)
     menu1.add_command(label='Join', command=join_typing)
@@ -2913,11 +2972,17 @@ def create_toolbar(*arg):
     menu.add_cascade(label='Help', menu=helpmenu)
     helpmenu.add_command(label='Changelog', command=Changelog)
     helpmenu.add_command(label='About..', command=About)
+    return (menu1, menu3, menu4, menu5, helpmenu)
 
 ### Window widgets
 def create_widgets():
-    global T,E,User_area,S,S2,hyperlink, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen
-    create_toolbar()
+    global T,E,User_area,S,S2,hyperlink, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen, toolbar
+    global show_toolbar, use_alternative_tlb
+    if show_toolbar == 1:
+        if use_alternative_tlb == 0:
+            toolbar = toolbar_default()
+        else:
+            toolbar = toolbar_alternative()
     E = Entry(textvariable=textt)
     User_area = Text(root, height=44, width=usra_len)
     S = Scrollbar(root)
@@ -2948,30 +3013,64 @@ def create_widgets():
     default_os_color = root.cget('bg')
     tag_colors()
     
+    root.bind("<Control-a>", widget_sel_all)
+    root.bind("<Tab>", focus_entry)
+    root.bind("<Control-q>",lambda x: file_manager())
+    root.bind("<Control-m>",lambda x: open_address_in_webbrowser(fdl_path))
+    root.bind('<Control-j>', join_server_shortcut)
+    root.bind('<Control-c>', copy_text)
+    root.bind('<Control-g>', command_window)
+    ##E.bind("<Key>", return_break)
+    root.bind('<Return>', enter_text)
+    root.bind('<KP_Enter>', enter_text)
+    root.bind('<Escape>', reset_entry)
+    root.bind('<FocusIn>', winf_is)
+    root.bind('<FocusOut>', winf_isnt)
+    root.bind('<Motion>', motion)
+    root.bind('<Button-1>', deselect_widgets)
+    if OS != 'Windows':
+        root.bind('<Button-3>', copy_paste_buttons)
+        E.bind("<Button-4>", focusT)
+        E.bind("<Button-5>", focusT)
+        root.bind('<Button-1>', copy_paste_buttons_del)
+    if OS == 'Windows':
+        root.bind('<Button-3>',rClicker, add='')
+        E.bind("<MouseWheel>", focusT)
+
+    E.bind('<Tab>', autocomplete_name)
+    ## Entry log
+    E.bind('<Up>', entrym_BACK)
+    E.bind('<Down>', entrym_FORWARD)
+    ## Stores name of activated widget for rightclick menu position adjustments
+    if OS != 'Windows':
+        User_area.bind('<Enter>', set_activated_U)
+        T.bind('<Enter>', set_activated_T)
+        E.bind('<Enter>', set_activated_E)
+        S.bind('<Enter>', set_activated_S)
+        S2.bind('<Enter>', set_activated_S2)
+
+    
 def tag_colors():
-    global font_size, text_font, show_users, chat_color_list, default_colors_list, T,E,User_area, menu,S,S2
-    global menu1, menu3, menu4, menu5, helpmenu, default_os_color
+    global font_size, text_font, show_users, chat_color_list, default_colors_list, T,E,User_area, S,S2
+    global toolbar,default_os_color, use_alternative_tlb, show_toolbar
+##    T.tag_remove('bluecol',1.0,END)
     fontlist=list(tkFont.families())
     fontlist.sort()
     widliste = (T,E,User_area,S,S2)
     text_widgets = (T,User_area)
-    try:
-        menuliste = (menu1, menu3, menu4, menu5, helpmenu)
-    except:
-        pass
-    ## Tags default colors
-    #Chat
     ## Attempts to replace default colors with saved theme
     #Chat
     for x in chat_color_list:
         if x[0] == 'chat':
             try:
+                # Hyperlinks
                 if x[2] == 'blue_link':
                     global hyperlink_obj
                     hyperlink_obj = HyperlinkManager(T,'False',(x[3],x[4]),'hyper')
                 if x[2] == 'privatlink':
                     global hyperlink_obj2
                     hyperlink_obj2 = HyperlinkManager(T,'False',(x[3],x[4]),'hyper2')
+                # Normal text
                 T.tag_configure(x[2], font=(fontlist[text_font[0]], font_size), background=x[4], foreground=x[3])
                 if show_users is not 0:
                     User_area.tag_configure(x[2], font=(fontlist[text_font[0]], font_size), background=x[4], foreground=x[3])
@@ -3005,17 +3104,6 @@ def tag_colors():
                         dd.config(highlightbackground=bgcol)
                 elif x[2] == 'border-entry':
                     E.config(highlightbackground=bgcol)
-                # Menu color
-                elif x[2] == 'toolbar':
-                    tcol = bgcol
-                    menu.config(bg=bgcol,fg=fgcol)
-                elif x[2] == 'toolbar-selected':
-                    menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
-                    for dd in menuliste:
-                        dd.config(activeforeground=fgcol,activebackground=bgcol)
-                elif x[2] == 'toolbar-menu':
-                    for dd in menuliste:
-                        dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol)
                 # Scrollbars
                 elif x[2] == 'troughcolor':
                     try:
@@ -3024,6 +3112,23 @@ def tag_colors():
                     except Exception as e:
                         e = str(e)
                         print e
+                # Toolbar color
+                elif show_toolbar == 1:
+                    if x[2] == 'toolbar':
+                        tcol = bgcol
+                        if use_alternative_tlb == 1:
+                            toolbar.frame.config(bg=bgcol)
+                            toolbar.menu_btn.config(fg=fgcol, bg=bgcol,highlightbackground=fgcol)
+                        toolbar.menu.config(bg=bgcol,fg=fgcol)
+                    elif x[2] == 'toolbar-selected':
+                        if use_alternative_tlb == 1:
+                            toolbar.menu_btn.config(activeforeground=fgcol,activebackground=bgcol)
+                        toolbar.menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
+                        for dd in toolbar.submenus:
+                            dd.config(activeforeground=fgcol,activebackground=bgcol)
+                    elif x[2] == 'toolbar-menu':
+                        for dd in toolbar.submenus:
+                            dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol)
             except Exception as e:
                 e = str(e)
                 T_ins_warning(T, S, 'ERROR: loading color tags')
@@ -3035,8 +3140,7 @@ def tag_colors():
     User_area.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
     E.configure(font=(fontlist[text_font[0]], font_size))
 
-create_widgets()
-    
+
 def focusT(event):
     T.focus_set()
 ##    if event.delta == -120:
@@ -3069,42 +3173,8 @@ def deselect_widgets(*arg):
     T.tag_remove(SEL, "1.0", END)
     E.select_clear()
     User_area.tag_remove(SEL, "1.0", END)
-
-root.bind("<Control-a>", widget_sel_all)
-root.bind("<Tab>", focus_entry)
-root.bind("<Control-q>",lambda x: file_manager())
-root.bind("<Control-m>",lambda x: open_address_in_webbrowser(fdl_path))
-root.bind('<Control-j>', join_server_shortcut)
-root.bind('<Control-c>', copy_text)
-root.bind('<Control-g>', command_window)
-##E.bind("<Key>", return_break)
-root.bind('<Return>', enter_text)
-root.bind('<KP_Enter>', enter_text)
-root.bind('<Escape>', reset_entry)
-root.bind('<FocusIn>', winf_is)
-root.bind('<FocusOut>', winf_isnt)
-root.bind('<Motion>', motion)
-root.bind('<Button-1>', deselect_widgets)
-if OS != 'Windows':
-    root.bind('<Button-3>', copy_paste_buttons)
-    E.bind("<Button-4>", focusT)
-    E.bind("<Button-5>", focusT)
-    root.bind('<Button-1>', copy_paste_buttons_del)
-if OS == 'Windows':
-    root.bind('<Button-3>',rClicker, add='')
-    E.bind("<MouseWheel>", focusT)
-
-E.bind('<Tab>', autocomplete_name)
-## Entry log
-E.bind('<Up>', entrym_BACK)
-E.bind('<Down>', entrym_FORWARD)
-## Stores name of activated widget for rightclick menu position adjustments
-if OS != 'Windows':
-    User_area.bind('<Enter>', set_activated_U)
-    T.bind('<Enter>', set_activated_T)
-    E.bind('<Enter>', set_activated_E)
-    S.bind('<Enter>', set_activated_S)
-    S2.bind('<Enter>', set_activated_S2)
+create_widgets()
+    
 
 
 def task():
