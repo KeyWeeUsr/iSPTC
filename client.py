@@ -27,7 +27,7 @@ from PIL import Image as Pillow_image
 from PIL import ImageTk
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
 
-ver = '1.08z'
+ver = '1.09'
 
 sys_path = os.getcwd()
 OS = platform.system()
