@@ -1,0 +1,27 @@
+chat,Warnings,redcol,#ff3c3c,#062620
+chat,Server msg,bluecol,#00cece,#062620
+chat,Server warnings,browncol,#cf477a,#062620
+chat,Username,greencol,#00d900,#062620
+chat,Normal msg,blackcol,#f5f5f5,#062620
+chat,User lvl3,pinkcol,pink,#062620
+chat,User lvl4,orangecol,#ec7309,#062620
+chat,High lvl msg,purplecol,#77ccff,#062620
+chat,AFK,greycol,#7F7F7F,#062620
+chat,Offline,offcol,#7F7F7F,#062620
+chat,Links,blue_link,#3ca3ff,#062620
+chat,Cyocol,cycol,#007f80,#062620
+chat,Private msg,privatecol,#000000,#e6e7dc
+chat,Private username,privatgreen,#009b00,#e6e7dc
+chat,Private link,privatlink,#4d93ff,#e6e7dc
+chat,Dark background,olfo-backgr,#f5f5f5,#346534
+chat,Bright background,light-grey-bg,#f5f5f5,#598459
+window,Select background,selectbg,#6B9EB7,#4283A4
+window,Rootcolor,rootcolor,#00c900,#062620
+window,Text widget,text-widget,#00ff00,#062620
+window,Entry widget,entry-widget,#f5f5f5,#062620
+window,Border-text,border-text,#00ff00,#062620
+window,Border-entry,border-entry,#f5f5f5,#828282
+window,Troughcolor,troughcolor,#0fff0f,#062620
+window,Toolbar,toolbar,#f5f5f5,#062620
+window,Toolbar-selected,toolbar-selected,#f5f5f5,#466446
+window,Toolbar-menu,toolbar-menu,#f5f5f5,#598459

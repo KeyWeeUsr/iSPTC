@@ -27,7 +27,7 @@ from PIL import Image as Pillow_image
 from PIL import ImageTk
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
 
-ver = '1.08'
+ver = '1.08z'
 
 sys_path = os.getcwd()
 OS = platform.system()
@@ -103,7 +103,8 @@ def get_settings(text,text_find,default_value):
     try:
         if c == '':
             c = default_value
-            write_settings(text_find[:-1],'\n'+c)
+            if default_value != '':
+                write_settings(text_find[:-1],'\n'+c)
     except:
         c = default_value
         fh = open('load/settings.ini', 'a')
@@ -151,28 +152,13 @@ def list_from_file(path,delimiter):
     return templist
 
 class HyperlinkManager:
-    def __init__(self, text,override_font,overridecol,tag):
+    def __init__(self, text,tag):
         self.text = text
-        self.tag_hyper_colors(tag,override_font,overridecol)
         self.tagname = tag
+        self.tag_hyper_colors(tag)
 
-    def tag_hyper_colors(self,hyper,override_font,overridecol):
-        global font_size, text_font
-        font = text_font
-        fontlist=list(tkFont.families())
-        fontlist.sort() 
-        if overridecol == ('False','False'):
-            fgcol = blue
-        else:
-            bgcol = overridecol[1]
-            fgcol = overridecol[0]
-            if bgcol == 'default':
-                bgcol = 'white'
-        if override_font == 'False':
-            self.text.tag_config(hyper, font=(fontlist[text_font[0]], font_size),background=bgcol, foreground=fgcol, underline=1)
-        else:
-            self.text.tag_config(hyper, font=override_font,background=bgcol, foreground=fgcol, underline=1)
-
+    def tag_hyper_colors(self,hyper):
+        self.text.tag_config(hyper, underline=1)
         self.text.tag_bind(hyper, "<Enter>", self._enter)
         self.text.tag_bind(hyper, "<Leave>", self._leave)
         self.text.tag_bind(hyper, "<Button-1>", self._click)
@@ -558,7 +544,7 @@ def open_address_in_webbrowser(address):
     a = address.find('http://')
     b = address.find('https://')
     c = address.find('www.')
-    if a == -1 and b == -1 and c == -1:
+    if a == -1 and b == -1:
         webbrowser.open('http://'+address)
     else:
         webbrowser.open(address)
@@ -626,7 +612,7 @@ def T_ins_help():
                 '/files to open download folder\n'+
                 '/join to open server join window\n/ljoin to join last server\n'+
                 '/leave to leave\n/quit or /exit to close this application\n/about to open about window\n'+
-                '/changelog to open changelog\n/toolbar to restore toolbar when hidden'
+                '/changelog to open changelog\n/toolbar to show/hide toolbar\n'
                 , 'light-grey-bg')
     T.config(yscrollcommand=S.set,state="disabled")
     T.yview(END)
@@ -1005,9 +991,7 @@ def update_checker(update_link):
             autojoiner()
 
 def update_window(update_link,strver,update,temp,upd_ver):
-    global font_size, text_font, show_users
-    fontlist=list(tkFont.families())
-    fontlist.sort()
+    global text_font, show_users
     global ver
     topwin = Toplevel()
     set_winicon(topwin,'icon_grey')
@@ -1039,11 +1023,11 @@ def update_window(update_link,strver,update,temp,upd_ver):
         
     Tbox2.config(yscrollcommand=S11.set,state="disabled")
     Tbox = Text(frame2, height=12, width=50,wrap=WORD)
-    Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    Tbox.tag_configure('CL-bg', font=(fontlist[text_font[0]], font_size), background='#80ccff',foreground='black')
-    Tbox.tag_configure('SE-bg', font=(fontlist[text_font[0]], font_size), background='#66cc66',foreground='black')
-    Tbox.tag_configure('light-bg', font=(fontlist[text_font[0]], font_size), background='#f3f3f3',foreground='black')
-    Tbox2.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
+    Tbox.tag_configure('blackcol', font=text_font, foreground='black')
+    Tbox.tag_configure('CL-bg', font=text_font, background='#80ccff',foreground='black')
+    Tbox.tag_configure('SE-bg', font=text_font, background='#66cc66',foreground='black')
+    Tbox.tag_configure('light-bg', font=text_font, background='#f3f3f3',foreground='black')
+    Tbox2.tag_configure('blackcol', font=text_font, foreground='black')
     S1 = Scrollbar(frame2)
     S1.pack(side=RIGHT, fill=Y)
     Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
@@ -1084,10 +1068,7 @@ def update_window(update_link,strver,update,temp,upd_ver):
     topwin.lift()
 
 def command_window(*arg):
-    global font_size, text_font
-    font = text_font
-    fontlist=list(tkFont.families())
-    fontlist.sort()
+    global text_font
     cww = Toplevel()
     set_winicon(cww,'icon_grey')
     cww.title("Command..")
@@ -1102,7 +1083,7 @@ def command_window(*arg):
     tEntry = Entry(frame,textvariable=t_encommand)
     tEntry.pack(pady=5,fill=BOTH)
     tEntry.focus_set()
-    tEntry.configure(font=(fontlist[text_font[0]], font_size), foreground='black')
+    tEntry.configure(font=text_font, foreground='black')
     button = Button(cww, text='Close', command=lambda: {enter_text('command_window',t_encommand.get()),
                                                                   cww.destroy()})
     button2 = Button(cww, text='Run', command=lambda: {enter_text('command_window',t_encommand.get()),
@@ -1252,7 +1233,7 @@ def restore_window(name,Xpos,Ypos):
     name.geometry('+'+Xpos+'+'+Ypos) 
 
 def color_menu():
-    global font_size, text_font, chat_color_list, saved_theme, default_os_color
+    global text_font, chat_color_list, saved_theme, default_os_color
     class Change_color_button(object):
         def __init__(self,frame2):
             self.ffg = 'red'
@@ -1437,7 +1418,9 @@ def color_menu():
     scroll2.configure(command=listbox.yview)
     listbox.configure(yscrollcommand=scroll2.set)
     theme_list = os.listdir('load/themes/')
+    theme_list = sorted(theme_list)
 
+    # Listbox
     for x in theme_list:
         listbox_theme.insert("end", x)
     for x in chat_color_list:
@@ -1477,61 +1460,89 @@ def color_menu():
     button.pack(side=LEFT,padx=10)
     
 
-def set_font(font,fontlist,t_font_size,t_usra_len):
-    global T,E,User_area, text_font, font_size, usra_len
-    if font is not ():
-        text_font = font
-        write_settings('tfont',text_font[0])
-    try:
-        font_size = t_font_size
-    except:
-        pass
+def set_font(font,font_size,style, t_usra_len):
+    global T,E,User_area, text_font, usra_len
+    text_font = (font, font_size, style)
     
     User_area.config(width=t_usra_len)
     tag_colors()
-    hyperlink = HyperlinkManager(T,'False',('False','False'),'hyper')
+##    hyperlink = HyperlinkManager(T,'False',('False','False'),'hyper')
     usra_len = t_usra_len
-    write_settings('font_size',font_size)
+    write_settings('font1',font)
+    write_settings('font2',font_size)
+    write_settings('font3',style)
     write_settings('usra_len',usra_len)
     
 def font_menu():
-    global font_size, text_font, usra_len
+    global text_font, usra_len
     fom = Toplevel()
     set_winicon(fom,'icon_grey')
     fom.title("Font settings")
     fom.minsize(700,400)
     fom.resizable(FALSE,FALSE)
 
-    frame = Frame(fom, height=380,width=300, relief=SUNKEN)
-    frame2 = Frame(fom, height=400,width=400, relief=SUNKEN)
+    frame = Frame(fom, height=480,width=300, relief=SUNKEN)
+    frame2 = Frame(fom, height=500,width=400, relief=SUNKEN)
     frame.pack_propagate(0)
     frame2.pack_propagate(0)
-    frame.pack(anchor=NE,side=LEFT)
+    frame.pack(anchor=NE,side=LEFT,padx=10,pady=10)
     frame2.pack(anchor=NE,side=LEFT)
+
+    frame1 = Frame(frame, height=20,width=300, relief=SUNKEN)
+    frame1.pack_propagate(0)
+    frame1.pack(side=TOP,pady=5)
+    frame1a = Frame(frame1, height=20,width=40, relief=SUNKEN)
+    frame1a.pack_propagate(0)
+    frame1a.pack(side=LEFT)
+    frame1b = Frame(frame1, height=20,width=260, relief=SUNKEN)
+    frame1b.pack_propagate(0)
+    frame1b.pack(side=LEFT)
 
     t_font_size = IntVar()
     t_usra_len = IntVar()
-    t_font_size.set(font_size)
+    t_fontname = StringVar()
+    t_style = StringVar()
+    t_style_bold = StringVar()
+    t_style_italic = StringVar()
     t_usra_len.set(usra_len)
-    
+    t_fontname.set(text_font[0])
+    t_font_size.set(text_font[1])
+    t_style.set(text_font[2])
+    t_style_bold.set(0)
+    t_style_italic.set(0)
+    b = text_font[2].find('bold')
+    if b != -1:
+        t_style_bold.set(1)
+    b = text_font[2].find('italic')
+    if b != -1:
+        t_style_italic.set(1)
+        
     fonts=list(tkFont.families())
     fonts.sort()
+    Label(frame1a, text="Font:",justify = LEFT).pack(side=LEFT)
+    Efont_size = Entry(frame1b,textvariable=t_fontname,width=220).pack(side=LEFT)
     display = Listbox(frame)
     scroll = Scrollbar(frame)
     scroll.pack(side=RIGHT, fill=Y, expand=NO)
-    display.pack(padx=10, fill=BOTH, expand=YES, side=LEFT)
+    display.pack(fill=BOTH, expand=YES, side=LEFT)
     scroll.configure(command=display.yview)
     display.configure(yscrollcommand=scroll.set)
     for item in fonts:
         display.insert(END, item)
-
-    Label(frame2, text="Font size:",justify = LEFT).place(x=20,y=300)
-    Efont_size = Entry(frame2,textvariable=t_font_size,width=3).place(x=100,y=300)
-    Label(frame2, text="User_area length:",justify = LEFT).place(x=140,y=300)
-    User_area_length = Entry(frame2,textvariable=t_usra_len,width=3).place(x=260,y=300)
     
-    display_text = Text(frame2, height=12, width=50,wrap=WORD)
-    display_text.place(x=20,y=80)
+    Checkbutton(frame2, text="Bold ", variable=t_style_bold).place(x=180,y=370)
+    Checkbutton(frame2, text="Italic", variable=t_style_italic).place(x=250,y=370)
+    Label(frame2, text="Font size:",justify = LEFT).place(x=20,y=370)
+    Efont_size = Entry(frame2,textvariable=t_font_size,width=3).place(x=100,y=370)
+    Label(frame2, text="User_area length:",justify = LEFT).place(x=20,y=400)
+    User_area_length = Entry(frame2,textvariable=t_usra_len,width=3).place(x=140,y=400)
+    
+    display_text = Text(frame2, height=22, width=50,wrap=WORD)
+    display_text.place(x=10,y=15)
+    display_text.insert(END, get_cur_time()+' Monospace: equal length\n','monocol')
+    display_text.insert(END, get_cur_time()+' MONOSPACE: EQUAL LENGTH\n','monocol')
+    display_text.insert(END, get_cur_time()+' Mouse: hello cat\n','privatecol')
+    display_text.insert(END, get_cur_time()+' Twitterbot: Falcon has landed\n','olfo-backgr')
     display_text.insert(END, get_cur_time()+' SERVER: Hello human\n','bluecol')
     display_text.insert(END, get_cur_time()+' WARNING: Hello human\n','redcol')
     display_text.insert(END, get_cur_time()+' Human: Hello\n','greencol')
@@ -1539,47 +1550,70 @@ def font_menu():
     display_text.insert(END, get_cur_time()+' Admin: /kick human\n','purplecol')
     display_text.insert(END, get_cur_time()+' Cat: hello\n','blackcol')
     display_text.insert(END, get_cur_time()+' Orange: the new color\n','orangecol')
-    display_text.insert(END, get_cur_time()+' Mouse: hello cat\n','privatecol')
-    display_text.insert(END, get_cur_time()+' Twitterbot: Falcon has landed\n','olfo-backgr')
+    
 
-    button2 = Button(frame2, text='Apply', command=lambda: {apply_display_font(display_text,display.curselection(),fonts,
-                                                        t_font_size.get())})
-    button = Button(frame2, text='Save', command=lambda: {set_font(display.curselection(),fonts,t_font_size.get(),
+    button2 = Button(frame2, text='Apply', command=lambda: {apply_chat_font(t_fontname.get(), t_font_size.get(),
+                                                                             t_style.get())})
+    button = Button(frame2, text='Save', command=lambda: {set_font(t_fontname.get(),t_font_size.get(),t_style.get(),
                                               t_usra_len.get()), fom.destroy()})
-    button.place(x=200,y=360)
-    button2.place(x=40,y=360)
-    apply_display_font(display_text,text_font,fonts,font_size)
+    button.place(x=200,y=450)
+    button2.place(x=40,y=450)
+
+
+    def preview_loop(*arg):
+        show_selected_font()
+        fom.after(80, preview_loop)
     def close_func(*arg):
         fom.destroy()
     def focusList(event):
         display.focus_set()
+    def show_selected_font(*arg):
+        style = ''
+        if t_style_bold.get() == '1' and t_style_italic.get() == '1':
+            style = 'bold italic'
+        else:
+            yes = False
+            if t_style_bold.get() == '1':
+                style = 'bold'
+                yes = True
+            if t_style_italic.get() == '1':
+                style = 'italic'
+                yes = True
+            if yes == False:
+                style = 'normal'
+        t_style.set(style)
+        if display.curselection() != ():
+            t_fontname.set(fonts[display.curselection()[0]])
+        apply_display_font(display_text,t_fontname.get(),t_font_size.get(),t_style.get())
+
     fom.bind('<Escape>', close_func)
     if OS != 'Windows':
         fom.bind("<Button-4>", focusList)
         fom.bind("<Button-5>", focusList)
     if OS == 'Windows':
         fom.bind("<MouseWheel>", focusList)
+    fom.after(40, preview_loop)
 
-def apply_display_font(display_text,font,fontlist,t_font_size):
-    global font_size, text_font
-    try: 
-        if len(font) > 0:
-            text_font = font
-    except:
-        pass
+def apply_chat_font(font,font_s,ttype):
+    global text_font
+    text_font = (font,font_s,ttype)
+    tag_colors()
+
+def apply_display_font(display_text,selFont,font_size,ttype):
     try:
         font_size = t_font_size
     except:
         pass
-    display_text.tag_configure('redcol', font=(fontlist[text_font[0]], font_size), foreground='red')
-    display_text.tag_configure('bluecol', font=(fontlist[text_font[0]], font_size), foreground='blue')
-    display_text.tag_configure('greencol', font=(fontlist[text_font[0]], font_size), foreground='#009900')
-    display_text.tag_configure('purplecol', font=(fontlist[text_font[0]], font_size), foreground='purple')
-    display_text.tag_configure('greycol', font=(fontlist[text_font[0]], font_size), foreground='#7F7F7F')
-    display_text.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size), foreground='black')
-    display_text.tag_configure('privatecol', font=(fontlist[text_font[0]], font_size), background='#222222',foreground='white')
-    display_text.tag_configure('olfo-backgr', font=(fontlist[text_font[0]], font_size), background='#c8d9ea',foreground='black')
-    display_text.tag_configure('orangecol', font=(fontlist[text_font[0]], font_size), foreground='#e65b00')
+    display_text.tag_configure('redcol', font=(selFont,font_size,ttype), foreground='red')
+    display_text.tag_configure('bluecol', font=(selFont, font_size,ttype), foreground='blue')
+    display_text.tag_configure('greencol', font=(selFont, font_size,ttype), foreground='#009900')
+    display_text.tag_configure('purplecol', font=(selFont, font_size,ttype), foreground='purple')
+    display_text.tag_configure('greycol', font=(selFont, font_size,ttype), foreground='#7F7F7F')
+    display_text.tag_configure('blackcol', font=(selFont, font_size,ttype), foreground='black')
+    display_text.tag_configure('orangecol', font=(selFont, font_size,ttype), foreground='#e65b00')
+    display_text.tag_configure('privatecol', font=(selFont, font_size,ttype),foreground='white', background='#222222')
+    display_text.tag_configure('olfo-backgr', font=(selFont, font_size,ttype),foreground='black', background='#c8d9ea')
+    display_text.tag_configure('monocol', font=(selFont, font_size,ttype), foreground='#77ccff', background='#1e2c3c')
     
 
 def save_update_settings(a,b):
@@ -2605,15 +2639,12 @@ def load_lib_scripts(root):
                 T_ins_warning(T, S, e)
 
 def Changelog():
-    global font_size, text_font, window_sizes
+    global text_font, window_sizes
     def closethis():
         write_settings('win_changelog_x',topwin.winfo_width())
         write_settings('win_changelog_y',topwin.winfo_height())
         window_sizes[0][0], window_sizes[0][1] = str(topwin.winfo_width()),str(topwin.winfo_height())
         topwin.destroy()
-    font = text_font
-    fontlist=list(tkFont.families())
-    fontlist.sort()
     topwin = Toplevel()
     set_winicon(topwin,'icon_grey')
     topwin.title("Changelog")
@@ -2628,12 +2659,12 @@ def Changelog():
         T_ins_warning(T, S, e)
     
     Tbox = Text(topwin, height=12, width=50,wrap=WORD)
-    Tbox.tag_configure('blackcol', font=(fontlist[text_font[0]], font_size+2, 'normal'), foreground='black')
-    Tbox.tag_configure('CL-bg', font=(fontlist[text_font[0]], font_size+2), background='#80ccff',foreground='black')
-    Tbox.tag_configure('SE-bg', font=(fontlist[text_font[0]], font_size+2), background='#66cc66',foreground='black')
-    Tbox.tag_configure('UP-bg', font=(fontlist[text_font[0]], font_size+2), background='#FF7373',foreground='black')
-    Tbox.tag_configure('dark-bg', font=(fontlist[text_font[0]], font_size+2), background='#cccccc',foreground='black')
-    Tbox.tag_configure('light-bg', font=(fontlist[text_font[0]], font_size+2), background='#f3f3f3',foreground='black')
+    Tbox.tag_configure('blackcol', font=text_font, foreground='black')
+    Tbox.tag_configure('CL-bg', font=text_font, background='#80ccff',foreground='black')
+    Tbox.tag_configure('SE-bg', font=text_font, background='#66cc66',foreground='black')
+    Tbox.tag_configure('UP-bg', font=text_font, background='#FF7373',foreground='black')
+    Tbox.tag_configure('dark-bg', font=text_font, background='#cccccc',foreground='black')
+    Tbox.tag_configure('light-bg', font=text_font, background='#f3f3f3',foreground='black')
     Tbox.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
     Tbox.tag_raise("sel")
     S1 = Scrollbar(topwin)
@@ -2809,8 +2840,11 @@ autojoin = int(read_settings('autojoin=',0))
 show_users = int(read_settings('show_users=',1))
 X_size = int(read_settings('X_size=',800))
 Y_size = int(read_settings('Y_size=',600))
-font_size = int(read_settings('font_size=',10))
-text_font = (int(read_settings('tfont=',10)),)
+
+font1 = str(read_settings('font1=','Arial'))
+font2 = int(read_settings('font2=',10))
+font3 = str(read_settings('font3=','normal'))
+text_font = (font1,font2,font3)
 passwd = str(read_settings('usrauth=',''))
 autoauth = int(read_settings('autoauth=',1))
 offline_msg = int(read_settings('offline_msg=',1))
@@ -2850,23 +2884,24 @@ default_colors_list = [['chat','Warnings','redcol','red','white'],
                     ['chat','Private link','privatlink','#4d93ff','#262626'],
                     ['chat','Dark background','olfo-backgr','black','#c8d9ea'],
                     ['chat','Bright background','light-grey-bg','black','#eaeefa'],
+                    ['window','Select background','selectbg','#6B9EB7','#4283A4'],
                     ['window','Rootcolor','rootcolor','black','default'],
                     ['window','Text widget','text-widget','black','white'],
                     ['window','Entry widget','entry-widget','black','white'],
                     ['window','Border-text','border-text','black','default'],
                     ['window','Border-entry','border-entry','black','default'],
                     ['window','Troughcolor','troughcolor','black','default'],
-                    ['window','Toolbar','toolbar','black','SystemMenu'],
-                    ['window','Toolbar-selected','toolbar-selected','SystemHighlightText','SystemHighlight'],
-                    ['window','Toolbar-menu','toolbar-menu','black','SystemMenu'],
+                    ['window','Toolbar','toolbar','black','#d9d9d9'],
+                    ['window','Toolbar-selected','toolbar-selected','black','#d9d9d9'],
+                    ['window','Toolbar-menu','toolbar-menu','black','#d9d9d9'],
                        ]
 ## Windows seems to be the only system that supports these colors, they have to be replaced
 ## Will hardcode for now and fix some day in the future *tm
-if OS != 'Windows':
-    default_colors_list[23][4] = '#d9d9d9'
-    default_colors_list[24][3] = 'black'
-    default_colors_list[24][4] = '#d9d9d9'
-    default_colors_list[25][4] = '#d9d9d9'
+if OS == 'Windows':
+    default_colors_list[24][4] = 'SystemMenu'
+    default_colors_list[25][3] = 'SystemHighlightText'
+    default_colors_list[25][4] = 'SystemHighlight'
+    default_colors_list[26][4] = 'SystemMenu'
     
 if saved_theme == 'Default':
     chat_color_list = list(default_colors_list)
@@ -2903,10 +2938,10 @@ textt.set("")
 ###Toolbar
 class toolbar_alternative:
     def __init__(self):
-        self.frame = Frame(root, height=40,width=X_size)
+        self.frame = Frame(root, height=20,width=X_size)
         self.frame.pack_propagate(0)
         self.frame.pack(side=TOP,fill=Y)
-        self.menu_btn= tkButton(self.frame,text='Menu', command=self.open_submenu,bd=0)
+        self.menu_btn= tkButton(self.frame,text='Menu', command=self.open_submenu,bd=0,width=10,highlightthickness=0)
         self.menu_btn.pack(side=LEFT)
         self.menu = Menu(None, tearoff=0, takefocus=0)
         self.submenus = toolbar_menus(self.menu)
@@ -2976,7 +3011,7 @@ def toolbar_menus(menu):
 
 ### Window widgets
 def create_widgets():
-    global T,E,User_area,S,S2,hyperlink, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen, toolbar
+    global T,E,User_area,S,S2, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen, toolbar
     global show_toolbar, use_alternative_tlb
     if show_toolbar == 1:
         if use_alternative_tlb == 0:
@@ -3048,14 +3083,15 @@ def create_widgets():
         E.bind('<Enter>', set_activated_E)
         S.bind('<Enter>', set_activated_S)
         S2.bind('<Enter>', set_activated_S2)
-
+        
+    global hyperlink_obj, hyperlink_obj2
+    hyperlink_obj = HyperlinkManager(T,'hyper')
+    hyperlink_obj2 = HyperlinkManager(T,'hyper2')
     
 def tag_colors():
-    global font_size, text_font, show_users, chat_color_list, default_colors_list, T,E,User_area, S,S2
-    global toolbar,default_os_color, use_alternative_tlb, show_toolbar
+    global text_font, show_users, chat_color_list, default_colors_list, T,E,User_area, S,S2
+    global toolbar,default_os_color, use_alternative_tlb, show_toolbar, hyperlink_obj, hyperlink_obj2
 ##    T.tag_remove('bluecol',1.0,END)
-    fontlist=list(tkFont.families())
-    fontlist.sort()
     widliste = (T,E,User_area,S,S2)
     text_widgets = (T,User_area)
     ## Attempts to replace default colors with saved theme
@@ -3065,15 +3101,13 @@ def tag_colors():
             try:
                 # Hyperlinks
                 if x[2] == 'blue_link':
-                    global hyperlink_obj
-                    hyperlink_obj = HyperlinkManager(T,'False',(x[3],x[4]),'hyper')
+                    T.tag_configure('hyper', font=text_font, background=x[4], foreground=x[3])
                 if x[2] == 'privatlink':
-                    global hyperlink_obj2
-                    hyperlink_obj2 = HyperlinkManager(T,'False',(x[3],x[4]),'hyper2')
+                    T.tag_configure('hyper2', font=text_font, background=x[4], foreground=x[3])
                 # Normal text
-                T.tag_configure(x[2], font=(fontlist[text_font[0]], font_size), background=x[4], foreground=x[3])
+                T.tag_configure(x[2], font=text_font, background=x[4], foreground=x[3])
                 if show_users is not 0:
-                    User_area.tag_configure(x[2], font=(fontlist[text_font[0]], font_size), background=x[4], foreground=x[3])
+                    User_area.tag_configure(x[2], font=text_font, background=x[4], foreground=x[3])
             except Exception as e:
                 e = str(e)
                 T_ins_warning(T, S, 'ERROR: loading color tags')
@@ -3112,6 +3146,11 @@ def tag_colors():
                     except Exception as e:
                         e = str(e)
                         print e
+                # Select
+                elif x[2] == 'selectbg':
+                    for x in (T,User_area):
+                        x.configure(inactiveselectbackground=fgcol, selectbackground=bgcol)
+                    E.configure(selectbackground=bgcol)
                 # Toolbar color
                 elif show_toolbar == 1:
                     if x[2] == 'toolbar':
@@ -3119,7 +3158,8 @@ def tag_colors():
                         if use_alternative_tlb == 1:
                             toolbar.frame.config(bg=bgcol)
                             toolbar.menu_btn.config(fg=fgcol, bg=bgcol,highlightbackground=fgcol)
-                        toolbar.menu.config(bg=bgcol,fg=fgcol)
+                        elif use_alternative_tlb == 0:
+                            toolbar.menu.config(bg=bgcol,fg=fgcol)
                     elif x[2] == 'toolbar-selected':
                         if use_alternative_tlb == 1:
                             toolbar.menu_btn.config(activeforeground=fgcol,activebackground=bgcol)
@@ -3129,16 +3169,16 @@ def tag_colors():
                     elif x[2] == 'toolbar-menu':
                         for dd in toolbar.submenus:
                             dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol)
+                        if use_alternative_tlb == 1:
+                            toolbar.menu.config(bg=bgcol,fg=fgcol)
             except Exception as e:
                 e = str(e)
                 T_ins_warning(T, S, 'ERROR: loading color tags')
                 T_ins_warning(T, S, e)
 ##    selectbackground="red",highlightbackground="red"
-    T.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
     T.tag_raise("sel")
     User_area.tag_raise("sel")
-    User_area.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
-    E.configure(font=(fontlist[text_font[0]], font_size))
+    E.configure(font=text_font)
 
 
 def focusT(event):

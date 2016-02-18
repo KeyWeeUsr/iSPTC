@@ -3,7 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 from time import sleep
-ver = '1.02'
+ver = '1.03'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -246,6 +246,19 @@ def send_user_list(s,conn,oldusername,username,addr,level):
         else:
             event_list.append(['SEND','SERVELJ::'+username+'('+addr+')'+' joined'])
     event_list.append(['SEND','USRLIST::'+sendlist[:-1]])
+
+def recieveData_file(conn,bitr):# function to recieve data
+    conn.settimeout(30)
+    try:
+        data = conn.recv(bitr) # waits for data and stores it in data
+    except Exception as e:
+        e = str(e)
+        if e == 'timed out':
+            return 'TIMEOUT::'
+        else:
+            data = 'close::'
+    return data; # returns the contents of data
+
 
 def recieveData(conn,bitr):# function to recieve data
     conn.settimeout(30)
@@ -730,13 +743,13 @@ def fileserv_thread(i):
     try:
         ## Sets client DL/UL mode
         conn.send('READY::')
-        data = recieveData(conn,8192)
+        data = recieveData_file(conn,8192)
         sleep(0.05)
         ## DL
         if data[:10] == 'DOWNLOAD::':
             filename = data[10:]
             conn.send('READY::')
-            data = recieveData(conn,8192)
+            data = recieveData_file(conn,8192)
             sleep(0.1)
             if data == 'SENDR::':
                 found_file = False
@@ -767,7 +780,7 @@ def fileserv_thread(i):
         elif data == 'UPLOAD::':
             ## Gets username and password
             conn.send('READY::')
-            data = recieveData(conn,8192)
+            data = recieveData_file(conn,8192)
             if data[0:9] == 'USRINFO::':
                 b = data.find(']')
                 if b is not -1 and len(data[b:]) > 2:
@@ -786,7 +799,7 @@ def fileserv_thread(i):
             conn.send('READY::')
             ## Get filename
             if state == 'filename':
-                data = recieveData(conn,8192)
+                data = recieveData_file(conn,8192)
                 if data[0:9] == 'SENDFIL::' and len(data[9:]) > 0:
                     if len(data) > 140:
                         filename = data[9:140]+'...'
@@ -802,7 +815,7 @@ def fileserv_thread(i):
                 sleep(0.1)
                 conn.send('SENDR::')
                 while 1:
-                    data = recieveData(conn,8192)
+                    data = recieveData_file(conn,8192)
                     if data == 'ENDING::':
                         break
                     elif not data:
