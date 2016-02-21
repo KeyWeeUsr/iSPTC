@@ -1,6 +1,32 @@
+## Client[1.10] - 2016-2-not yet
+### Added
+ - Alternative scrollbar (Uses themes instead of system grey, looks better then default )
+ - Option to change select background color
+ - Updated themes
+### Changed
+ - Hyperlink manager won't accept words with top level domains in the middle, e.g. ex-.com-ample
+
+
+## Client[1.09] - 2016-2-19
+### Added
+ - Font menu displays current font
+ - Preview font with left click in font list and "Up" / "Down" arrows
+ - Font style selection (Normal, Bold, Italic)
+### Changed
+ - "Apply" button in font menu changes chat menu too now, "Save" does the same + saves the change in settings.ini
+ - Saves font name instead of a font list number
+### Fix
+ - Won't append empty lines to settings.ini when a text setting is not used
+
+## Server[1.03] - 2016-2-18
+### Fixed
+ - Server accepts files again
+
+
+
 ## Client[1.08] - 2016-2-17
 ### Added
- - Added a received message buffer (can receive and process long messages)
+ - Received message buffer (can receive and process long messages)
  - New menu option - "Use system scrollbar" (Switches between tk and ttk scrollbars)
  - New menu option - "Entry widget border width"
  - New menu option - "Text widget border width"
@@ -207,6 +233,7 @@
 ### Added
  - Server can take commands from clients now. Added 3 - s/log, s/mlog, s/threadip.
 ### Fix
+
  - No chatlog.append on thread timeout
 
 

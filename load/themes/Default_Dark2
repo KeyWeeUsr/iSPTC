@@ -21,7 +21,7 @@ window,Text widget,text-widget,#00ff00,#1e1e1e
 window,Entry widget,entry-widget,#2bffff,#1e1e1e
 window,Border-text,border-text,#00ff00,#1e1e1e
 window,Border-entry,border-entry,#ffff11,#828282
-window,Troughcolor,troughcolor,#0fff0f,#1e1e1e
+window,Scrollbar,troughcolor,#0fff0f,#1e1e1e
 window,Toolbar,toolbar,#e6e606,#1e1e1e
 window,Toolbar-selected,toolbar-selected,#ffff0e,#4b4b4b
 window,Toolbar-menu,toolbar-menu,#ffff0e,#828282

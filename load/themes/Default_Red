@@ -16,12 +16,12 @@ chat,Private link,privatlink,#4d93ff,#e6e7dc
 chat,Dark background,olfo-backgr,#f5f5f5,#653434
 chat,Bright background,light-grey-bg,#f5f5f5,#845959
 window,Select background,selectbg,#6B9EB7,#4283A4
-window,Rootcolor,rootcolor,#00c900,#321818
+window,Rootcolor,rootcolor,#00c900,#2c1414
 window,Text widget,text-widget,#00ff00,#321818
 window,Entry widget,entry-widget,#f5f5f5,#321818
 window,Border-text,border-text,#00ff00,#321818
 window,Border-entry,border-entry,#f5f5f5,#828282
-window,Troughcolor,troughcolor,#0fff0f,#321818
-window,Toolbar,toolbar,#f5f5f5,#321818
+window,Scrollbar,troughcolor,#522727,#622f2f
+window,Toolbar,toolbar,#f5f5f5,#4b2525
 window,Toolbar-selected,toolbar-selected,#f5f5f5,#644646
 window,Toolbar-menu,toolbar-menu,#f5f5f5,#845959

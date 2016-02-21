@@ -1466,7 +1466,6 @@ def set_font(font,font_size,style, t_usra_len):
     
     User_area.config(width=t_usra_len)
     tag_colors()
-##    hyperlink = HyperlinkManager(T,'False',('False','False'),'hyper')
     usra_len = t_usra_len
     write_settings('font1',font)
     write_settings('font2',font_size)
@@ -1933,7 +1932,7 @@ def configure_border_size(widget,size):
 
 def change_other_settings(a,c,e,f,g,h,i,j,k,l,m,n):
     global X_size,Y_size ,autojoin, leave_join, nadd_spaces, show_ttime, show_users, autoauth
-    global User_area, S2, T, S, E, s, username, write_log, show_logtime, use_ttk_scroll, toolbar
+    global User_area, S2, T, S, E, s, username, write_log, show_logtime, toolbar, scroll_class_u
     global E_borderlen, T_borderlen, S_borderlen, show_toolbar, use_alternative_tlb
     widliste = (T,User_area, S, S2)
     autojoin = a
@@ -1942,7 +1941,7 @@ def change_other_settings(a,c,e,f,g,h,i,j,k,l,m,n):
     autoauth = h
     write_log = i
     show_logtime = j
-    use_ttk_scroll = k
+    scroll_class_u = k
     # Configures border length for E, T, S
     try:
         for x in l:
@@ -1986,7 +1985,7 @@ def change_other_settings(a,c,e,f,g,h,i,j,k,l,m,n):
     write_settings('autoauth',h)
     write_settings('chlog',i)
     write_settings('show_logtime',j)
-    write_settings('use_ttk_scroll',k)
+    write_settings('scrollbar_class',k)
     write_settings('E_borderlen',E_borderlen)
     write_settings('T_borderlen',T_borderlen)
     write_settings('S_borderlen',S_borderlen)
@@ -1996,7 +1995,7 @@ def change_other_settings(a,c,e,f,g,h,i,j,k,l,m,n):
     
 def other_menu():
     global autojoin, leave_join, nadd_spaces, show_ttime, show_users, autoauth, write_log, show_logtime
-    global use_ttk_scroll, E_borderlen, T_borderlen, S_borderlen, show_toolbar, use_alternative_tlb
+    global scroll_class_u, E_borderlen, T_borderlen, S_borderlen, show_toolbar, use_alternative_tlb
     sm = Toplevel()
     set_winicon(sm,'icon_grey')
     sm.title("Other settings")
@@ -2024,7 +2023,7 @@ def other_menu():
     t_box_time = IntVar()
     t_log_time = IntVar()
     t_E_borderlen, t_T_borderlen, t_S_borderlen = StringVar(),StringVar(),StringVar()
-    t_use_ttk_scroll = IntVar()
+    t_scroll_class_u = StringVar()
     t_show_toolbar = IntVar()
     t_use_alternative_tlb = IntVar()
     t_leave_join.set(leave_join)
@@ -2035,7 +2034,7 @@ def other_menu():
     t_show_users.set(show_users)
     t_box_time.set(show_ttime)
     t_log_time.set(show_logtime)
-    t_use_ttk_scroll.set(use_ttk_scroll)
+    t_scroll_class_u.set(scroll_class_u)
     t_E_borderlen.set(E_borderlen)
     t_T_borderlen.set(T_borderlen)
     t_S_borderlen.set(S_borderlen)
@@ -2060,7 +2059,8 @@ def other_menu():
     Checkbutton(frame4, text="Show user box", variable=t_show_users).pack(anchor=NW)
     Checkbutton(frame4, text="Show toolbar", variable=t_show_toolbar).pack(anchor=NW)
     Checkbutton(frame4, text="Use alternative toolbar", variable=t_use_alternative_tlb).pack(anchor=NW)
-    Checkbutton(frame4, text="Use system scrollbar", variable=t_use_ttk_scroll).pack(anchor=NW)
+    Label(frame4, text="Scrollbar:",justify = LEFT).pack(anchor=NW)
+    Combobox(frame4, textvariable=t_scroll_class_u,values=['default','system','alternative']).pack(anchor=NW)
 
     Label(frame4, text="Entry widget border:",justify = LEFT).pack(anchor=NW)
     E_border = Entry(frame4,textvariable=t_E_borderlen).pack(anchor=NW)
@@ -2071,7 +2071,7 @@ def other_menu():
 
     button = Button(frame3, text='Save', command=lambda: {change_other_settings(t_autojoin.get(),
                     t_leave_join.get(),t_lenghten.get(),t_box_time.get(),t_show_users.get(),
-                    t_autoauth.get(),t_write_log.get(),t_log_time.get(),t_use_ttk_scroll.get(),
+                    t_autoauth.get(),t_write_log.get(),t_log_time.get(),t_scroll_class_u.get(),
                     (t_E_borderlen.get(),t_T_borderlen.get(),t_S_borderlen.get()),
                      t_show_toolbar.get(),t_use_alternative_tlb.get()),
                     sm.destroy()})
@@ -2272,29 +2272,38 @@ def find_link(data):
     begn = data.find('http://')
     linktext = ''
     data = data[:-1]
-    if begn is not -1:
-        while True:
-            if data[begn] is not ' ':
-                linktext = linktext+data[begn]
-                begn+=1
-            else:
-                return linktext
-    begn = data.find('https://')        
-    if begn is not -1:
-        while True:
-            if data[begn] is not ' ':
-                linktext = linktext+data[begn]
-                begn+=1
-            else:
-                return linktext
-    begn = data.find('www.')        
-    if begn is not -1 and len(data) > 4:
-        return data
-    ## Compares all top domains when previous are not found
-    for x in TLDS:
-        begn = data.find('.'+x)
-        if begn is not -1 and len(data) > begn:
+    if len(data) > 5:
+        if begn is not -1:
+            while True:
+                if data[begn] is not ' ':
+                    linktext = linktext+data[begn]
+                    begn+=1
+                else:
+                    return linktext
+        begn = data.find('https://')        
+        if begn is not -1:
+            while True:
+                if data[begn] is not ' ':
+                    linktext = linktext+data[begn]
+                    begn+=1
+                else:
+                    return linktext
+        begn = data.find('www.')        
+        if begn is not -1 and len(data) > 4:
             return data
+        ## Compares all top domains when previous are not found
+        b = data.find('.')
+        if b != -1:
+            for x in TLDS:
+                b = data.find('.'+x)
+##                print x, data
+                if b != -1:
+                    x = x.rstrip()
+                    data = data.rstrip()
+                    if data == data[:-len(x)]+x:
+                        return data
+        else:
+            return 'False'
     return 'False'
 
 def copy_text(*arg):
@@ -2859,8 +2868,8 @@ window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_se
 updater_ver = str(read_settings('updater_ver=','1'))
 show_logtime = int(read_settings('show_logtime=',2))
 saved_theme = str(read_settings('theme=','Default'))
-use_ttk_scroll = int(read_settings('use_ttk_scroll=',1))
-if use_ttk_scroll == 1:
+scroll_class_u = str(read_settings('scrollbar_class=','system'))
+if scroll_class_u == 'system':
     from ttk import Scrollbar
 E_borderlen = int(read_settings('E_borderlen=',1))
 T_borderlen = int(read_settings('T_borderlen=',1))
@@ -2885,12 +2894,12 @@ default_colors_list = [['chat','Warnings','redcol','red','white'],
                     ['chat','Dark background','olfo-backgr','black','#c8d9ea'],
                     ['chat','Bright background','light-grey-bg','black','#eaeefa'],
                     ['window','Select background','selectbg','#6B9EB7','#4283A4'],
-                    ['window','Rootcolor','rootcolor','black','default'],
+                    ['window','Rootcolor','rootcolor','black','#DBD9D9'],
                     ['window','Text widget','text-widget','black','white'],
                     ['window','Entry widget','entry-widget','black','white'],
                     ['window','Border-text','border-text','black','default'],
                     ['window','Border-entry','border-entry','black','default'],
-                    ['window','Troughcolor','troughcolor','black','default'],
+                    ['window','Scrollbar','troughcolor','#606060','#9f9f9f'],
                     ['window','Toolbar','toolbar','black','#d9d9d9'],
                     ['window','Toolbar-selected','toolbar-selected','black','#d9d9d9'],
                     ['window','Toolbar-menu','toolbar-menu','black','#d9d9d9'],
@@ -2943,6 +2952,7 @@ class toolbar_alternative:
         self.frame.pack(side=TOP,fill=Y)
         self.menu_btn= tkButton(self.frame,text='Menu', command=self.open_submenu,bd=0,width=10,highlightthickness=0)
         self.menu_btn.pack(side=LEFT)
+##        self.menu_btn.grid(column=0,row=0)
         self.menu = Menu(None, tearoff=0, takefocus=0)
         self.submenus = toolbar_menus(self.menu)
         
@@ -3009,6 +3019,125 @@ def toolbar_menus(menu):
     helpmenu.add_command(label='About..', command=About)
     return (menu1, menu3, menu4, menu5, helpmenu)
 
+if scroll_class_u == 'alternative':
+    class Scrollbar:
+        def __init__(self,widget,*arg):
+            self.bg, self.troughcolor,self.highlightbackground, self.highlightcolor = '#DBD9D9','#9f9f9f','#DBD9D9','#606060'
+            self.frame = Frame(widget,width=16, height=2, bg=self.bg, bd=0, highlightthickness= 0)
+            self.windowY = float(self.frame.winfo_height())
+            self.m_x, self.m_y, self.m_x_old, self.m_y_old = 0,0,0,0
+            self.bar_color = self.troughcolor
+            self.activated = False
+            self.command = None
+            self.izmers = float(0.5)
+            self.kur = float(0.0)
+            self.canva = Canvas(self.frame, width=16, height=Y_size, bg=self.bg, bd= 0,highlightthickness= 0, relief= SUNKEN)
+            self.canva.bind('<Motion>',self.motion)
+            self.bind("<Configure>", self.on_resize)
+            self.canva.bind("<Enter>", self.on_enter)
+            self.canva.bind("<Leave>", self.on_leave)
+            self.canva.bind("<ButtonPress-1>", self.click_view)
+            self.canva.bind("<ButtonRelease-1>", self.click_view_stop)
+            
+
+        def pack(self,**kwargs):
+            for key in kwargs:
+                if str(key) == 'side':
+                    sider = kwargs[key]
+            self.frame.pack(side=sider,fill=Y)
+            self.canva.pack(fill=Y)
+            self.canva.create_rectangle(0, self.kur, 16, self.windowY*self.izmers, fill=self.bar_color)
+
+        def on_resize(self,event):
+            self.windowY = float(self.frame.winfo_height())
+            self.canva.configure(height=self.windowY)
+        def on_enter(self,event):
+            self.bar_color = self.highlightcolor
+            self.redraw_canva()
+        def on_leave(self,event):
+            self.bar_color = self.troughcolor
+            self.redraw_canva()
+            
+        def configure(self,**kwargs):
+            self.on_config(**kwargs)
+            self.redraw_canva()
+
+        def config(self,**kwargs):
+            self.on_config(**kwargs)
+            self.redraw_canva()
+
+        def on_config(self,**kwargs):
+            for key in kwargs:
+                if str(key) == 'bg':
+                    self.bg = kwargs[key]
+                    self.frame.config(bg=self.bg)
+                    self.canva.config(bg=self.bg)
+                elif str(key) == 'command':
+                    self.command = kwargs[key]
+                    self.target_widget = kwargs[key].im_self
+                elif str(key) == 'troughcolor':
+                    self.troughcolor = kwargs[key]
+                    self.bar_color = self.troughcolor
+                elif str(key) == 'highlightbackground':
+                    self.highlightbackground = kwargs[key]
+                elif str(key) == 'highlightcolor':
+                    self.highlightcolor = kwargs[key]
+                elif str(key) == 'bd' or str(key) == 'border':
+                    self.frame.config(bd=kwargs[key])
+                elif str(key) == 'highlightthickness':
+                    self.frame.config(highlightthickness = kwargs[key])
+##            self.canva.config(disabledoutline=1)
+                    
+        def destroy(self,*arg):
+            self.frame.destroy()
+
+        def redraw_canva(self,*arg):
+            izmers = self.izmers
+            kur = self.kur
+            if izmers > 0.957:
+                izmers = 0.957
+            if kur - izmers < 0.043:
+                kur = izmers +0.043
+            self.canva.create_rectangle(0, self.windowY*kur, 18, self.windowY*izmers, fill=self.bar_color, outline=self.bar_color)
+
+        def click_view(self,*arg):
+            self.activated = True
+        def click_view_stop(self,*arg):
+            self.activated = False
+            self.mouse_click()
+
+        def set(self,izmers,kur):
+            self.izmers = float(izmers)
+            self.kur = float(kur)
+            self.canva.delete(ALL)
+            self.redraw_canva()
+
+        def bind(self,button, command):
+            self.frame.bind(button, command)
+
+        def motion(self,event,*arg):
+            self.m_x, self.m_y = event.x, event.y
+            if self.activated == True:
+                self.mouse_click()
+
+        def mouse_click(self,*arg):
+            try:
+                lncount = float(self.target_widget.index("end-1c"))
+            except:
+                try:
+                    lncount = float(self.target_widget.size())
+                except:
+                    print 'Scrollbar: did not find any lines'
+            try:
+                calc = 1.00/(self.windowY/self.m_y)
+            except ZeroDivisionError:
+                calc = 0.00
+            calc = lncount*calc
+            self.command(int(calc))
+            
+        def get(self):
+            return self.izmers, self.kur
+
 ### Window widgets
 def create_widgets():
     global T,E,User_area,S,S2, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen, toolbar
@@ -3031,14 +3160,13 @@ def create_widgets():
     except:
         pass
     configure_border_size(S,S_borderlen)
-
     S.pack(side=RIGHT, fill=Y)
     if show_users == 1:
         User_area.pack(side=LEFT,fill=Y)
         S2.pack(side=LEFT, fill=Y)
     E.pack(side=BOTTOM,fill=X)
-    activated_widget = ('E',E)
     T.pack(side=BOTTOM,fill=BOTH,expand=1)
+    activated_widget = ('E',E)
     S.config(command=T.yview)
     S2.config(command=User_area.yview)
     User_area.config(yscrollcommand=S2.set,state="disabled",wrap='none')
@@ -3047,6 +3175,7 @@ def create_widgets():
     E.focus_set()   
     default_os_color = root.cget('bg')
     tag_colors()
+    
     
     root.bind("<Control-a>", widget_sel_all)
     root.bind("<Tab>", focus_entry)
@@ -3087,6 +3216,9 @@ def create_widgets():
     global hyperlink_obj, hyperlink_obj2
     hyperlink_obj = HyperlinkManager(T,'hyper')
     hyperlink_obj2 = HyperlinkManager(T,'hyper2')
+##    def dictprint(*arg):
+##        print S.__dict__.keys()
+##    root.bind('<Motion>', dictprint)
     
 def tag_colors():
     global text_font, show_users, chat_color_list, default_colors_list, T,E,User_area, S,S2
@@ -3122,6 +3254,9 @@ def tag_colors():
                 fgcol= 'black'
             try:# Root
                 if x[2] == 'rootcolor':
+                    if scroll_class_u != 'system':
+                        S.config(bg=bgcol)
+                        S2.config(bg=bgcol)
                     root.configure(background=bgcol)
                 # Text and entry widgets
                 elif x[2] == 'text-widget':
@@ -3140,12 +3275,13 @@ def tag_colors():
                     E.config(highlightbackground=bgcol)
                 # Scrollbars
                 elif x[2] == 'troughcolor':
-                    try:
-                        S.config(bg=bgcol,troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
-                        S2.config(bg=bgcol,troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
-                    except Exception as e:
-                        e = str(e)
-                        print e
+                    if scroll_class_u != 'system':
+                        try:
+                            S.config(troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
+                            S2.config(troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
+                        except Exception as e:
+                            e = str(e)
+                            print e
                 # Select
                 elif x[2] == 'selectbg':
                     for x in (T,User_area):
