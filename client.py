@@ -27,21 +27,6 @@ from PIL import Image as Pillow_image
 from PIL import ImageTk
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
 
-ver = '1.09'
-
-sys_path = os.getcwd()
-OS = platform.system()
-print 'Path ',sys_path
-
-## Top domain list
-sys.path.insert(0, './lib')
-from top_domains import TLDS
-for x in TLDS:
-    x = x.decode('utf-8')
-
-if OS is 'Windows':
-    import winsound
-
 def set_winicon(window,name):
     global OS
     if OS is 'Windows':
@@ -862,9 +847,9 @@ def leave_server():
         T.config(yscrollcommand=S.set,state="normal")
         T.insert(END, get_cur_time()+war+'Left server\n', 'redcol')
         T.config(yscrollcommand=S.set,state="disabled")
-        User_area.config(yscrollcommand=S.set,state="normal")
+        User_area.config(state="normal")
         User_area.delete(1.0,END)
-        User_area.config(yscrollcommand=S.set,state="disabled")
+        User_area.config(state="disabled")
     except Exception as e:
         T.config(yscrollcommand=S.set,state="normal")
         T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
@@ -879,6 +864,198 @@ def winf_is(vv):
 def winf_isnt(vv):
     global windowfocus
     windowfocus = False
+
+def get_dict_item(dictio,item,default):
+    for k, v in dictio.iteritems():
+        if k == item:
+            return v
+    return default
+
+class Log_viewer:       
+    def __init__(self,**kwargs):
+        global text_font
+        self.title = get_dict_item(kwargs,'title','default')
+        self.filefolder = get_dict_item(kwargs,'filefolder','/log')
+        self.thread_status = 'Ready:'
+        
+        self.topwin = Toplevel()
+        set_winicon(self.topwin,'icon_grey')
+        self.topwin.title(self.title)
+        self.topwin.minsize(700,500)
+
+        self.frame3 = Frame(self.topwin, width=700,height=40, relief=SUNKEN)
+        self.frame3.pack_propagate(0)
+        self.frame3.pack(side=BOTTOM,pady=10)
+        self.frame1 = Frame(self.topwin, width=150,height=460, relief=SUNKEN)
+        self.frame1.pack_propagate(0)
+        self.frame1.pack(side=LEFT,padx=10,pady=10)
+        self.frame2 = Frame(self.topwin, width=550,height=460, relief=SUNKEN)
+        self.frame2.pack_propagate(0)
+        self.frame2.pack(side=LEFT,padx=10,pady=10)
+        self.frame4 = Frame(self.frame3, width=450,height=40, relief=SUNKEN)
+        self.frame4.pack_propagate(0)
+        self.frame4.pack(side=RIGHT)
+
+        self.label1 = Label(self.frame1,text='Files:')
+        self.label1.pack(side=TOP)
+        self.Fscroll = Scrollbar(self.frame1)
+        self.Fscroll.pack(side=RIGHT, fill=Y, expand=NO)
+        self.listbox = Listbox(self.frame1)
+        self.listbox.pack(expand=1, fill="both")
+        self.Fscroll.configure(command=self.listbox.yview)
+        self.listbox.configure(yscrollcommand=self.Fscroll.set)
+
+        self.Tbox = Text(self.frame2, height=12, width=40,wrap=WORD)
+        self.Tbox.tag_configure('blackcol', font=text_font, foreground='black')
+        self.Tbox.tag_configure('redcol', font=text_font, foreground='red')
+        self.Tbox.configure(inactiveselectbackground="#6B9EB7", selectbackground="#4283A4")
+        self.Tbox.tag_raise("sel")
+        self.Tscroll = Scrollbar(self.frame2)
+        self.Tbox.focus_set()
+        self.Tbox.config(yscrollcommand=self.Tscroll.set)
+        self.Tscroll.config(command=self.Tbox.yview)
+        self.Tscroll.pack(side=RIGHT, fill=Y)
+        self.Tbox.pack(side=BOTTOM,fill=BOTH,expand=1)
+
+        self.loadLabel = Label(self.frame3,text='Ready:')
+        self.loadLabel.pack(side=LEFT,padx=30)
+        bb1 = Button(self.frame4, text='Change folder', command=self.load_other_folder)
+        bb1.pack(side=LEFT,padx=30)
+        bb2 = Button(self.frame4, text='Save', command=self.save_file)
+        bb2.pack(side=LEFT)
+        bb3 = Button(self.frame4, text='Close', command=self.close_func)
+        bb3.pack(side=LEFT,padx=30)
+
+        self.reload_file_list()
+        self.topwin.bind('<Escape>', self.close_func)
+        self.topwin.bind("<Control-a>", widget_sel_all)
+        self.Tbox.bind('<Control-f>',lambda x: search_text_dialog(self.Tbox))
+        self.listbox.bind('<Button-1>', lambda x: self.topwin.after(20,self.file_loader))
+        self.topwin.protocol('WM_DELETE_WINDOW', self.close_func)
+        self.topwin.after(200,self.after_task)
+        self.colortag()
+
+    def after_task(self):
+        self.topwin.bind('<Configure>', self.on_resize)
+
+    def reload_file_list(self):
+        try:
+            self.listbox.delete(0, END)
+            file_list = os.listdir(self.filefolder)
+            for x in file_list:
+                self.listbox.insert("end", x)
+        except Exception as e:
+            self.Tbox.insert(END, str(e), 'redcol')
+            self.Tbox.yview(END)
+
+    def load_other_folder(self):
+        self.topwin.lower()
+        try:
+            self.topwin.unbind('<Configure>')
+            self.filefolder = (askdirectory()+'/')
+            self.reload_file_list()
+            self.topwin.after(300,self.after_task)
+        except Exception as e:
+            self.Tbox.insert(END, str(e), 'redcol')
+            self.Tbox.yview(END)
+        self.topwin.lift()
+        self.colortag()
+
+    def save_file(self):
+        self.topwin.unbind('<Configure>')
+        if self.thread_status == 'Ready:':
+            self.thread_status = 'Working:'
+            self.loadLabel.configure(text= self.thread_status)
+            try:
+                if os.path.exists(self.filefolder + self.title):
+                    savef('',self.filefolder + self.title)
+                    fh = open(self.filefolder + self.title, 'a')
+                    text = self.Tbox.get(1.0, END)
+                    fh.write(text)
+                fh.close()
+                self.thread_status = 'Ready:'
+                self.loadLabel.configure(text= self.thread_status)
+            except Exception as e:
+                self.Tbox.insert(END, str(e), 'redcol')
+                self.Tbox.yview(END)
+        self.topwin.after(200,self.after_task)
+                
+    def file_loader(self):
+        num = self.listbox.get(self.listbox.curselection())
+        try:
+            text = readf(self.filefolder+num)
+        except Exception as e:
+            self.Tbox.insert(END, str(e), 'redcol')
+            self.Tbox.yview(END)
+        if self.thread_status == 'Ready:':
+            self.thread_status = 'Working:'
+            self.topwin.unbind('<Configure>')
+            self.loadLabel.configure(text= self.thread_status)
+            self.title = num
+            self.topwin.title(self.title)
+            try:
+                Thread(target=self.file_loader_thread,args=(text,)).start()
+            except Exception as e:
+                self.Tbox.insert(END, str(e), 'redcol')
+                self.Tbox.yview(END)
+    def file_loader_thread(self,text):
+        try:
+            cnt = [0,0.01]
+            filelen = len(text)
+            self.Tbox.delete(1.0,END)
+            for x in text:
+                self.Tbox.insert(END, x+'\n','blackcol')
+                cnt[0]+= 1
+                if cnt[0] > filelen*cnt[1]:
+                    self.loadLabel.configure(text = self.thread_status+' '+str(cnt[0])+'/'+str(filelen))
+                    self.Tbox.yview(END)
+                    cnt[1] += 0.01
+        except Exception as e:
+            self.Tbox.insert(END, str(e), 'redcol')
+        self.thread_status = 'Ready:'
+        self.loadLabel.configure(text= self.thread_status)
+        self.Tbox.yview(END)
+        self.topwin.after(200,self.after_task)
+
+    def on_resize(self,*arg):
+        try:
+            self.wX = self.topwin.winfo_width()
+            self.wY = self.topwin.winfo_height()
+            self.frame1_xsize = 120+0.05*self.wX
+            self.frame1_ysize = self.wY-50
+            self.frame2_xsize = self.wX-(120+0.05*self.wX)
+            self.frame2_ysize = self.wY-50
+            self.frame3_xsize = self.wX*1.00
+            self.frame3_ysize = 40
+            self.frame4_xsize = self.frame3_xsize/1.55
+            self.frame4_ysize = self.frame3_ysize
+            self.frame1.config(width=self.frame1_xsize,height=self.frame1_ysize)
+            self.frame2.config(width=self.frame2_xsize,height=self.frame2_ysize)
+            self.frame3.config(width=self.frame3_xsize,height=self.frame3_ysize)
+            self.frame4.config(width=self.frame4_xsize,height=self.frame4_ysize)
+        except Exception as e:
+            self.Tbox.insert(END, str(e), 'redcol')
+            self.Tbox.yview(END)
+
+    def colortag(self):
+        tag_colors(text=[self.Tbox],scroll=[self.Tscroll,self.Fscroll],listbox=[self.listbox],window=[self.topwin],
+                   frame=[self.frame1,self.frame2,self.frame3,self.frame4],label=[self.label1,self.loadLabel])
+
+    def widget_sel_all(self,*arg):
+        self.Tbox.tag_add(SEL, "1.0", END)
+        self.Tbox.mark_set(INSERT, "1.0")
+        self.Tbox.see(INSERT)
+    def close_func(self,*arg):
+        self.topwin.destroy()
+
+def popen_text_editor(file_folder):
+    global OS
+    INPUT = 'python editor.py '+file_folder
+    if OS == 'Windows':
+        if os.path.exists('editor.exe') == True: INPUT = 'editor.exe '+file_folder
+    elif OS == 'Linux': INPUT = 'python editor.py '+file_folder
+    Popen([INPUT], shell=True,
+             stdin=None, stdout=None, stderr=None, close_fds=True)
 
 def start_update(update_list):
     global OS
@@ -1254,14 +1431,12 @@ def color_menu():
             topwin.after(10, self.theme_loader_after)
             
         def color_picker(self,which):
-            Xpos = str(topwin.winfo_rootx())
-            Ypos = str(topwin.winfo_rooty())
             try:
                 num2 = listbox.curselection()
                 num = num2[0]
                 self.ffg=chat_color_list[num][3]
                 self.fbg=chat_color_list[num][4]
-                topwin.withdraw()
+                topwin.lower()
                 if which == 'Foreground':
                     chat_color_list[num][3] = color_asker(self.ffg)
                 elif which == 'Background':
@@ -1281,14 +1456,14 @@ def color_menu():
                             for x in chat_color_list:
                                     x[4] = newcol
                 self.reset_colorbutton()
-                restore_window(topwin,Xpos,Ypos)
+                topwin.lift()
             except Exception as e:
                 e = str(e)
                 print e
                 if e == 'tuple index out of range':
-                    topwin.withdraw()
+                    topwin.lower()
                     tkMessageBox.showerror(title='Error', message='Select a color')
-                    restore_window(topwin,Xpos,Ypos)
+                    topwin.lift()
 
         def set_default_colors(self):
             global chat_color_list, default_colors_list
@@ -1296,7 +1471,7 @@ def color_menu():
             for x in default_colors_list:
                 chat_color_list.append(list(x))
             self.reset_colorbutton()
-            tag_colors()
+            tag_colors(preset='default')
             
         def make_buttons(self):
             global default_os_color
@@ -1439,7 +1614,7 @@ def color_menu():
     def set_global_ntag(*arg):
         global saved_theme
         saved_theme = cColor_obj.theme_name
-        tag_colors()
+        tag_colors(preset='default')
     topwin.bind('<Escape>', close_func)
 
     lb = Label(frame4,text='Theme name')
@@ -1456,7 +1631,7 @@ def color_menu():
     button.pack(side=LEFT,padx=55)
     button = Button(frame3, text='Apply', command=set_global_ntag)
     button.pack(side=LEFT,padx=10)
-    button = Button(frame3, text='Save', command=lambda: {save_theme(),tag_colors(), topwin.destroy()})
+    button = Button(frame3, text='Save', command=lambda: {save_theme(),tag_colors(preset='default'), topwin.destroy()})
     button.pack(side=LEFT,padx=10)
     
 
@@ -1465,7 +1640,7 @@ def set_font(font,font_size,style, t_usra_len):
     text_font = (font, font_size, style)
     
     User_area.config(width=t_usra_len)
-    tag_colors()
+    tag_colors(preset='default')
     usra_len = t_usra_len
     write_settings('font1',font)
     write_settings('font2',font_size)
@@ -1561,7 +1736,7 @@ def font_menu():
 
     def preview_loop(*arg):
         show_selected_font()
-        fom.after(80, preview_loop)
+        fom.after(100, preview_loop)
     def close_func(*arg):
         fom.destroy()
     def focusList(event):
@@ -1596,7 +1771,7 @@ def font_menu():
 def apply_chat_font(font,font_s,ttype):
     global text_font
     text_font = (font,font_s,ttype)
-    tag_colors()
+    tag_colors(preset='default')
 
 def apply_display_font(display_text,selFont,font_size,ttype):
     try:
@@ -1792,14 +1967,11 @@ def file_manager():
                             self.tree.column(multi_header[ix], width=col_w)
 
             def delete_all_button(self,Tbox,Scroll):
-                Xpos = str(topwin.winfo_rootx())
-                Ypos = str(topwin.winfo_rooty())
-                topwin.withdraw()
+                topwin.lower()
                 answer = tkMessageBox.askquestion(title='Delete all files', message='Are you sure?')
                 if answer == 'yes':
                     enter_text('command_window','s/clear files')
                     Tbox_insert_lock(Tbox,Scroll,get_cur_time()+'Deleting files'+'\n','red')
-                restore_window(topwin,Xpos,Ypos)
                 topwin.lift()
 
             def share_button(self,Tbox,Scroll):
@@ -1813,14 +1985,11 @@ def file_manager():
                             selFilename = str(key[1][0])
                     enter_text('command_window','/dl '+selFilename)
                 except Exception as e:
-                    Xpos = str(topwin.winfo_rootx())
-                    Ypos = str(topwin.winfo_rooty())
-                    topwin.withdraw()
+                    topwin.lower()
                     e = str(e)
                     if e == "'str' object has no attribute 'iteritems'":
                         e = 'No file selected!'
                     tkMessageBox.showerror(title='Error', message=str(e))
-                    restore_window(topwin,Xpos,Ypos)
                 topwin.lift()
 
             def setup_buttons(self,frame,Tbox,Scroll):
@@ -1849,11 +2018,8 @@ def file_manager():
         def file_list_to_MultiColl(*arg):
             if len(file_list) > 0:
                 if file_list == ['EMPTY-LIST']:
-                    Xpos = str(topwin.winfo_rootx())
-                    Ypos = str(topwin.winfo_rooty())
-                    topwin.withdraw()
+                    topwin.lower()
                     tkMessageBox.showerror(title='File list', message='File list is empty')
-                    restore_window(topwin,Xpos,Ypos)
                     topwin.lift()
                 else:
                     for x in file_list:
@@ -1909,14 +2075,11 @@ def file_manager():
             topwin.destroy()
         topwin.bind('<Escape>', close_func)
     except Exception as e:
-        Xpos = str(topwin.winfo_rootx())
-        Ypos = str(topwin.winfo_rooty())
-        topwin.withdraw()
+        topwin.lower()
         e = str(e)
         if e == "global name 's' is not defined" or e == "'str' object has no attribute 'send'":
             e = 'Not connected!'
         tkMessageBox.showerror(title='Error', message=str(e))
-        restore_window(topwin,Xpos,Ypos)
         topwin.lift()
 
 def configure_border_size(widget,size):
@@ -2193,7 +2356,7 @@ def organise_USRLIST(data):
 
 def user_area_insert():
     global USRLIST
-    User_area.config(yscrollcommand=S2.set,state="normal")
+    User_area.config(state="normal")
     User_area.delete(1.0,END)
     for x in USRLIST:
         try:
@@ -2215,7 +2378,7 @@ def user_area_insert():
                     User_area.insert(END, x[0]+'\n',usercol)
         except:
             User_area.insert(END, x[0]+'\n','blackcol')
-    User_area.config(yscrollcommand=S2.set,state="disabled")
+    User_area.config(state="disabled")
 
 def add_spaces(name):
     for x in name:
@@ -2411,7 +2574,94 @@ def entrym_BACK(*arg):
         if entry_message_arch*-1 < entrilen:
             entry_message_arch -= 1
             textt.set(entry_mlist[entry_message_arch])
-            
+
+def search_text_dialog(widget):
+    widget.tag_configure("search", background="green")
+    def color_tagger_thread(name):
+        start = 1.0
+        try:
+            while start != widget.index(CURRENT):
+                pos = widget.search(name, start, stopindex=END)
+                b = pos.find('.')
+                pos2 = pos[b+1:]
+                pos2 = pos[:b]+'.'+str(int(pos2)+int(countVar.get()))
+                if not pos:
+                    break
+                widget.tag_add("search", pos, pos2)
+                start = pos + "+1c"
+        except:
+            pass
+    def text_finder(*arg):
+        widget.tag_remove("sel",1.0,END)
+        widget.tag_remove("search",1.0,END)
+        ftext = t_findtext.get()
+        pos = widget.search(ftext, start.get(), count=countVar)
+        widget.see(pos)
+        b = pos.find('.')
+        pos2 = pos[b+1:]
+        pos2 = pos[:b]+'.'+str(int(pos2)+int(countVar.get()))
+##        widget.tag_add("search", pos, pos2)
+        widget.tag_add(SEL, pos, pos2)
+        widget.tag_raise("sel")
+        start.set(pos2)
+        Thread(target=color_tagger_thread,args=(ftext,)).start()
+    topwin = Toplevel()
+    set_winicon(topwin,'icon_grey')
+    topwin.title("Search dialog")
+    topwin.minsize(600,120)
+    topwin.resizable(FALSE,FALSE)
+
+    frame4 = Frame(topwin, height=120,width=120, relief=SUNKEN,bg='')
+    frame4.pack_propagate(0)
+    frame4.pack(side=RIGHT)
+    frame1 = Frame(topwin, height=40,width=480, relief=SUNKEN,bg='')
+    frame1.pack_propagate(0)
+    frame1.pack(side=TOP)
+    frame2 = Frame(topwin, height=40,width=480, relief=SUNKEN,bg='')
+    frame2.pack_propagate(0)
+    frame2.pack(side=TOP)
+    frame3 = Frame(topwin, height=40,width=480, relief=SUNKEN,bg='')
+    frame3.pack_propagate(0)
+    frame3.pack(side=TOP)
+
+    start = StringVar()
+    countVar = StringVar()
+    
+    t_match_case = IntVar()
+    t_wrap_around = IntVar()
+    t_findtext = StringVar()
+    t_search_direction = IntVar()
+    t_findtext.set('')
+    t_match_case.set(0)
+    t_wrap_around.set(1)
+    t_search_direction.set(1)
+    
+    start.set("1.0")
+    Label(frame1, text="Find text: ").pack(side=LEFT)
+    tEntry = Entry(frame1,textvariable=t_findtext,width=50)
+    tEntry.pack(side=LEFT)
+    tEntry.focus_set()
+
+    Label(frame2, text="Options: ").pack(side=LEFT)
+    Checkbutton(frame2, text="Match case", variable=t_match_case).pack(side=LEFT,padx=5)
+    Checkbutton(frame2, text="Wrap around", variable=t_wrap_around).pack(side=LEFT,padx=5)
+
+    Label(frame3, text="Direction:   ").pack(side=LEFT)
+    search_UP = Radiobutton(frame3, text='IP', variable=t_search_direction, value=1)
+    search_DOWN = Radiobutton(frame3, text='Down', variable=t_search_direction, value=0)
+    search_UP.pack(side=LEFT)
+    search_DOWN.pack(side=LEFT)
+
+    def close_func(*arg):
+        widget.tag_remove("search",1.0,END)
+        topwin.destroy()
+    button = Button(frame4, text='Find', command=text_finder).pack(side=TOP,pady=15, padx=10)
+    button = Button(frame4, text='Close', command=close_func).pack(side=TOP, padx=10)
+    
+    topwin.protocol('WM_DELETE_WINDOW', close_func)
+    topwin.bind('<Escape>', close_func)
+    topwin.bind('<Return>', text_finder)
+    
 def rClicker(e):
     ''' right click context menu for all Tk Entry and Text widgets
     '''
@@ -2708,6 +2958,7 @@ def Changelog():
         topwin.destroy()
     topwin.bind('<Escape>', close_func)
     topwin.bind("<Control-a>", widget_sel_all)
+    Tbox.bind('<Control-f>',lambda x: search_text_dialog(Tbox))
 
 class msg_binder:
     def __init__(self,_frame,_text,_font,l_width,_color,_bgcolor,function,function_exc,gui_add,*arg):
@@ -2831,686 +3082,766 @@ def set_activated_S2(*arg):
     global activated_widget
     activated_widget = ('S2',S2)
 
-## Loading from settings file
-### 0all_sound, 1entry, 2username mention in textbox
-sound_settings = [1,1,1]
-task_loop_interval = int(read_settings('chat_interval=',500))
-sound_settings[0] = int(read_settings('enable_sound=',1))
-sound_settings[1] = int(read_settings('entry_enabled=',0))
-sound_settings[2] = int(read_settings('user_textbox=',1))
-dsound_interval=float(read_settings('sound_interval=',2.0))
-leave_join = int(read_settings('leave_join=',1))
-show_ttime= int(read_settings('show_ttime=',2))
-nadd_spaces= int(read_settings('nadd_spaces=',1))
-username = str(read_settings('username=','User'+str(randrange(1,999,1))))
-if len(username) < 1:
-    username = 'User'+str(randrange(1,999,1))
-autojoin = int(read_settings('autojoin=',0))
-show_users = int(read_settings('show_users=',1))
-X_size = int(read_settings('X_size=',800))
-Y_size = int(read_settings('Y_size=',600))
+if __name__ == '__main__':
+    global sys_path, OS
+    sys_path = os.getcwd()
+    OS = platform.system()
+    print 'Path ',sys_path
 
-font1 = str(read_settings('font1=','Arial'))
-font2 = int(read_settings('font2=',10))
-font3 = str(read_settings('font3=','normal'))
-text_font = (font1,font2,font3)
-passwd = str(read_settings('usrauth=',''))
-autoauth = int(read_settings('autoauth=',1))
-offline_msg = int(read_settings('offline_msg=',1))
-update_enabled = int(read_settings('update_enabled=',0))
-update_link = str(read_settings('update_link=',''))
-fdl_path = str(read_settings('fdl_path=','downloads/'))
-write_log = int(read_settings('chlog=',1))
-usra_len = int(read_settings('usra_len=',20))
-day_number_old = str(read_settings('day_number=','0'))
-window_sizes = []
-window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_settings('win_changelog_y=','500'))]])
-updater_ver = str(read_settings('updater_ver=','1'))
-show_logtime = int(read_settings('show_logtime=',2))
-saved_theme = str(read_settings('theme=','Default'))
-scroll_class_u = str(read_settings('scrollbar_class=','system'))
-if scroll_class_u == 'system':
-    from ttk import Scrollbar
-E_borderlen = int(read_settings('E_borderlen=',1))
-T_borderlen = int(read_settings('T_borderlen=',1))
-S_borderlen = int(read_settings('S_borderlen=',1))
-show_toolbar = int(read_settings('show_toolbar=',1))
-use_alternative_tlb = int(read_settings('use_alternative_tlb=',0))
-default_colors_list = [['chat','Warnings','redcol','red','white'],
-                    ['chat','Server msg','bluecol','blue','white'],
-                    ['chat','Server warnings','browncol','#862d2d','white'],
-                    ['chat','Username','greencol','#009900','white'],
-                    ['chat','Normal msg','blackcol','black','white'],
-                    ['chat','User lvl3','pinkcol','pink','white'],
-                    ['chat','User lvl4','orangecol','#e65b00','white'],
-                    ['chat','High lvl msg','purplecol','purple','white'],
-                    ['chat','AFK','greycol','#7F7F7F','white'],
-                    ['chat','Offline','offcol','#7F7F7F','white'],
-                    ['chat','Links','blue_link','blue','white'],
-                    ['chat','Cyocol','cycol','#007f80','white'],
-                    ['chat','Private msg','privatecol','white','#262626'],
-                    ['chat','Private username','privatgreen','#00cc00','#262626'],
-                    ['chat','Private link','privatlink','#4d93ff','#262626'],
-                    ['chat','Dark background','olfo-backgr','black','#c8d9ea'],
-                    ['chat','Bright background','light-grey-bg','black','#eaeefa'],
-                    ['window','Select background','selectbg','#6B9EB7','#4283A4'],
-                    ['window','Rootcolor','rootcolor','black','#DBD9D9'],
-                    ['window','Text widget','text-widget','black','white'],
-                    ['window','Entry widget','entry-widget','black','white'],
-                    ['window','Border-text','border-text','black','default'],
-                    ['window','Border-entry','border-entry','black','default'],
-                    ['window','Scrollbar','troughcolor','#606060','#9f9f9f'],
-                    ['window','Toolbar','toolbar','black','#d9d9d9'],
-                    ['window','Toolbar-selected','toolbar-selected','black','#d9d9d9'],
-                    ['window','Toolbar-menu','toolbar-menu','black','#d9d9d9'],
-                       ]
-## Windows seems to be the only system that supports these colors, they have to be replaced
-## Will hardcode for now and fix some day in the future *tm
-if OS == 'Windows':
-    default_colors_list[24][4] = 'SystemMenu'
-    default_colors_list[25][3] = 'SystemHighlightText'
-    default_colors_list[25][4] = 'SystemHighlight'
-    default_colors_list[26][4] = 'SystemMenu'
-    
-if saved_theme == 'Default':
-    chat_color_list = list(default_colors_list)
-else:
-    chat_color_list = list_from_file('load/themes/'+saved_theme,',')
-if chat_color_list == []:
-    chat_color_list = list(default_colors_list)
+    ## Top domain list
+    sys.path.insert(0, './lib')
+    from top_domains import TLDS
+    for x in TLDS:
+        x = x.decode('utf-8')
 
-## Setting global vars
-sound_interval = 0
-msg_thrd = 0
-action_time = True
-data_list = []
-msg_recv = 0
-windowfocus = True
-icon_was_switched = False
-kill_reconnect = False
-connected_server = ''
-sender_thread_list, userlog_list, dl_ul_events, linklist = [], [], [], []
-entry_mlist, file_list, thread_message_list = [], [], []
-day_number = strftime("%d")
-entry_message_arch = 0
-USRLIST = []
-default_os_color = ''
-
-## Tkinter below
-root = Tk()
-root.title("iSPTC - "+username)
-root.minsize(300,300)
-root.geometry('%sx%s' % (X_size,Y_size))
-maxsize = "5x5"
-textt = StringVar()
-textt.set("")
-###Toolbar
-class toolbar_alternative:
-    def __init__(self):
-        self.frame = Frame(root, height=20,width=X_size)
-        self.frame.pack_propagate(0)
-        self.frame.pack(side=TOP,fill=Y)
-        self.menu_btn= tkButton(self.frame,text='Menu', command=self.open_submenu,bd=0,width=10,highlightthickness=0)
-        self.menu_btn.pack(side=LEFT)
-##        self.menu_btn.grid(column=0,row=0)
-        self.menu = Menu(None, tearoff=0, takefocus=0)
-        self.submenus = toolbar_menus(self.menu)
+    if OS is 'Windows':
+        import winsound
         
-    def open_submenu(self):
-        self.menu.tk_popup(self.menu_btn.winfo_rootx()+55, self.menu_btn.winfo_rooty()+40,entry="0")
-
-    def destroy(self):
-        self.frame.destroy()
+    ## Loading from settings file
+    ### 0all_sound, 1entry, 2username mention in textbox
+    sound_settings = [1,1,1]
+    task_loop_interval = int(read_settings('chat_interval=',500))
+    sound_settings[0] = int(read_settings('enable_sound=',1))
+    sound_settings[1] = int(read_settings('entry_enabled=',0))
+    sound_settings[2] = int(read_settings('user_textbox=',1))
+    dsound_interval=float(read_settings('sound_interval=',2.0))
+    leave_join = int(read_settings('leave_join=',1))
+    show_ttime= int(read_settings('show_ttime=',2))
+    nadd_spaces= int(read_settings('nadd_spaces=',1))
+    username = str(read_settings('username=','User'+str(randrange(1,999,1))))
+    if len(username) < 1:
+        username = 'User'+str(randrange(1,999,1))
+    autojoin = int(read_settings('autojoin=',0))
+    show_users = int(read_settings('show_users=',1))
+    X_size = int(read_settings('X_size=',800))
+    Y_size = int(read_settings('Y_size=',600))
+    font1 = str(read_settings('font1=','Arial'))
+    font2 = int(read_settings('font2=',10))
+    font3 = str(read_settings('font3=','normal'))
+    text_font = (font1,font2,font3)
+    passwd = str(read_settings('usrauth=',''))
+    autoauth = int(read_settings('autoauth=',1))
+    offline_msg = int(read_settings('offline_msg=',1))
+    update_enabled = int(read_settings('update_enabled=',0))
+    update_link = str(read_settings('update_link=',''))
+    fdl_path = str(read_settings('fdl_path=','downloads/'))
+    write_log = int(read_settings('chlog=',1))
+    usra_len = int(read_settings('usra_len=',20))
+    day_number_old = str(read_settings('day_number=','0'))
+    window_sizes = []
+    window_sizes.append([[str(read_settings('win_changelog_x=','700'))],[str(read_settings('win_changelog_y=','500'))]])
+    updater_ver = str(read_settings('updater_ver=','1'))
+    show_logtime = int(read_settings('show_logtime=',2))
+    saved_theme = str(read_settings('theme=','Default'))
+    scroll_class_u = str(read_settings('scrollbar_class=','system'))
+    if scroll_class_u == 'system':
+        from ttk import Scrollbar
+    E_borderlen = int(read_settings('E_borderlen=',1))
+    T_borderlen = int(read_settings('T_borderlen=',1))
+    S_borderlen = int(read_settings('S_borderlen=',1))
+    show_toolbar = int(read_settings('show_toolbar=',1))
+    use_alternative_tlb = int(read_settings('use_alternative_tlb=',0))
+    default_colors_list = [['chat','Warnings','redcol','red','white'],
+                        ['chat','Server msg','bluecol','blue','white'],
+                        ['chat','Server warnings','browncol','#862d2d','white'],
+                        ['chat','Username','greencol','#009900','white'],
+                        ['chat','Normal msg','blackcol','black','white'],
+                        ['chat','User lvl3','pinkcol','pink','white'],
+                        ['chat','User lvl4','orangecol','#e65b00','white'],
+                        ['chat','High lvl msg','purplecol','purple','white'],
+                        ['chat','AFK','greycol','#7F7F7F','white'],
+                        ['chat','Offline','offcol','#7F7F7F','white'],
+                        ['chat','Links','blue_link','blue','white'],
+                        ['chat','Cyocol','cycol','#007f80','white'],
+                        ['chat','Private msg','privatecol','white','#262626'],
+                        ['chat','Private username','privatgreen','#00cc00','#262626'],
+                        ['chat','Private link','privatlink','#4d93ff','#262626'],
+                        ['chat','Dark background','olfo-backgr','black','#c8d9ea'],
+                        ['chat','Bright background','light-grey-bg','black','#eaeefa'],
+                        ['window','Select background','selectbg','#6B9EB7','#4283A4'],
+                        ['window','Rootcolor','rootcolor','black','#DBD9D9'],
+                        ['window','Text widget','text-widget','black','white'],
+                        ['window','Entry widget','entry-widget','black','white'],
+                        ['window','Border-text','border-text','black','default'],
+                        ['window','Border-entry','border-entry','black','default'],
+                        ['window','Scrollbar','troughcolor','#606060','#9f9f9f'],
+                        ['window','Toolbar','toolbar','black','#d9d9d9'],
+                        ['window','Toolbar-selected','toolbar-selected','black','#d9d9d9'],
+                        ['window','Toolbar-menu','toolbar-menu','black','#d9d9d9'],
+                           ]
+    ## Windows seems to be the only system that supports these colors, they have to be replaced
+    ## Will hardcode for now and fix some day in the future *tm
+    if OS == 'Windows':
+        default_colors_list[24][4] = 'SystemMenu'
+        default_colors_list[25][3] = 'SystemHighlightText'
+        default_colors_list[25][4] = 'SystemHighlight'
+        default_colors_list[26][4] = 'SystemMenu'
         
-class toolbar_default:
-    def __init__(self):
-        self.menu = Menu(root,tearoff=0,borderwidth=0)
-        root.config(menu=self.menu)
-        self.submenus = toolbar_menus(self.menu)
-        
-    def destroy(self):
-        self.menu.destroy()
-    
-def toolbar_menus(menu):
-    menu1 = Menu(menu,tearoff=0)
-    menu.add_cascade(label='Server',menu=menu1)
-    menu1.add_command(label='Join', command=join_typing)
-    menu1.add_command(label='Join last', command=lambda: join_server(False))
-    menu1.add_separator()
-    menu1.add_command(label='Leave', command=leave_server)
-    menu1.add_command(label='Quit', command=closewin)
+    if saved_theme == 'Default':
+        chat_color_list = list(default_colors_list)
+    else:
+        chat_color_list = list_from_file('load/themes/'+saved_theme,',')
+    if chat_color_list == []:
+        chat_color_list = list(default_colors_list)
 
-    menu3 = Menu(menu,tearoff=0)
-    menu.add_cascade(label='Commands',menu=menu3)
-    menu3.add_command(label='Command window', command=command_window)
-    menu3.add_separator()
-    menu3.add_command(label='Go afk', command=send_afk)
-    menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
-    menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
-    menu3.add_separator()
-    menu3.add_command(label='Help', command=T_ins_help)
-    menu3.add_command(label='Clear chat', command=reset_textbox)
-    menu3.add_command(label='Clear entry', command=lambda: textt.set(''))
-    menu3.add_command(label='File list', command=lambda: enter_text('command_window','/fl'))
-    menu3.add_command(label='Link list', command=T_ins_linklist)
-    menu3.add_command(label='Log', command=T_ins_log)
-    menu3.add_command(label='User list', command=T_ins_userlist)
+    ## Setting global vars
+    ver = '1.09z'
+    sound_interval = 0
+    msg_thrd = 0
+    action_time = True
+    data_list = []
+    msg_recv = 0
+    windowfocus = True
+    icon_was_switched = False
+    kill_reconnect = False
+    connected_server = ''
+    sender_thread_list, userlog_list, dl_ul_events, linklist = [], [], [], []
+    entry_mlist, file_list, thread_message_list = [], [], []
+    day_number = strftime("%d")
+    entry_message_arch = 0
+    USRLIST = []
+    default_os_color = ''
 
-    menu4 = Menu(menu,tearoff=0)
-    menu.add_cascade(label='File',menu=menu4)
-    menu4.add_command(label='Download manager', command=file_manager)
-    menu4.add_separator()
-    menu4.add_command(label='Open folder', command=lambda: open_address_no_http(fdl_path))
-    menu4.add_command(label='Share', command=share_file)
-
-    menu5 = Menu(menu,tearoff=0)
-    menu.add_cascade(label='Settings',menu=menu5)
-    menu5.add_command(label='Set user', command=username_menu)
-    menu5.add_command(label='Set font', command=font_menu)
-    menu5.add_command(label='Set download path', command=download_menu)
-    menu5.add_command(label='Color settings', command=color_menu)
-    menu5.add_command(label='Update settings', command=update_menu)
-    menu5.add_command(label='Sound settings', command=sound_menu)
-    menu5.add_command(label='Other settings', command=other_menu)
-
-    helpmenu = Menu(menu,tearoff=0)
-    menu.add_cascade(label='Help', menu=helpmenu)
-    helpmenu.add_command(label='Changelog', command=Changelog)
-    helpmenu.add_command(label='About..', command=About)
-    return (menu1, menu3, menu4, menu5, helpmenu)
-
-if scroll_class_u == 'alternative':
-    class Scrollbar:
-        def __init__(self,widget,*arg):
-            self.bg, self.troughcolor,self.highlightbackground, self.highlightcolor = '#DBD9D9','#9f9f9f','#DBD9D9','#606060'
-            self.frame = Frame(widget,width=16, height=2, bg=self.bg, bd=0, highlightthickness= 0)
-            self.windowY = float(self.frame.winfo_height())
-            self.m_x, self.m_y, self.m_x_old, self.m_y_old = 0,0,0,0
-            self.bar_color = self.troughcolor
-            self.activated = False
-            self.command = None
-            self.izmers = float(0.5)
-            self.kur = float(0.0)
-            self.canva = Canvas(self.frame, width=16, height=Y_size, bg=self.bg, bd= 0,highlightthickness= 0, relief= SUNKEN)
-            self.canva.bind('<Motion>',self.motion)
-            self.bind("<Configure>", self.on_resize)
-            self.canva.bind("<Enter>", self.on_enter)
-            self.canva.bind("<Leave>", self.on_leave)
-            self.canva.bind("<ButtonPress-1>", self.click_view)
-            self.canva.bind("<ButtonRelease-1>", self.click_view_stop)
+    ## Tkinter below
+    root = Tk()
+    root.title("iSPTC - "+username)
+    root.minsize(300,300)
+    root.geometry('%sx%s' % (X_size,Y_size))
+    maxsize = "5x5"
+    textt = StringVar()
+    textt.set("")
+    ###Toolbar
+    class toolbar_alternative:
+        def __init__(self):
+            self.frame = Frame(root, height=20,width=X_size)
+            self.frame.pack_propagate(0)
+            self.frame.pack(side=TOP,fill=Y)
+            self.menu_btn= tkButton(self.frame,text='Menu', command=self.open_submenu,bd=0,width=10,highlightthickness=0)
+            self.menu_btn.pack(side=LEFT)
+            self.menu = Menu(None, tearoff=0, takefocus=0)
+            self.submenus = toolbar_menus(self.menu)
+            self.frame.bind("<Configure>", self.on_resize)
             
+        def open_submenu(self):
+            self.menu.tk_popup(self.menu_btn.winfo_rootx()+55, self.menu_btn.winfo_rooty()+40,entry="0")
 
-        def pack(self,**kwargs):
-            for key in kwargs:
-                if str(key) == 'side':
-                    sider = kwargs[key]
-            self.frame.pack(side=sider,fill=Y)
-            self.canva.pack(fill=Y)
-            self.canva.create_rectangle(0, self.kur, 16, self.windowY*self.izmers, fill=self.bar_color)
-
-        def on_resize(self,event):
-            self.windowY = float(self.frame.winfo_height())
-            self.canva.configure(height=self.windowY)
-        def on_enter(self,event):
-            self.bar_color = self.highlightcolor
-            self.redraw_canva()
-        def on_leave(self,event):
-            self.bar_color = self.troughcolor
-            self.redraw_canva()
-            
-        def configure(self,**kwargs):
-            self.on_config(**kwargs)
-            self.redraw_canva()
-
-        def config(self,**kwargs):
-            self.on_config(**kwargs)
-            self.redraw_canva()
-
-        def on_config(self,**kwargs):
-            for key in kwargs:
-                if str(key) == 'bg':
-                    self.bg = kwargs[key]
-                    self.frame.config(bg=self.bg)
-                    self.canva.config(bg=self.bg)
-                elif str(key) == 'command':
-                    self.command = kwargs[key]
-                    self.target_widget = kwargs[key].im_self
-                elif str(key) == 'troughcolor':
-                    self.troughcolor = kwargs[key]
-                    self.bar_color = self.troughcolor
-                elif str(key) == 'highlightbackground':
-                    self.highlightbackground = kwargs[key]
-                elif str(key) == 'highlightcolor':
-                    self.highlightcolor = kwargs[key]
-                elif str(key) == 'bd' or str(key) == 'border':
-                    self.frame.config(bd=kwargs[key])
-                elif str(key) == 'highlightthickness':
-                    self.frame.config(highlightthickness = kwargs[key])
-##            self.canva.config(disabledoutline=1)
-                    
-        def destroy(self,*arg):
+        def destroy(self):
             self.frame.destroy()
 
-        def redraw_canva(self,*arg):
-            izmers = self.izmers
-            kur = self.kur
-            if izmers > 0.957:
-                izmers = 0.957
-            if kur - izmers < 0.043:
-                kur = izmers +0.043
-            self.canva.create_rectangle(0, self.windowY*kur, 18, self.windowY*izmers, fill=self.bar_color, outline=self.bar_color)
+        def on_resize(self,event):
+            windowX = root.winfo_width()
+            self.frame.configure(width=windowX)
+            
+    class toolbar_default:
+        def __init__(self):
+            self.menu = Menu(root,tearoff=0,borderwidth=0)
+            root.config(menu=self.menu)
+            self.submenus = toolbar_menus(self.menu)
+            
+        def destroy(self):
+            self.menu.destroy()
+        
+    def toolbar_menus(menu):
+        menu1 = Menu(menu,tearoff=0)
+        menu.add_cascade(label='Server',menu=menu1)
+        menu1.add_command(label='Join', command=join_typing)
+        menu1.add_command(label='Join last', command=lambda: join_server(False))
+        menu1.add_separator()
+        menu1.add_command(label='Leave', command=leave_server)
+        menu1.add_command(label='Quit', command=closewin)
 
-        def click_view(self,*arg):
-            self.activated = True
-        def click_view_stop(self,*arg):
-            self.activated = False
-            self.mouse_click()
+        menu2 = Menu(menu,tearoff=0)
+        menu.add_cascade(label='Tools',menu=menu2)
+        menu2.add_command(label='Text editor - Logs/', command=lambda: popen_text_editor('log/'))
+        menu2.add_command(label='Text editor - Lib/', command=lambda: popen_text_editor('lib/'))
 
-        def set(self,izmers,kur):
-            self.izmers = float(izmers)
-            self.kur = float(kur)
-            self.canva.delete(ALL)
-            self.redraw_canva()
+        menu3 = Menu(menu,tearoff=0)
+        menu.add_cascade(label='Commands',menu=menu3)
+        menu3.add_command(label='Command window', command=command_window)
+        menu3.add_separator()
+        menu3.add_command(label='Go afk', command=send_afk)
+        menu3.add_command(label='Register', command=lambda: t_auth_window('register'))
+        menu3.add_command(label='Auth', command=lambda: t_auth_window('auth'))
+        menu3.add_separator()
+        menu3.add_command(label='Help', command=T_ins_help)
+        menu3.add_command(label='Clear chat', command=reset_textbox)
+        menu3.add_command(label='Clear entry', command=lambda: textt.set(''))
+        menu3.add_command(label='File list', command=lambda: enter_text('command_window','/fl'))
+        menu3.add_command(label='Link list', command=T_ins_linklist)
+        menu3.add_command(label='Log', command=T_ins_log)
+        menu3.add_command(label='User list', command=T_ins_userlist)
 
-        def bind(self,button, command):
-            self.frame.bind(button, command)
+        menu4 = Menu(menu,tearoff=0)
+        menu.add_cascade(label='File',menu=menu4)
+        menu4.add_command(label='File manager', command=file_manager)
+        menu4.add_separator()
+        menu4.add_command(label='Open folder', command=lambda: open_address_no_http(fdl_path))
+        menu4.add_command(label='Share', command=share_file)
 
-        def motion(self,event,*arg):
-            self.m_x, self.m_y = event.x, event.y
-            if self.activated == True:
+        menu5 = Menu(menu,tearoff=0)
+        menu.add_cascade(label='Settings',menu=menu5)
+        menu5.add_command(label='Set user', command=username_menu)
+        menu5.add_command(label='Set font', command=font_menu)
+        menu5.add_command(label='Set download path', command=download_menu)
+        menu5.add_command(label='Color settings', command=color_menu)
+        menu5.add_command(label='Update settings', command=update_menu)
+        menu5.add_command(label='Sound settings', command=sound_menu)
+        menu5.add_command(label='Other settings', command=other_menu)
+
+        helpmenu = Menu(menu,tearoff=0)
+        menu.add_cascade(label='Help', menu=helpmenu)
+        helpmenu.add_command(label='Changelog', command=Changelog)
+        helpmenu.add_command(label='About..', command=About)
+        return (menu1,menu2, menu3, menu4, menu5, helpmenu)
+
+    if scroll_class_u == 'alternative':
+        class Scrollbar:
+            def __init__(self,widget,*arg):
+                self.bg, self.troughcolor,self.highlightbackground, self.highlightcolor = '#DBD9D9','#9f9f9f','#DBD9D9','#606060'
+                self.frame = Frame(widget,width=16, height=2, bg=self.bg, bd=0, highlightthickness= 0)
+                self.windowY = float(self.frame.winfo_height())
+                self.m_x, self.m_y, self.m_x_old, self.m_y_old = 0,0,0,0
+                self.bar_color = self.troughcolor
+                self.activated = False
+                self.command = None
+                self.izmers = float(0.5)
+                self.kur = float(0.0)
+                self.canva = Canvas(self.frame, width=16, height=Y_size, bg=self.bg, bd= 0,highlightthickness= 0, relief= SUNKEN)
+                self.canva.bind('<Motion>',self.motion)
+                self.bind("<Configure>", self.on_resize)
+                self.canva.bind("<Enter>", self.on_enter)
+                self.canva.bind("<Leave>", self.on_leave)
+                self.canva.bind("<ButtonPress-1>", self.click_view)
+                self.canva.bind("<ButtonRelease-1>", self.click_view_stop)
+                
+
+            def pack(self,**kwargs):
+                for key in kwargs:
+                    if str(key) == 'side':
+                        sider = kwargs[key]
+                self.frame.pack(side=sider,fill=Y)
+                self.canva.pack(fill=Y)
+                self.canva.create_rectangle(0, self.kur, 16, self.windowY*self.izmers, fill=self.bar_color)
+
+            def on_resize(self,event):
+                self.windowY = float(self.frame.winfo_height())
+                self.canva.configure(height=self.windowY)
+            def on_enter(self,event):
+                self.bar_color = self.highlightcolor
+                self.redraw_canva()
+            def on_leave(self,event):
+                self.bar_color = self.troughcolor
+                self.redraw_canva()
+                
+            def configure(self,**kwargs):
+                self.on_config(**kwargs)
+                self.redraw_canva()
+
+            def config(self,**kwargs):
+                self.on_config(**kwargs)
+                self.redraw_canva()
+
+            def on_config(self,**kwargs):
+                for key in kwargs:
+                    if str(key) == 'bg':
+                        self.bg = kwargs[key]
+                        self.frame.config(bg=self.bg)
+                        self.canva.config(bg=self.bg)
+                    elif str(key) == 'command':
+                        self.command = kwargs[key]
+                        self.target_widget = kwargs[key].im_self
+                    elif str(key) == 'troughcolor':
+                        self.troughcolor = kwargs[key]
+                        self.bar_color = self.troughcolor
+                    elif str(key) == 'highlightbackground':
+                        self.highlightbackground = kwargs[key]
+                    elif str(key) == 'highlightcolor':
+                        self.highlightcolor = kwargs[key]
+                    elif str(key) == 'bd' or str(key) == 'border':
+                        self.frame.config(bd=kwargs[key])
+                    elif str(key) == 'highlightthickness':
+                        self.frame.config(highlightthickness = kwargs[key])
+                        
+            def destroy(self,*arg):
+                self.frame.destroy()
+
+            def redraw_canva(self,*arg):
+                izmers = self.izmers
+                kur = self.kur
+                if izmers > 0.96:
+                    izmers = 0.96
+                if kur - izmers < 0.04:
+                    kur = izmers +0.04
+                if self.activated == False:
+                    self.canva.create_rectangle(0, self.windowY*kur, 18, self.windowY*izmers, fill=self.bar_color, outline=self.bar_color)
+                else:
+                    self.canva.create_rectangle(0, self.windowY*kur, 18, self.windowY*izmers, fill=self.highlightcolor, outline=self.highlightcolor)
+
+            def click_view(self,*arg):
+                self.activated = True
+            def click_view_stop(self,*arg):
+                self.activated = False
                 self.mouse_click()
 
-        def mouse_click(self,*arg):
-            try:
-                lncount = float(self.target_widget.index("end-1c"))
-            except:
+            def set(self,izmers,kur):
+                self.izmers = float(izmers)
+                self.kur = float(kur)
+                self.canva.delete(ALL)
+                self.redraw_canva()
+
+            def bind(self,button, command):
+                self.frame.bind(button, command)
+
+            def motion(self,event,*arg):
+                self.m_x, self.m_y = event.x, event.y
+                self.m_y = self.m_y + self.windowY/2*(self.izmers - self.kur)
+                if self.activated == True:
+                    self.mouse_click()
+
+            def mouse_click(self,*arg):
                 try:
-                    lncount = float(self.target_widget.size())
+                    lncount = float(self.target_widget.index("end-1c"))
                 except:
-                    print 'Scrollbar: did not find any lines'
-            try:
-                calc = 1.00/(self.windowY/self.m_y)
-            except ZeroDivisionError:
-                calc = 0.00
-            calc = lncount*calc
-            self.command(int(calc))
-            
-        def get(self):
-            return self.izmers, self.kur
+                    try:
+                        lncount = float(self.target_widget.size())
+                    except:
+                        print 'Scrollbar: did not find any lines'
+                try:
+                    calc = 1.00/(self.windowY/self.m_y)
+                except ZeroDivisionError:
+                    calc = 0.00
+                calc = lncount*calc
+                self.command(int(calc))
+                
+            def get(self):
+                return self.izmers, self.kur
 
-### Window widgets
-def create_widgets():
-    global T,E,User_area,S,S2, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen, toolbar
-    global show_toolbar, use_alternative_tlb
-    if show_toolbar == 1:
-        if use_alternative_tlb == 0:
-            toolbar = toolbar_default()
-        else:
-            toolbar = toolbar_alternative()
-    E = Entry(textvariable=textt)
-    User_area = Text(root, height=44, width=usra_len)
-    S = Scrollbar(root)
-    S2 = Scrollbar(root)
-    T = Text(root, height=46, width=114,wrap=WORD)
-    configure_border_size(E,E_borderlen)
-    configure_border_size(T,T_borderlen)
-    try:
-        configure_border_size(User_area,T_borderlen)
-        configure_border_size(S2,S_borderlen)
-    except:
-        pass
-    configure_border_size(S,S_borderlen)
-    S.pack(side=RIGHT, fill=Y)
-    if show_users == 1:
-        User_area.pack(side=LEFT,fill=Y)
-        S2.pack(side=LEFT, fill=Y)
-    E.pack(side=BOTTOM,fill=X)
-    T.pack(side=BOTTOM,fill=BOTH,expand=1)
-    activated_widget = ('E',E)
-    S.config(command=T.yview)
-    S2.config(command=User_area.yview)
-    User_area.config(yscrollcommand=S2.set,state="disabled",wrap='none')
-    User_area.bind( '<Configure>', maxsize )
-    T.config(yscrollcommand=S.set,state="disabled")
-    E.focus_set()   
-    default_os_color = root.cget('bg')
-    tag_colors()
-    
-    
-    root.bind("<Control-a>", widget_sel_all)
-    root.bind("<Tab>", focus_entry)
-    root.bind("<Control-q>",lambda x: file_manager())
-    root.bind("<Control-m>",lambda x: open_address_in_webbrowser(fdl_path))
-    root.bind('<Control-j>', join_server_shortcut)
-    root.bind('<Control-c>', copy_text)
-    root.bind('<Control-g>', command_window)
-    ##E.bind("<Key>", return_break)
-    root.bind('<Return>', enter_text)
-    root.bind('<KP_Enter>', enter_text)
-    root.bind('<Escape>', reset_entry)
-    root.bind('<FocusIn>', winf_is)
-    root.bind('<FocusOut>', winf_isnt)
-    root.bind('<Motion>', motion)
-    root.bind('<Button-1>', deselect_widgets)
-    if OS != 'Windows':
-        root.bind('<Button-3>', copy_paste_buttons)
-        E.bind("<Button-4>", focusT)
-        E.bind("<Button-5>", focusT)
-        root.bind('<Button-1>', copy_paste_buttons_del)
-    if OS == 'Windows':
-        root.bind('<Button-3>',rClicker, add='')
-        E.bind("<MouseWheel>", focusT)
-
-    E.bind('<Tab>', autocomplete_name)
-    ## Entry log
-    E.bind('<Up>', entrym_BACK)
-    E.bind('<Down>', entrym_FORWARD)
-    ## Stores name of activated widget for rightclick menu position adjustments
-    if OS != 'Windows':
-        User_area.bind('<Enter>', set_activated_U)
-        T.bind('<Enter>', set_activated_T)
-        E.bind('<Enter>', set_activated_E)
-        S.bind('<Enter>', set_activated_S)
-        S2.bind('<Enter>', set_activated_S2)
+    ### Window widgets
+    def create_widgets():
+        global T,E,User_area,S,S2, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen, toolbar
+        global show_toolbar, use_alternative_tlb
+        if show_toolbar == 1:
+            if use_alternative_tlb == 0:
+                toolbar = toolbar_default()
+            else:
+                toolbar = toolbar_alternative()
+        E = Entry(textvariable=textt)
+        User_area = Text(root, height=44, width=usra_len)
+        S = Scrollbar(root)
+        S2 = Scrollbar(root)
+        T = Text(root, height=46, width=114,wrap=WORD)
+        configure_border_size(E,E_borderlen)
+        configure_border_size(T,T_borderlen)
+        try:
+            configure_border_size(User_area,T_borderlen)
+            configure_border_size(S2,S_borderlen)
+        except:
+            pass
+        configure_border_size(S,S_borderlen)
+        S.pack(side=RIGHT, fill=Y)
+        if show_users == 1:
+            User_area.pack(side=LEFT,fill=Y)
+            S2.pack(side=LEFT, fill=Y)
+        E.pack(side=BOTTOM,fill=X)
+        T.pack(side=BOTTOM,fill=BOTH,expand=1)
+        activated_widget = ('E',E)
+        S.config(command=T.yview)
+        S2.config(command=User_area.yview)
+        User_area.config(yscrollcommand=S2.set,state="disabled",wrap='none')
+        User_area.bind( '<Configure>', maxsize )
+        T.config(yscrollcommand=S.set,state="disabled")
+        E.focus_set()   
+        default_os_color = root.cget('bg')
+        tag_colors(preset='default')
         
-    global hyperlink_obj, hyperlink_obj2
-    hyperlink_obj = HyperlinkManager(T,'hyper')
-    hyperlink_obj2 = HyperlinkManager(T,'hyper2')
-##    def dictprint(*arg):
-##        print S.__dict__.keys()
-##    root.bind('<Motion>', dictprint)
-    
-def tag_colors():
-    global text_font, show_users, chat_color_list, default_colors_list, T,E,User_area, S,S2
-    global toolbar,default_os_color, use_alternative_tlb, show_toolbar, hyperlink_obj, hyperlink_obj2
-##    T.tag_remove('bluecol',1.0,END)
-    widliste = (T,E,User_area,S,S2)
-    text_widgets = (T,User_area)
-    ## Attempts to replace default colors with saved theme
-    #Chat
-    for x in chat_color_list:
-        if x[0] == 'chat':
-            try:
-                # Hyperlinks
-                if x[2] == 'blue_link':
-                    T.tag_configure('hyper', font=text_font, background=x[4], foreground=x[3])
-                if x[2] == 'privatlink':
-                    T.tag_configure('hyper2', font=text_font, background=x[4], foreground=x[3])
-                # Normal text
-                T.tag_configure(x[2], font=text_font, background=x[4], foreground=x[3])
-                if show_users is not 0:
-                    User_area.tag_configure(x[2], font=text_font, background=x[4], foreground=x[3])
-            except Exception as e:
-                e = str(e)
-                T_ins_warning(T, S, 'ERROR: loading color tags')
-                T_ins_warning(T, S, e)
-        # Window
-        elif x[0] == 'window':
-            bgcol = x[4]
-            if bgcol == 'default':
-                bgcol = default_os_color
-            fgcol = x[3]
-            if fgcol == 'default':
-                fgcol= 'black'
-            try:# Root
-                if x[2] == 'rootcolor':
-                    if scroll_class_u != 'system':
-                        S.config(bg=bgcol)
-                        S2.config(bg=bgcol)
-                    root.configure(background=bgcol)
-                # Text and entry widgets
-                elif x[2] == 'text-widget':
-                    for dd in text_widgets:
-                        try:
-                            dd.config(background=bgcol)
-                        except:
-                            print dd,' has no background color'
-                elif x[2] == 'entry-widget':
-                    E.config(fg=fgcol,insertbackground=fgcol,bg=bgcol)
-                # Borders
-                elif x[2] == 'border-text':
-                    for dd in text_widgets:
-                        dd.config(highlightbackground=bgcol)
-                elif x[2] == 'border-entry':
-                    E.config(highlightbackground=bgcol)
-                # Scrollbars
-                elif x[2] == 'troughcolor':
-                    if scroll_class_u != 'system':
-                        try:
-                            S.config(troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
-                            S2.config(troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
-                        except Exception as e:
-                            e = str(e)
-                            print e
-                # Select
-                elif x[2] == 'selectbg':
-                    for x in (T,User_area):
-                        x.configure(inactiveselectbackground=fgcol, selectbackground=bgcol)
-                    E.configure(selectbackground=bgcol)
-                # Toolbar color
-                elif show_toolbar == 1:
-                    if x[2] == 'toolbar':
-                        tcol = bgcol
-                        if use_alternative_tlb == 1:
-                            toolbar.frame.config(bg=bgcol)
-                            toolbar.menu_btn.config(fg=fgcol, bg=bgcol,highlightbackground=fgcol)
-                        elif use_alternative_tlb == 0:
-                            toolbar.menu.config(bg=bgcol,fg=fgcol)
-                    elif x[2] == 'toolbar-selected':
-                        if use_alternative_tlb == 1:
-                            toolbar.menu_btn.config(activeforeground=fgcol,activebackground=bgcol)
-                        toolbar.menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
-                        for dd in toolbar.submenus:
-                            dd.config(activeforeground=fgcol,activebackground=bgcol)
-                    elif x[2] == 'toolbar-menu':
-                        for dd in toolbar.submenus:
-                            dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol)
-                        if use_alternative_tlb == 1:
-                            toolbar.menu.config(bg=bgcol,fg=fgcol)
-            except Exception as e:
-                e = str(e)
-                T_ins_warning(T, S, 'ERROR: loading color tags')
-                T_ins_warning(T, S, e)
-##    selectbackground="red",highlightbackground="red"
-    T.tag_raise("sel")
-    User_area.tag_raise("sel")
-    E.configure(font=text_font)
+        
+        root.bind("<Control-a>", widget_sel_all)
+        root.bind("<Tab>", focus_entry)
+        root.bind("<Control-q>",lambda x: file_manager())
+        root.bind("<Control-m>",lambda x: open_address_in_webbrowser(fdl_path))
+        root.bind('<Control-j>', join_server_shortcut)
+        root.bind('<Control-c>', copy_text)
+        root.bind('<Control-g>', command_window)
+        T.bind('<Control-f>',lambda x: search_text_dialog(T))
+        User_area.bind('<Control-f>',lambda x: search_text_dialog(User_area))
+        ##E.bind("<Key>", return_break)
+        root.bind('<Return>', enter_text)
+        root.bind('<KP_Enter>', enter_text)
+        root.bind('<Escape>', reset_entry)
+        root.bind('<FocusIn>', winf_is)
+        root.bind('<FocusOut>', winf_isnt)
+        root.bind('<Motion>', motion)
+        root.bind('<Button-1>', deselect_widgets)
+        if OS != 'Windows':
+            root.bind('<Button-3>', copy_paste_buttons)
+            E.bind("<Button-4>", focusT)
+            E.bind("<Button-5>", focusT)
+            root.bind('<Button-1>', copy_paste_buttons_del)
+        if OS == 'Windows':
+            root.bind('<Button-3>',rClicker, add='')
+            E.bind("<MouseWheel>", focusT)
+
+        E.bind('<Tab>', autocomplete_name)
+        ## Entry log
+        E.bind('<Up>', entrym_BACK)
+        E.bind('<Down>', entrym_FORWARD)
+        entry_mlist.append('/ljoin')
+        ## Stores name of activated widget for rightclick menu position adjustments
+        if OS != 'Windows':
+            User_area.bind('<Enter>', set_activated_U)
+            T.bind('<Enter>', set_activated_T)
+            E.bind('<Enter>', set_activated_E)
+            S.bind('<Enter>', set_activated_S)
+            S2.bind('<Enter>', set_activated_S2)
+            
+        global hyperlink_obj, hyperlink_obj2
+        hyperlink_obj = HyperlinkManager(T,'hyper')
+        hyperlink_obj2 = HyperlinkManager(T,'hyper2')
+    ##    def dictprint(*arg):
+    ##        print S.__dict__.keys()
+        
+    def tag_colors(**kwargs):
+        global text_font, show_users, chat_color_list, default_colors_list
+        global toolbar,default_os_color, use_alternative_tlb, show_toolbar, hyperlink_obj, hyperlink_obj2
+        preset = get_dict_item(kwargs,'preset','False')
+        window_widget = get_dict_item(kwargs,'window',[])
+        text_widgets = get_dict_item(kwargs,'text',[])
+        entry_widgets = get_dict_item(kwargs,'entry',[])
+        scrollbar_widgets = get_dict_item(kwargs,'scroll',[])
+        listbox_widgets = get_dict_item(kwargs,'listbox',[])
+        frame_widgets = get_dict_item(kwargs,'frame',[])
+        label_widgets = get_dict_item(kwargs,'label',[])
+        if preset == 'default':
+            global T, E, S, S2, User_area, root
+            if show_users == 1:
+                text_widgets=[T,User_area]
+                entry_widgets=[E]
+                scrollbar_widgets=[S,S2]
+                window_widget=[root]
+            else:
+                text_widgets=[T]
+                entry_widgets=[E]
+                scrollbar_widgets=[S]
+                window_widget=[root]
+    ##    T.tag_remove('bluecol',1.0,END)
+         
+        for x in chat_color_list:
+            if x[0] == 'chat':
+                # Text
+                for dd in text_widgets:
+                    try:
+                        # Hyperlinks
+                        if x[2] == 'blue_link':
+                            dd.tag_configure('hyper', font=text_font, background=x[4], foreground=x[3])
+                        if x[2] == 'privatlink':
+                            dd.tag_configure('hyper2', font=text_font, background=x[4], foreground=x[3])
+                        # Normal text
+                        dd.tag_configure(x[2], font=text_font, background=x[4], foreground=x[3])
+                    except Exception as e:
+                        e = str(e)
+                        scroller = S.get()
+                        T_ins_warning(T, S, 'Text ERROR: loading color tags')
+                        T_ins_warning(T, S, e)
+                        if scroller[1] == 1.0:  
+                            T.yview(END)
+                # Listbox
+                for dd in listbox_widgets:
+                    if x[2] == 'blackcol':
+                        dd.config(bg=x[4])
+                        cnt = 0
+                        while True:
+                            try:
+                                dd.itemconfig(cnt, bg=x[4], fg=x[3])
+                                cnt += 1
+                            except:
+                                break
+                # Label fg
+                for dd in label_widgets:
+                    if x[2] == 'blackcol':
+                        dd.configure(foreground=x[3])
+                        
+            # Window
+            elif x[0] == 'window':
+                bgcol = x[4]
+                if bgcol == 'default':
+                    bgcol = default_os_color
+                fgcol = x[3]
+                if fgcol == 'default':
+                    fgcol= 'black'
+                try:# Root, Frames, Label bg
+                    if x[2] == 'rootcolor':
+                        if scroll_class_u != 'system':
+                            for dd in scrollbar_widgets:
+                                dd.config(bg=bgcol)
+                        for dd in window_widget:
+                            dd.configure(background=bgcol)
+                        for dd in frame_widgets:
+                            dd.configure(background=bgcol)
+                        for dd in label_widgets:
+                            dd.configure(background=x[4])
+                    # Text and entry widgets
+                    elif x[2] == 'text-widget':
+                        for dd in text_widgets:
+                            try:
+                                dd.config(background=bgcol)
+                            except:
+                                print dd,' has no background color'
+                    elif x[2] == 'entry-widget':
+                        for dd in entry_widgets:
+                            dd.config(fg=fgcol,insertbackground=fgcol,bg=bgcol)
+                    # Borders
+                    elif x[2] == 'border-text':
+                        for dd in text_widgets:
+                            dd.config(highlightbackground=bgcol)
+                    elif x[2] == 'border-entry':
+                        for dd in entry_widgets:
+                            dd.config(highlightbackground=bgcol)
+                    # Scrollbars
+                    elif x[2] == 'troughcolor':
+                        if scroll_class_u != 'system':
+                            try:
+                                for dd in scrollbar_widgets:
+                                    dd.config(troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
+                            except Exception as e:
+                                e = str(e)
+                                scroller = S.get()
+                                T_ins_warning(T, S, 'Scrollbar ERROR: loading color tags')
+                                T_ins_warning(T, S, e)
+                                if scroller[1] == 1.0:  
+                                    T.yview(END)
+                    # Select
+                    elif x[2] == 'selectbg':
+                        for dd in text_widgets:
+                            dd.configure(inactiveselectbackground=fgcol, selectbackground=bgcol)
+                        for dd in entry_widgets:
+                            dd.configure(selectbackground=bgcol)
+                    # Toolbar color
+                    elif show_toolbar == 1:
+                        if x[2] == 'toolbar':
+                            tcol = bgcol
+                            if use_alternative_tlb == 1:
+                                toolbar.frame.config(bg=bgcol)
+                                toolbar.menu_btn.config(fg=fgcol, bg=bgcol,highlightbackground=fgcol)
+                            elif use_alternative_tlb == 0:
+                                toolbar.menu.config(bg=bgcol,fg=fgcol)
+                        elif x[2] == 'toolbar-selected':
+                            if use_alternative_tlb == 1:
+                                toolbar.menu_btn.config(activeforeground=fgcol,activebackground=bgcol)
+                            toolbar.menu.config(selectcolor=fgcol,activeforeground=fgcol,activebackground=bgcol)
+                            for dd in toolbar.submenus:
+                                dd.config(activeforeground=fgcol,activebackground=bgcol)
+                        elif x[2] == 'toolbar-menu':
+                            for dd in toolbar.submenus:
+                                dd.config(bg=bgcol,fg=fgcol,selectcolor=fgcol)
+                            if use_alternative_tlb == 1:
+                                toolbar.menu.config(bg=bgcol,fg=fgcol)
+                except Exception as e:
+                    e = str(e)
+                    scroller = S.get()
+                    T_ins_warning(T, S, 'ERROR: loading color tags')
+                    T_ins_warning(T, S, e)
+                    if scroller[1] == 1.0:  
+                        T.yview(END)
+    ##    selectbackground="red",highlightbackground="red"
+        T.tag_raise("sel")
+        User_area.tag_raise("sel")
+        E.configure(font=text_font)
 
 
-def focusT(event):
-    T.focus_set()
-##    if event.delta == -120:
-##        print event
-def focus_entry(*arg):
-    E.focus_set()
-    return "break"
-def return_break(*arg):
-    ## Stops tkinter from tabbing
-    return "break"
-def join_server_shortcut(*arg):
-    join_server(False)
-def click1(*arg):
-    pass
-def widget_sel_all(*arg):
-##    global activated_widget
-    activated_widget = root.focus_get() 
-    try:
-        if activated_widget == E:
-            activated_widget.select_range(0, END)
-        else:
-            activated_widget.tag_add(SEL, "1.0", END)
-            activated_widget.mark_set(INSERT, "1.0")
-            activated_widget.see(INSERT)
-            activated_widget.config(yscrollcommand=S.set,state="disabled")
-    except:
+    def focusT(event):
+        T.focus_set()
+    ##    if event.delta == -120:
+    ##        print event
+    def focus_entry(*arg):
+        E.focus_set()
+        return "break"
+    def return_break(*arg):
+        ## Stops tkinter from tabbing
+        return "break"
+    def join_server_shortcut(*arg):
+        join_server(False)
+    def click1(*arg):
         pass
-    return "break"
-def deselect_widgets(*arg):
-    T.tag_remove(SEL, "1.0", END)
-    E.select_clear()
-    User_area.tag_remove(SEL, "1.0", END)
-create_widgets()
-    
+    def widget_sel_all(*arg):
+    ##    global activated_widget
+        activated_widget = root.focus_get() 
+        try:
+            if activated_widget == E:
+                activated_widget.select_range(0, END)
+            else:
+                activated_widget.tag_add(SEL, "1.0", END)
+                activated_widget.mark_set(INSERT, "1.0")
+                activated_widget.see(INSERT)
+                activated_widget.config(yscrollcommand=S.set,state="disabled")
+        except:
+            pass
+        return "break"
+    def deselect_widgets(*arg):
+        T.tag_remove(SEL, "1.0", END)
+        E.select_clear()
+        User_area.tag_remove(SEL, "1.0", END)
+    create_widgets()
+        
 
 
-def task():
-    global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
-    global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
-    global file_list, thread_message_list, msg_thrd
-    for x in thread_message_list[msg_thrd:]:
-        if x[0] == 'command':
-            enter_text('command_window',x[1])
-        msg_thrd+=1
-##    getsize = 0
-##    for x in data_list:
-##        getsize += sys.getsizeof(x)
-##    print getsize
-    scroller = S.get()
-    if sound_interval > 0:
-        sound_interval-=float(task_loop_interval)/1000
-    if msg_recv < len(data_list):
-        for x in range(msg_recv,len(data_list)):
-##            print data_list[x]
-            ## Server messages
-            if data_list[x][:9] == 'SSERVER::':
-                T.config(yscrollcommand=S.set,state="normal")
-                name = lenghten_name('SERVER: ',21)
-                T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
-                userlog_list.append(get_cur_time()+name+data_list[x][9:])
-                if write_log == 1:
-                        write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
-                T.config(yscrollcommand=S.set,state="disabled")
-            ## Private server messages
-            elif data_list[x][:9] == 'WSERVER::':
-                T.config(yscrollcommand=S.set,state="normal")
-                name = lenghten_name('SERVER: ',21)
-                T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','browncol')
-                userlog_list.append(get_cur_time()+name+data_list[x][9:])
-                if write_log == 1:
-                        write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
-                T.config(yscrollcommand=S.set,state="disabled")
-            ## Server leave/join messages
-            elif data_list[x][:9] == 'SERVELJ::':
-                if leave_join == 0:
-                    doing = 'nothing'
-                else:
+    def task():
+        global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
+        global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
+        global file_list, thread_message_list, msg_thrd
+        for x in thread_message_list[msg_thrd:]:
+            if x[0] == 'command':
+                enter_text('command_window',x[1])
+            msg_thrd+=1
+    ##    getsize = 0
+    ##    for x in data_list:
+    ##        getsize += sys.getsizeof(x)
+    ##    print getsize
+        scroller = S.get()
+        if sound_interval > 0:
+            sound_interval-=float(task_loop_interval)/1000
+        if msg_recv < len(data_list):
+            for x in range(msg_recv,len(data_list)):
+    ##            print data_list[x]
+                ## Server messages
+                if data_list[x][:9] == 'SSERVER::':
                     T.config(yscrollcommand=S.set,state="normal")
                     name = lenghten_name('SERVER: ',21)
                     T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
                     userlog_list.append(get_cur_time()+name+data_list[x][9:])
                     if write_log == 1:
-                        write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
+                            write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
                     T.config(yscrollcommand=S.set,state="disabled")
-            ## Server closing connection
-            elif data_list[x][:9] == 'CLOSING::':
-                T.config(yscrollcommand=S.set,state="normal")
-                war = lenghten_name('WARNING: ',21)
-                T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
-                leave_server()
-                T.config(yscrollcommand=S.set,state="disabled")
-            ## File list
-            elif data_list[x][:9] == 'FILLIST::':
-                data_list[x] = data_list[x].rstrip()
-                if data_list[x][9:] == 'EMPTY-LIST':
-                    file_list = list(['EMPTY-LIST'])
+                ## Private server messages
+                elif data_list[x][:9] == 'WSERVER::':
+                    T.config(yscrollcommand=S.set,state="normal")
+                    name = lenghten_name('SERVER: ',21)
+                    T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','browncol')
+                    userlog_list.append(get_cur_time()+name+data_list[x][9:])
+                    if write_log == 1:
+                            write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
+                    T.config(yscrollcommand=S.set,state="disabled")
+                ## Server leave/join messages
+                elif data_list[x][:9] == 'SERVELJ::':
+                    if leave_join == 0:
+                        doing = 'nothing'
+                    else:
+                        T.config(yscrollcommand=S.set,state="normal")
+                        name = lenghten_name('SERVER: ',21)
+                        T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
+                        userlog_list.append(get_cur_time()+name+data_list[x][9:])
+                        if write_log == 1:
+                            write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
+                        T.config(yscrollcommand=S.set,state="disabled")
+                ## Server closing connection
+                elif data_list[x][:9] == 'CLOSING::':
+                    T.config(yscrollcommand=S.set,state="normal")
+                    war = lenghten_name('WARNING: ',21)
+                    T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
+                    leave_server()
+                    T.config(yscrollcommand=S.set,state="disabled")
+                ## File list
+                elif data_list[x][:9] == 'FILLIST::':
+                    data_list[x] = data_list[x].rstrip()
+                    if data_list[x][9:] == 'EMPTY-LIST':
+                        file_list = list(['EMPTY-LIST'])
+                    else:
+                        file_list = string_to_list(data_list[x][9:])
+                ## New file shared
+                elif data_list[x][:9] == 'NEWFILE::':
+                    b = data_list[x].find(']')
+                    T.config(yscrollcommand=S.set,state="normal")
+                    name = lenghten_name('SERVER: ',21)
+                    T.insert(END, get_cur_time()+name+data_list[x][9:b+0]+' shared a file, type "/dl '+data_list[x][b+1:]+'" or open file manager to download\n','bluecol')
+                    userlog_list.append(get_cur_time()+name+data_list[x][9:])
+                    T.config(yscrollcommand=S.set,state="disabled")
+                ## User list update
+                elif data_list[x][:9] == 'USRLIST::':
+                    organise_USRLIST(data_list[x][9:])
+                ## User name change
+                elif data_list[x][:9] == 'DUPLICT::':
+                    data_list[x] = data_list[x].rstrip()
+                    root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
+                    username = data_list[x][9:]
+                ## Messages from users
                 else:
-                    file_list = string_to_list(data_list[x][9:])
-            ## New file shared
-            elif data_list[x][:9] == 'NEWFILE::':
-                b = data_list[x].find(']')
-                T.config(yscrollcommand=S.set,state="normal")
-                name = lenghten_name('SERVER: ',21)
-                T.insert(END, get_cur_time()+name+data_list[x][9:b+0]+' shared a file, type "/dl '+data_list[x][b+1:]+'" or open file manager to download\n','bluecol')
-                userlog_list.append(get_cur_time()+name+data_list[x][9:])
-                T.config(yscrollcommand=S.set,state="disabled")
-            ## User list update
-            elif data_list[x][:9] == 'USRLIST::':
-                organise_USRLIST(data_list[x][9:])
-            ## User name change
-            elif data_list[x][:9] == 'DUPLICT::':
-                data_list[x] = data_list[x].rstrip()
-                root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
-                username = data_list[x][9:]
-            ## Messages from users
-            else:
-                userlog_list.append(get_cur_time()+remove_spaces(data_list[x][4:23])+': '+data_list[x][23:])
-                beeped = False
-                mgreen = 'greencol'
-                mblack = 'blackcol'
-                mlink = 'bluecol'
-                T.config(yscrollcommand=S.set,state="normal")
-                usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
-                    
-                temp_list = []
-                dat = data_list[x][23:]
-                b = dat.find('@@')
-                c = dat.find(']')
-                ## Removes "]" from private message
-                if b is not -1 and c is not -1:
-                    dat = dat[:c]+' '+dat[c+1:]
+                    userlog_list.append(get_cur_time()+remove_spaces(data_list[x][4:23])+': '+data_list[x][23:])
+                    beeped = False
+                    mgreen = 'greencol'
+                    mblack = 'blackcol'
+                    mlink = 'bluecol'
+                    T.config(yscrollcommand=S.set,state="normal")
+                    usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
+                        
+                    temp_list = []
+                    dat = data_list[x][23:]
+                    b = dat.find('@@')
+                    c = dat.find(']')
+                    ## Removes "]" from private message
+                    if b is not -1 and c is not -1:
+                        dat = dat[:c]+' '+dat[c+1:]
 
-                ## Separates words and append to temp_list
-                dat = dat+' '
-                while True:
-                    b = dat.find(' ')
-                    temp_list.append(dat[:b]+' ')
-                    dat = dat[b+1:]
-                    if b is -1:
-                        break
-                temp_list[-1] = temp_list[-1][:-2]
+                    ## Separates words and append to temp_list
+                    dat = dat+' '
+                    while True:
+                        b = dat.find(' ')
+                        temp_list.append(dat[:b]+' ')
+                        dat = dat[b+1:]
+                        if b is -1:
+                            break
+                    temp_list[-1] = temp_list[-1][:-2]
 
-                ## Tags words
-                T.insert(END, get_cur_time(),'blackcol')
-                T.insert(END, uname+': ',usercol)
-                ## Detects private messages
-                if temp_list[0][0:2] == '@@':
-                    mgreen = 'privatgreen'
-                    mblack = 'privatecol'
-                    mlink = 'privatlink'
-                    del temp_list[0]
-                ## Username mentioned
-                for x in temp_list:
-                    nfind, beeped = find_2name(x,username,uname,beeped)
-                    if nfind is True:
-                        T.insert(END, x,mgreen)
-                    ## Hyperlinks
-                    elif nfind is False:
-                        linkk = find_link(x)
-                        if linkk is not 'False':
-                            if mlink == 'privatlink':
-                                T.insert(END, linkk,hyperlink_obj2.add(linkk))
-                            else:
-                                T.insert(END, linkk, hyperlink_obj.add(linkk))
-                            T.insert(END,' ')
-                        if linkk is 'False' and nfind is False:
-                            T.insert(END, x,mblack)       
-                T.insert(END,'\n')
-                ## Writes to logfile
-                if write_log == 1:
-                    tstring= get_cur_time_log()
-                    tstring+=remove_spaces(uname)+': '
+                    ## Tags words
+                    T.insert(END, get_cur_time(),'blackcol')
+                    T.insert(END, uname+': ',usercol)
+                    ## Detects private messages
+                    if temp_list[0][0:2] == '@@':
+                        mgreen = 'privatgreen'
+                        mblack = 'privatecol'
+                        mlink = 'privatlink'
+                        del temp_list[0]
+                    ## Username mentioned
                     for x in temp_list:
-                        tstring+=x
-                    write_logfile('log/',connected_server,tstring+'\n')
-                    
-                nfind = False
-                T.config(yscrollcommand=S.set,state="disabled")
-                if windowfocus is False:
-                    set_winicon(root,'icon2')
-                    icon_was_switched = True
-            msg_recv +=1
-            if scroller[1] == 1.0:  
-                T.yview(END)
-    root.after(task_loop_interval, task)  # reschedule event
+                        nfind, beeped = find_2name(x,username,uname,beeped)
+                        if nfind is True:
+                            T.insert(END, x,mgreen)
+                        ## Hyperlinks
+                        elif nfind is False:
+                            linkk = find_link(x)
+                            if linkk is not 'False':
+                                if mlink == 'privatlink':
+                                    T.insert(END, linkk,hyperlink_obj2.add(linkk))
+                                else:
+                                    T.insert(END, linkk, hyperlink_obj.add(linkk))
+                                T.insert(END,' ')
+                            if linkk is 'False' and nfind is False:
+                                T.insert(END, x,mblack)       
+                    T.insert(END,'\n')
+                    ## Writes to logfile
+                    if write_log == 1:
+                        tstring= get_cur_time_log()
+                        tstring+=remove_spaces(uname)+': '
+                        for x in temp_list:
+                            tstring+=x
+                        write_logfile('log/',connected_server,tstring+'\n')
+                        
+                    nfind = False
+                    T.config(yscrollcommand=S.set,state="disabled")
+                    if windowfocus is False:
+                        set_winicon(root,'icon2')
+                        icon_was_switched = True
+                msg_recv +=1
+                if scroller[1] == 1.0:  
+                    T.yview(END)
+        root.after(task_loop_interval, task)  # reschedule event
 
-set_winicon(root,'icon')
-root.protocol('WM_DELETE_WINDOW', closewin)
-def startup_task():
-    if update_enabled == 1:
-        update_checker(update_link)
-    else:
-        autojoiner()
-    load_lib_scripts(root)
-    root.after(task_loop_interval, task)
-root.after(50, startup_task)
-root.mainloop()
+    set_winicon(root,'icon')
+    root.protocol('WM_DELETE_WINDOW', closewin)
+    def startup_task():
+        if update_enabled == 1:
+            update_checker(update_link)
+        else:
+            autojoiner()
+        load_lib_scripts(root)
+        root.after(task_loop_interval, task)
+    root.after(50, startup_task)
+    root.mainloop()

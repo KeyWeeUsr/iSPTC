@@ -1,8 +1,12 @@
-## Client[1.10] - 2016-2-not yet
+## Client[1.10] - 2016-3-29
 ### Added
+ - Text editor
  - Alternative scrollbar (Uses themes instead of system grey, looks better then default )
  - Option to change select background color
  - Updated themes
+ - New sumbmenu - "Tools"
+ - Log viewer, accessible from tool submenu
+ - Text finder dialog - bound on <Control-f>
 ### Changed
  - Hyperlink manager won't accept words with top level domains in the middle, e.g. ex-.com-ample
 
@@ -233,7 +237,6 @@
 ### Added
  - Server can take commands from clients now. Added 3 - s/log, s/mlog, s/threadip.
 ### Fix
-
  - No chatlog.append on thread timeout
 
 
