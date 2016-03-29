@@ -3,7 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 from time import sleep
-ver = '1.03'
+ver = '1.04'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -43,7 +43,11 @@ def get_cur_time():
 
 def readf(filename):
     file = filename
-    f = open(file, 'rU')
+    try:
+        f = open(file, 'rU')
+    except:
+        savef('',filename)
+        f = open(file, 'rU')
     a = f.read()
     a = str.splitlines(a)
     f.close()
@@ -53,13 +57,6 @@ def savef(text,file):
     f = open(file, 'w')
     f.write(text)
     f.close()
-
-def get_settings(text,text_find):
-    for lines in text:
-        b = lines.find(text_find)
-        if b is not -1:
-            c = lines[len(text_find):]
-    return c
 
 def edit_settings(text,text_find,new_value):
     count = 0
@@ -75,16 +72,36 @@ def edit_settings(text,text_find,new_value):
     count = 1
     return newlist
 
-def write_settings(text_find,new_value):
-        a = readf('load/server.ini')
-        a = edit_settings(a,text_find,new_value)
-        text = a = '\n'.join(str(e) for e in a)
-        savef(text,'load/server.ini')
-
-def read_settings(text_find):
-    a = readf('load/server.ini')
-    a = get_settings(a,text_find)
+def read_settings(*arg):
+    global sys_path
+    a = readf('load/settings.ini')
+    a = get_settings(a,arg[0],arg[1])
     return a
+
+def get_settings(text,text_find,default_value):
+    for lines in text:
+        b = lines.find(text_find)
+        if b is not -1:
+            c = lines[len(text_find):]
+    ## Checks if it exists and appends something, if not
+    try:
+        if c == '':
+            c = default_value
+            if default_value != '':
+                write_settings(text_find[:-1],'\n'+c)
+    except:
+        c = default_value
+        fh = open('load/settings.ini', 'a')
+        fh.write('\n'+str(text_find)+str(c))
+        fh.close()
+    return c
+
+def write_settings(text_find,new_value):
+    global sys_path
+    a = readf('load/settings.ini')
+    a = edit_settings(a,text_find,new_value)
+    text = a = '\n'.join(str(e) for e in a)
+    savef(text,'load/settings.ini')    
 
 def add_spaces(username):
     while len(username) < 19:
@@ -347,7 +364,7 @@ def list_sender_thread(conn,lisst,typ):
         for x in shared_filelist:
             flsizemb = float(len(x[1]))/float(1052291)
             flsizemb = round(flsizemb,2)
-            sendlist+= '[[['+x[0]+']['+str(flsizemb)+' MB'+']['+x[2]+']['+x[3]+']['+x[4]+']]]'
+            sendlist+= '[[['+str(x[0])+']['+str(flsizemb)+' MB'+']['+x[2]+']['+str(x[3])+']['+str(x[4])+']]]'
             cnt += 1
         if cnt == 0:
             event_list.append(['Send-Thread',conn,'FILLIST::EMPTY-LIST'])
@@ -355,7 +372,10 @@ def list_sender_thread(conn,lisst,typ):
             event_list.append(['Send-Thread',conn,'FILLIST::'+sendlist])
     else:
         for x in lisst:
-            event_list.append(['Send-Thread',conn,'WSERVER::'+str(x)])
+            tstring = ''
+            for words in x:
+                tstring += str(words)+' '
+            event_list.append(['Send-Thread',conn,'WSERVER::'+tstring])
             sleep(0.005)
 
 def remove_offline_usr(username2):
@@ -732,9 +752,30 @@ def clientHandler(i):
                 else:
                     sleep(0.05)
                     event_list.append(['Send-Thread',conn,"WSERVER::We don't accept this"])
-    
-def fileserv_thread(i):
-    global threadip, msgprint_enabled, logging_enabled, iplist, action_time, sf
+
+class fileserv_handler:
+    def __init__(self,sf):
+        self.sf = sf
+        for i in range(1,6):
+            self.new_thread(i)
+        print '5 threads started\n'
+        self.update(sf)
+
+    def update(self,sf):
+        global shared_filelist
+        sleep(60)
+        cnt = 0
+        for x in shared_filelist:
+            x[4] -= 1
+            if x[4] < 1: shared_filelist.pop(cnt)
+            cnt += 1
+        self.update(sf)
+
+    def new_thread(self,i):
+        Thread(target=fileserv_thread,args=(self,i,self.sf)).start()
+
+def fileserv_thread(parent,i,sf):
+    global threadip, msgprint_enabled, logging_enabled, iplist, action_time, shared_filelist
     conn, addr = sf.accept() # awaits for a client to connect and then accepts 
     print get_cur_time(),addr," started a fileserver thread!"
     chatlog.append([get_cur_time(),addr[0]," connected to fileserver!"])
@@ -762,11 +803,17 @@ def fileserv_thread(i):
                 if found_file == True:
                     pos = 0
                     filelen = len(shared_filelist[cnt][1])
+                    cnt2 = 500
                     while True:
                         try:
                             conn.send(file_to_send[pos:pos+8192])
                         except:
                             conn.send(file_to_send[pos:])
+                        cnt2 += 1
+                        if cnt2 == 501:
+                            if shared_filelist[cnt][4] < 5:
+                                shared_filelist[cnt][4] = 5
+                                cnt2 = 0
                         pos+=8192
                         if pos > filelen:
                             sleep(1)
@@ -854,7 +901,8 @@ def fileserv_thread(i):
                     cnt += 1
                         
                 ## Puts in list and broadcasts
-                shared_filelist.append([filename,file_str,file_format,get_cur_time(),'500'])
+                global file_time
+                shared_filelist.append([filename,file_str,file_format,get_cur_time(),file_time])
                 event_list.append(['SEND','NEWFILE::'+username+']'+filename])
     except Exception as e:
         e = str(e)
@@ -868,7 +916,7 @@ def fileserv_thread(i):
         conn.close()
     except:
         pass
-    Thread(target=fileserv_thread,args=(i,)).start()
+    parent.new_thread(i)
 
 
 def reset_offmsg_list():
@@ -879,13 +927,13 @@ def reset_offmsg_list():
             if x[2] == '1':
                 off_users.append(x[0])
 
-threads = int(read_settings('threadcnt='))
+threads = int(read_settings('threadcnt=',60))
 action_time = True
 iplist,chatlog,chatmlog,threadip,off_users,off_messages,shared_filelist,event_list = [],[],[],[],[],[],[], []
 read_server_usr_settings()
-log_enabled = int(read_settings('logging='))
-msgprint_enabled = 0
-msgprint_enabled = int(read_settings('msgprint='))
+log_enabled = int(read_settings('logging=',1))
+msgprint_enabled = int(read_settings('msgprint=',0))
+file_time = int(read_settings('file_time=',2900))
 reset_offmsg_list()
 def main(): # main function
     global s,sf, action_time, msgprint_enabled, log_enabled, iplist, threads
@@ -914,10 +962,8 @@ def main(): # main function
         quit()
     sf.listen(5) # number of connections listening for
     print "File server is running......"
-
-    for i in range(1,6):
-        Thread(target=fileserv_thread,args=(i,)).start()
-    print '5 threads started\n'
+    Thread(target=fileserv_handler,args=(sf,)).start()
+    
     Thread(target=eventThread).start()
     print 'eventThread started\n'
     
@@ -989,7 +1035,7 @@ def main(): # main function
             flsize = 0
             for x in shared_filelist:
                 flsize += len(x[1])
-                print x[0],'  MB:[',float(len(x[1]))/float(1052291),'] ', 'B:[',len(x[1]),']'
+                print x[0],'  MB:[',float(len(x[1]))/float(1052291),'] ', 'B:[',len(x[1]),']', 'Time:[',x[4],']'
             print 'Total size ',flsize
         elif msg == 'fld':
             for x in shared_filelist:

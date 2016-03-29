@@ -22,19 +22,10 @@ from client import read_settings, savef, readf
 from sys import argv
 OS = platform.system()
 
-def widget_sel_all(*arg):
-    ##    global activated_widget
-        activated_widget = root.focus_get() 
-        try:
-            if activated_widget == E:
-                activated_widget.select_range(0, END)
-            else:
-                activated_widget.tag_add(SEL, "1.0", END)
-                activated_widget.mark_set(INSERT, "1.0")
-                activated_widget.see(INSERT)
-                activated_widget.config(yscrollcommand=S.set,state="disabled")
-        except:
-            pass
+def widget_sel_all(widget):
+        widget.tag_add(SEL, "1.0", END)
+        widget.mark_set(INSERT, "1.0")
+        widget.see(INSERT)
         return "break"
 
 def set_winicon(window,name):
@@ -105,7 +96,7 @@ class File_editor:
 
         self.reload_file_list()
         self.topwin.bind('<Escape>', self.close_func)
-        self.topwin.bind("<Control-a>", widget_sel_all)
+        self.topwin.bind("<Control-a>", lambda x: widget_sel_all(self.Tbox))
         self.Tbox.bind('<Control-f>',lambda x: search_text_dialog(self.Tbox))
         self.listbox.bind('<Button-1>', lambda x: self.topwin.after(20,self.file_loader))
         self.topwin.protocol('WM_DELETE_WINDOW', self.close_func)

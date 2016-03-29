@@ -3185,7 +3185,7 @@ if __name__ == '__main__':
         chat_color_list = list(default_colors_list)
 
     ## Setting global vars
-    ver = '1.09z'
+    ver = '1.10'
     sound_interval = 0
     msg_thrd = 0
     action_time = True
@@ -3296,7 +3296,7 @@ if __name__ == '__main__':
 
     if scroll_class_u == 'alternative':
         class Scrollbar:
-            def __init__(self,widget,*arg):
+            def __init__(self,widget,*arg,**kwargs):
                 self.bg, self.troughcolor,self.highlightbackground, self.highlightcolor = '#DBD9D9','#9f9f9f','#DBD9D9','#606060'
                 self.frame = Frame(widget,width=16, height=2, bg=self.bg, bd=0, highlightthickness= 0)
                 self.windowY = float(self.frame.winfo_height())
@@ -3415,6 +3415,11 @@ if __name__ == '__main__':
                 
             def get(self):
                 return self.izmers, self.kur
+
+            def grid(self,*args,**kwargs):
+                pass
+            def focus_set(self,*args,**kwargs):
+                pass
 
     ### Window widgets
     def create_widgets():

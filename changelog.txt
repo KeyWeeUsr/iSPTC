@@ -10,6 +10,10 @@
 ### Changed
  - Hyperlink manager won't accept words with top level domains in the middle, e.g. ex-.com-ample
 
+## Server[1.04] - 2016-3-29
+### Added
+ - Will autodelete files after set amount of time (Default value is 2 days)
+
 
 ## Client[1.09] - 2016-2-19
 ### Added
