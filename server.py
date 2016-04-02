@@ -3,7 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 from time import sleep
-ver = '1.04'
+ver = '1.04b'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -753,28 +753,34 @@ def clientHandler(i):
                     sleep(0.05)
                     event_list.append(['Send-Thread',conn,"WSERVER::We don't accept this"])
 
-class fileserv_handler:
-    def __init__(self,sf):
-        self.sf = sf
-        for i in range(1,6):
-            self.new_thread(i)
-        print '5 threads started\n'
-        self.update(sf)
 
-    def update(self,sf):
-        global shared_filelist
-        sleep(60)
+def fileserver_handler():
+    global shared_filelist, sf
+    sf = socket(AF_INET, SOCK_STREAM)
+    try:
+        sf.bind(('', 44672))
+    except:
+        print "Can't bind address 2"
+        sleep(2)
+        quit()
+    sf.listen(5)
+    print "File server is running......"
+    
+    for i in range(1,6):
+        new_fileserver_thread(i,sf)
+    print '5 threads started\n'
+    while True:
         cnt = 0
         for x in shared_filelist:
             x[4] -= 1
             if x[4] < 1: shared_filelist.pop(cnt)
             cnt += 1
-        self.update(sf)
+        sleep(60)
 
-    def new_thread(self,i):
-        Thread(target=fileserv_thread,args=(self,i,self.sf)).start()
+def new_fileserver_thread(i,sf):
+    Thread(target=fileserver_thread,args=(i,sf)).start()
 
-def fileserv_thread(parent,i,sf):
+def fileserver_thread(i,sf):
     global threadip, msgprint_enabled, logging_enabled, iplist, action_time, shared_filelist
     conn, addr = sf.accept() # awaits for a client to connect and then accepts 
     print get_cur_time(),addr," started a fileserver thread!"
@@ -916,7 +922,7 @@ def fileserv_thread(parent,i,sf):
         conn.close()
     except:
         pass
-    parent.new_thread(i)
+    new_fileserver_thread(i,sf)
 
 
 def reset_offmsg_list():
@@ -952,17 +958,7 @@ def main(): # main function
         Thread(target=clientHandler,args=(i,)).start()
     print str(threading.active_count()-1)+' threads started\n'
     
-    ## File server
-    sf = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
-    try:
-        sf.bind(('', 44672)) # tells the socket to bind to localhost on port 44672
-    except:
-        print "Can't bind address 2"
-        sleep(2)
-        quit()
-    sf.listen(5) # number of connections listening for
-    print "File server is running......"
-    Thread(target=fileserv_handler,args=(sf,)).start()
+    Thread(target=fileserver_handler).start()
     
     Thread(target=eventThread).start()
     print 'eventThread started\n'

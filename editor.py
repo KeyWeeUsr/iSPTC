@@ -21,6 +21,7 @@ import os,platform,tkFont, tkMessageBox, importlib
 from client import read_settings, savef, readf
 from sys import argv
 OS = platform.system()
+sys_path = os.getcwd()
 
 def widget_sel_all(widget):
         widget.tag_add(SEL, "1.0", END)
@@ -29,7 +30,7 @@ def widget_sel_all(widget):
         return "break"
 
 def set_winicon(window,name):
-    global OS
+    global OS, sys_path
     if OS is 'Windows':
         try:
             window.iconbitmap(sys_path+"\\"+"load\\"+name+".ico")
@@ -105,13 +106,22 @@ class File_editor:
 
     def after_task(self):
         self.topwin.bind('<Configure>', self.on_resize)
-
+        
     def reload_file_list(self):
         try:
             self.listbox.delete(0, END)
-            file_list = os.listdir(self.filefolder)
+##            file_list = os.listdir(self.filefolder)
+            file_list =  next(os.walk(self.filefolder))[2]
+            can_insert = True
+            ignored_files = ['.lnk','.exe','.jpg','.jpeg','.mp3','.ogg','.avi','.mkv','.flv','.iso','.apk','.mp4',
+                             '.wav','.doc','.docx','.zip','.sys']
             for x in file_list:
-                self.listbox.insert("end", x)
+                for extension in ignored_files:
+                    if x[-len(extension):] == extension:
+                        can_insert = False
+                        break
+                if can_insert == True: self.listbox.insert("end", x)
+                can_insert = True
         except Exception as e:
             self.Tbox.insert(END, str(e), 'redcol')
             self.Tbox.yview(END)
@@ -149,6 +159,7 @@ class File_editor:
         self.topwin.after(200,self.after_task)
                 
     def file_loader(self):
+        global OS
         num = self.listbox.get(self.listbox.curselection())
         try:
             text = readf(self.filefolder+num)
@@ -162,7 +173,8 @@ class File_editor:
             self.title = num
             self.topwin.title(self.title)
             try:
-                Thread(target=self.file_loader_thread,args=(text,)).start()
+                if OS == 'Linux': Thread(target=self.file_loader_thread,args=(text,)).start()
+                else: self.file_loader_thread(text)
             except Exception as e:
                 self.Tbox.insert(END, str(e), 'redcol')
                 self.Tbox.yview(END)

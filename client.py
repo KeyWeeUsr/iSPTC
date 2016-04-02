@@ -169,7 +169,9 @@ class HyperlinkManager:
     def _click(self, event):
         for tag in self.text.tag_names(CURRENT):
             if tag[:6] == self.tagname+"-" or tag[:7] == self.tagname+"-":
-                open_address_in_webbrowser(self.links[tag])
+                if self.links[tag][:4] == '/dl ': enter_text('command_window',self.links[tag])
+                elif self.links[tag] == '/files': enter_text('command_window',self.links[tag])
+                else: open_address_in_webbrowser(self.links[tag])
                 return
 
 class TT(Text):
@@ -1052,7 +1054,8 @@ def popen_text_editor(file_folder):
     global OS
     INPUT = 'python editor.py '+file_folder
     if OS == 'Windows':
-        if os.path.exists('editor.exe') == True: INPUT = 'editor.exe '+file_folder
+        if os.path.exists('editor.exe') == True: INPUT = ['editor.exe ',file_folder]
+        else: INPUT = ['editor.py ',file_folder]
     elif OS == 'Linux': INPUT = 'python editor.py '+file_folder
     Popen([INPUT], shell=True,
              stdin=None, stdout=None, stderr=None, close_fds=True)
@@ -2499,12 +2502,14 @@ def entry_paste(*arg):
         print 'Nothing in clipboard'
 
 def autocomplete_name(*arg):
+    global file_list
     is_private = False
     commandli = ('/help','/users','/log','/afk','/reg','/auth','/clear','/share','/file','/files','/file_list',
                 '/join','/ljoin','/leave','/changelog','/about','/quit','/exit','/datal', '/toolbar')
     try:
     ## Finds the last word in entry widget
         text = textt.get()
+        text_full = str(text)
         text = text[::-1]
         cnt = 0
         for x in text:
@@ -2513,8 +2518,17 @@ def autocomplete_name(*arg):
                 break
             cnt += 1
         text = text[::-1]
+        ## Checks for download command and searches for file
+        if text_full[:4] == '/dl ':
+            for x in file_list:
+                b = x[0].find(text_full[4:])
+                if b == 0:
+                    textt.set(textt.get()+x[0][len(text):])
+                    lentext = textt.get()
+                    E.icursor(len(lentext))
+                    break
         ## Selects command loop or user name loop
-        if text[0] == '/':
+        elif text[0] == '/':
             ## Finds the name in commandli
             for x in commandli:
                 b = x.find(text)
@@ -2552,8 +2566,9 @@ def autocomplete_name(*arg):
 
                     except:
                         pass
-    except:
-        pass
+    except Exception as e:
+        e = str(e)
+        T_ins_warning(T,S,e)
     ## Stops tkinter from tabbing
     return "break"
 
@@ -2731,7 +2746,7 @@ def TCPconnect(ip,port):
     return contcp   
 
 def fldownloader_thread(name):
-    global connected_server, fdl_path, dl_ul_events
+    global connected_server, fdl_path, dl_ul_events, hyperlink_obj
     print 'File download thread started - ',name
     dl_ul_events.append([get_cur_time(),'Downloading',name])
     buflen, flstring = 0, ''
@@ -2772,10 +2787,10 @@ def fldownloader_thread(name):
         fh.close()
         tim2 = round(time() - tim,2)
         buflen = len(flstring)
-        Tbox_insert_lock(T,S,get_cur_time()+' File downloaded in '+str(tim2)+'sec. - '+str(round(buflen/tim2/1000/1024,2))+' MB/s\n','blackcol')
+        Tbox_insert_lock(T,S,get_cur_time()+' File downloaded in '+str(tim2)+'sec. - '+str(round(buflen/tim2/1000/1024,2))+' MB/s - ','blackcol')
+        Tbox_insert_lock(T,S, 'Browse files\n', hyperlink_obj.add('/files'))
     else:
         T_ins_warning(T,S,'File does not exist')
-        
     try:
         sf.close()
     except:
@@ -3055,10 +3070,11 @@ def About():
     msg = Message(frame2, text = " ",width=l_width)
     msg.config(background=backg1,width=l_width,font=('Arial', 20))
     msg.pack(anchor=NW)
-
     
     git_label = msg_binder(frame2,"Github page: github.com/Bakterija",font_text_smaller,l_width,
                           text_color1,backg1,'link','https://github.com/Bakterija','pack')
+##    li = msg_binder(frame3,"Changelog",font_text_smaller,l_width,
+##                          text_blue,backg2,'func',Changelog,'place',[260,15])
 ##    li = msg_binder(frame3,"Li",font_text_smaller,l_width,
 ##                          text_blue,backg2,'func',lifunc,'place',[260,10])
     
@@ -3185,7 +3201,7 @@ if __name__ == '__main__':
         chat_color_list = list(default_colors_list)
 
     ## Setting global vars
-    ver = '1.10'
+    ver = '1.11'
     sound_interval = 0
     msg_thrd = 0
     action_time = True
@@ -3756,7 +3772,9 @@ if __name__ == '__main__':
                     b = data_list[x].find(']')
                     T.config(yscrollcommand=S.set,state="normal")
                     name = lenghten_name('SERVER: ',21)
-                    T.insert(END, get_cur_time()+name+data_list[x][9:b+0]+' shared a file, type "/dl '+data_list[x][b+1:]+'" or open file manager to download\n','bluecol')
+                    T.insert(END, get_cur_time()+name+data_list[x][9:b+0]+' shared a file, use ','bluecol')
+                    T.insert(END, '/dl '+data_list[x][b+1:], hyperlink_obj.add('/dl '+data_list[x][b+1:]))
+                    T.insert(END, ' command or open file manager\n', 'bluecol')
                     userlog_list.append(get_cur_time()+name+data_list[x][9:])
                     T.config(yscrollcommand=S.set,state="disabled")
                 ## User list update

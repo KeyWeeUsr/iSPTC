@@ -5,6 +5,7 @@ if sys.platform == "win32":
     base = "Win32GUI"
 
 executables = [cx_Freeze.Executable("client.py", base = base,icon="load/icon.ico"),
+               cx_Freeze.Executable("editor.py", base = base,icon="load/icon.ico"),
                cx_Freeze.Executable("updater.py", base = base,icon="load/icon.ico")]
 
 cx_Freeze.setup(
@@ -15,7 +16,7 @@ cx_Freeze.setup(
                                             "load/server.ini","load/icon2.png","load/icon2.ico","load/serverlist.ini",
                                             "changelog.txt","lib/top_domains.py","load/icon_grey.ico",
                                             "load/icon3.png","lib/loadscripts.ini","lib/__init__.py",
-                                            "load/themes/Default","load/themes/Default_dark"]}},
+                                            "load/themes/Default_dark"]}},
     executables = executables
     )
 
