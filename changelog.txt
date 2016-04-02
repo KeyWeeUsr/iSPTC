@@ -1,10 +1,19 @@
+## Updater[4] - 2016-4-2
+### Added
+ - Updater can extract files
+
 ## Client[1.11] - 2016-4-2
 ### Added
  - Autocomplete will complete shared file names
  - Left click shared file downloading in chat text box through hyperlink object
  - Left click download folder opening from chat text box after a download finishes
+ - Threaded server joining (Smoother gui)
+## Changed
+ - Default username won't be changed when it's a duplicate
 
 ## Server[1.04b] - 2016-4-2
+### Added
+ - Saves user offline message settings to disk
 ### Fix
  - File_server handler object was crashing after a day, replaced with while loop function
 

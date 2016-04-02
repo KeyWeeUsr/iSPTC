@@ -476,7 +476,7 @@ def join_srv_check(curselection,jaddr):
         join_server(jaddr)
                 
 def join_server(typing):
-    global username, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server, ver, sender_thread_list
+    global username_saved, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server, ver, sender_thread_list
     scroller = S.get()
     try:
         action_time = False
@@ -503,9 +503,9 @@ def join_server(typing):
         action_time = True
         Thread(target=recv_thread).start()
         if passwd is '' or autoauth is 0:
-            s.send('USRINFO::'+username+'<e%$>')
+            s.send('USRINFO::'+username_saved+'<e%$>')
         else:
-            s.send('USRINFO::'+username+']'+passwd+'<e%$>')
+            s.send('USRINFO::'+username_saved+']'+passwd+'<e%$>')
         sleep(0.3)
         Thread(target=sender_thread).start()
         sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
@@ -837,8 +837,8 @@ def clear_textbox(clt,disable):
         User_area.config(yscrollcommand=S.set,state="disabled")
 
 def leave_server():
-    global s,action_time, username
-    root.title("iSPTC - "+username)
+    global s,action_time, username_saved
+    root.title("iSPTC - "+username_saved)
     war = lenghten_name('WARNING: ',21)
     try:
         sender_thread_list.append('close::')
@@ -1279,10 +1279,10 @@ def command_window(*arg):
     cww.bind('<Escape>', close_func)
 
 def change_name(t_new_name,t_passwd,t_offline_msg):
-    global username, s, passwd, offline_msg
+    global username_saved, s, passwd, offline_msg
     new_name = t_new_name.get()
     new_passwd = t_passwd.get()
-    if new_passwd != passwd or new_name != username:
+    if new_passwd != passwd or new_name != username_saved:
         passwd = t_passwd.get()
         write_settings('usrauth',passwd)
         if len(new_name) <3:
@@ -1291,14 +1291,14 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
             T.insert(END, get_cur_time()+war+'Name is too short\n', 'redcol')
             T.config(yscrollcommand=S.set,state="disabled")
         else:
-            username = new_name
+            username_saved = new_name
             root.title("iSPTC - "+new_name)
-            write_settings('username',username)
+            write_settings('username',username_saved)
             try:
                 if passwd is '':
-                    sender_thread_list.append('USRINFO::'+username)
+                    sender_thread_list.append('USRINFO::'+username_saved)
                 else:
-                    sender_thread_list.append('USRINFO::'+username+']'+passwd)
+                    sender_thread_list.append('USRINFO::'+username_saved+']'+passwd)
             except:
                 pass
         
@@ -1312,7 +1312,7 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
             pass
 
 def username_menu():
-    global username, passwd, offline_msg
+    global username_saved, passwd, offline_msg
     uw = Toplevel()
     set_winicon(uw,'icon_grey')
     uw.title("User")
@@ -1320,7 +1320,7 @@ def username_menu():
     uw.resizable(FALSE,FALSE)
     
     t_new_name = StringVar()
-    t_new_name.set(username)
+    t_new_name.set(username_saved)
     t_passwd = StringVar()
     t_offline_msg = IntVar()
     t_passwd.set(passwd)
@@ -3125,6 +3125,7 @@ if __name__ == '__main__':
     show_ttime= int(read_settings('show_ttime=',2))
     nadd_spaces= int(read_settings('nadd_spaces=',1))
     username = str(read_settings('username=','User'+str(randrange(1,999,1))))
+    username_saved = str(username)
     if len(username) < 1:
         username = 'User'+str(randrange(1,999,1))
     autojoin = int(read_settings('autojoin=',0))

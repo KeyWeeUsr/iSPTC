@@ -4,11 +4,11 @@ from Tkinter import *
 from time import strftime,gmtime,sleep
 from shutil import move as move_file
 from subprocess import *
-import platform, urllib, urllib2, os
 from threading import Thread
 from ttk import Button
 from ttk import Scrollbar
-v = '3'
+import platform, urllib, urllib2, os, zipfile
+v = '4'
 
 OS = platform.system()
 
@@ -173,6 +173,10 @@ def worker_thread():
                     except:
                         os.mkdir(x[9:])
                         T.insert(END, 'Making folder - '+x[9:]+'\n','blackcol')
+                elif x[:7] == 'extract':
+                    T.insert(END, 'FLnam '+x[8:]+'\n','redcol')
+                    zifi = zipfile.ZipFile(x[8:])
+                    zifi.extractall()
             except Exception as e:
                 e = str(e)
                 T.insert(END, e+'\n','redcol')

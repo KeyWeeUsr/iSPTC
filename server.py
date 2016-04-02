@@ -3,7 +3,7 @@ from socket import *
 from threading import Thread
 import threading, time
 from time import sleep
-ver = '1.04b'
+ver = '1.05'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -195,6 +195,29 @@ def check_if_registered(usrname,addr,return_passlvl):
         return False,False,False,False
     return False
 
+def save_user_settings():
+    global iplist
+    level = -1
+    regwrite = []
+    regwrite.append('## 0 is muted\n## -1 is banned')
+    for levels in iplist:
+        ## Appends level
+        if level == -1:
+            regwrite.append('[[l'+str(level)+'-none]]')
+        else:
+            regwrite.append('[[l0'+str(level)+'-none]]')
+        for x in levels[1]:
+            ## Adds space after each level
+            regwrite.append('['+x[0]+']['+x[1]+']['+str(x[2])+']')
+        regwrite.append('')
+        level+=1
+    # Overwrites and appends to file
+    savef('','load/server_users.ini')
+    for x in regwrite:
+        fh = open('load/server_users.ini', 'a')
+        fh.write(str(x)+'\n')
+    fh.close()
+
 def register_user(username,usr_pass,add_user):
     global iplist
     level = -1
@@ -219,7 +242,7 @@ def register_user(username,usr_pass,add_user):
     for x in regwrite:
         fh = open('load/server_users.ini', 'a')
         fh.write(str(x)+'\n')
-        fh.close()
+    fh.close()
 
 def send_ulist_only():
     ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port,4lvl,5afk
@@ -461,6 +484,8 @@ def eventThread():
                     e = str(e)
                     print e
                 Thread(target=clientHandler,args=(x[5],)).start()
+            elif x[0] == 'Save-Users':
+                save_user_settings()
             cnt += 1
         for x in range(0,cnt):
             del event_list[0]
@@ -621,6 +646,7 @@ def clientHandler(i):
                                     x[2] = off_msg
                         register_user('a','a',False)
                         event_list.append(['Send-Thread',conn,'WSERVER::off_msg set to: '+off_msg])
+                        event_list.append(['Save-Users'])
                 b = data.find('ver=')
                 if b is not -1:
                     usr_ver = data[b+len('ver='):]
