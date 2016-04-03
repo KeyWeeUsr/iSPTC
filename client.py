@@ -28,7 +28,7 @@ from PIL import ImageTk
 import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
 
 def set_winicon(window,name):
-    global OS
+    OS = platform.system()
     if OS is 'Windows':
         try:
             window.iconbitmap(sys_path+"\\"+"load\\"+name+".ico")
@@ -348,7 +348,7 @@ def sender_thread():
         if len(sender_thread_list) > 0:
             try:
                 s.send(sender_thread_list[0]+'<e%$>')
-                sender_thread_list.pop(0)
+                del sender_thread_list[0]
             except Exception as e:
                 print str(e)
                 action_time = False
@@ -718,10 +718,13 @@ def T_ins_file_list():
     root.after(300, append_files)
 
 def T_ins_warning(T,S,text):
+    scroller = S.get()
     T.config(yscrollcommand=S.set,state="normal")
     war = lenghten_name('WARNING: ',21)
     T.insert(END, get_cur_time()+war+text+'\n', 'redcol')
     T.config(yscrollcommand=S.set,state="disabled")
+    if scroller[1] == 1.0:  
+        T.yview(END)
 
 def chat_commands(text):
     global fdl_path
@@ -2331,7 +2334,7 @@ def organise_USRLIST(data):
     for x in USRLIST:
         if x[0][:6] == 'Users:' and x[1] == '':
             usercount = x
-            USRLIST.pop(cnt)
+            del USRLIST[cnt]
             break
         cnt+=1
     ## Separates online and offline users and sorts them
@@ -2592,41 +2595,55 @@ def entrym_BACK(*arg):
 
 def search_text_dialog(widget):
     widget.tag_configure("search", background="green")
-    def color_tagger_thread(name):
+    def color_tagger_thread(name, back, case):
         start = 1.0
         try:
             while start != widget.index(CURRENT):
-                pos = widget.search(name, start, stopindex=END)
+                pos = widget.search(name, start, stopindex=END, nocase=case)
                 b = pos.find('.')
                 pos2 = pos[b+1:]
-                pos2 = pos[:b]+'.'+str(int(pos2)+int(countVar.get()))
                 if not pos:
                     break
+                pos2 = pos[:b]+'.'+str(int(pos2)+int(countVar.get()))
                 widget.tag_add("search", pos, pos2)
                 start = pos + "+1c"
-        except:
-            pass
+        except Exception as e:
+            e = str(e)
+            print e
     def text_finder(*arg):
+        if t_findtext_old.get() != t_findtext.get() or t_match_case_old != t_match_case:
+            widget.tag_remove("search",1.0,END)
         widget.tag_remove("sel",1.0,END)
-        widget.tag_remove("search",1.0,END)
         ftext = t_findtext.get()
-        pos = widget.search(ftext, start.get(), count=countVar)
-        widget.see(pos)
-        b = pos.find('.')
-        pos2 = pos[b+1:]
-        pos2 = pos[:b]+'.'+str(int(pos2)+int(countVar.get()))
-##        widget.tag_add("search", pos, pos2)
-        widget.tag_add(SEL, pos, pos2)
-        widget.tag_raise("sel")
-        start.set(pos2)
-        Thread(target=color_tagger_thread,args=(ftext,)).start()
+        t_findtext_old.set(ftext)
+        t_match_case_old.set(t_match_case)
+        if t_match_case.get() == 1: nocase = 0
+        else: nocase = 1
+        if t_search_backward.get() == 1: startVar,stopindex, back = start.get(),'1.0', True
+        else: startVar,stopindex, back = start.get(), 'END', False
+        if t_wrap_around.get() == 0:
+            pos = widget.search(ftext, startVar, stopindex=stopindex, count=countVar, backwards=back, nocase=nocase)
+        else:
+            pos = widget.search(ftext, startVar, count=countVar, backwards=back, nocase=nocase)
+        if pos != '':
+            widget.see(pos)
+            b = pos.find('.')
+            pos2 = pos[b+1:]
+            pos2 = pos[:b]+'.'+str(int(pos2)+int(countVar.get()))
+            widget.tag_add(SEL, pos, pos2)
+            widget.tag_raise("sel")
+            if back == True: start.set(pos)
+            else: start.set(pos2)
+            Thread(target=color_tagger_thread,args=(ftext,back,nocase)).start()
+        else:
+            T_ins_warning(T, S, 'Nothing found')
     topwin = Toplevel()
     set_winicon(topwin,'icon_grey')
     topwin.title("Search dialog")
-    topwin.minsize(600,120)
+    topwin.minsize(600,80)
     topwin.resizable(FALSE,FALSE)
 
-    frame4 = Frame(topwin, height=120,width=120, relief=SUNKEN,bg='')
+    frame4 = Frame(topwin, height=100,width=120, relief=SUNKEN,bg='')
     frame4.pack_propagate(0)
     frame4.pack(side=RIGHT)
     frame1 = Frame(topwin, height=40,width=480, relief=SUNKEN,bg='')
@@ -2643,13 +2660,17 @@ def search_text_dialog(widget):
     countVar = StringVar()
     
     t_match_case = IntVar()
+    t_match_case_old = IntVar()
     t_wrap_around = IntVar()
     t_findtext = StringVar()
-    t_search_direction = IntVar()
+    t_findtext_old = StringVar()
+    t_search_backward = IntVar()
     t_findtext.set('')
+    t_findtext_old.set('')
     t_match_case.set(0)
+    t_match_case_old.set(0)
     t_wrap_around.set(1)
-    t_search_direction.set(1)
+    t_search_backward.set(0)
     
     start.set("1.0")
     Label(frame1, text="Find text: ").pack(side=LEFT)
@@ -2660,12 +2681,7 @@ def search_text_dialog(widget):
     Label(frame2, text="Options: ").pack(side=LEFT)
     Checkbutton(frame2, text="Match case", variable=t_match_case).pack(side=LEFT,padx=5)
     Checkbutton(frame2, text="Wrap around", variable=t_wrap_around).pack(side=LEFT,padx=5)
-
-    Label(frame3, text="Direction:   ").pack(side=LEFT)
-    search_UP = Radiobutton(frame3, text='IP', variable=t_search_direction, value=1)
-    search_DOWN = Radiobutton(frame3, text='Down', variable=t_search_direction, value=0)
-    search_UP.pack(side=LEFT)
-    search_DOWN.pack(side=LEFT)
+    Checkbutton(frame2, text="Search backwards", variable=t_search_backward).pack(side=LEFT,padx=5)
 
     def close_func(*arg):
         widget.tag_remove("search",1.0,END)
@@ -2909,7 +2925,7 @@ def load_lib_scripts(root):
 ##                sys.exit(1)
             except Exception as e:
                 e = str(e)
-                T_ins_warning(T, S, 'ERROR: loading '+module+'\n')
+                T_ins_warning(T, S, 'ERROR: loading '+module)
                 T_ins_warning(T, S, e)
 
 def Changelog():
@@ -2975,6 +2991,136 @@ def Changelog():
     topwin.bind("<Control-a>", widget_sel_all)
     Tbox.bind('<Control-f>',lambda x: search_text_dialog(Tbox))
 
+class T_manager:
+    def __init__(self,widget):
+        self.widget = widget
+    def normal(self):
+        self.widget.config(state="normal")
+    def disabled(self):
+        self.widget.config(state="disabled")
+
+    def ins_text(self,text,tag,*args,**kwargs):
+        time = get_dict_item(kwargs,'time','False')
+        place = get_dict_item(kwargs,'place','END')
+        self.normal()
+        if time == False: self.widget.insert(place, text, tag)
+        else: self.widget.insert(place, get_cur_time()+text, tag)
+        self.disabled()
+        
+    def ins_warning(self,text):
+        text = str(text)
+        self.normal()
+        self.widget.insert(END, get_cur_time()+text, 'redcol')
+        self.disabled()
+        
+    def ins_server(self,text):
+        self.normal()
+        self.widget.insert(END, get_cur_time()+text, 'bluecol')
+        self.disabled()
+
+    def ins_server_warning(self,text):
+        self.normal()
+        self.widget.insert(END, get_cur_time()+text, 'browncol')
+        self.disabled()
+
+    def ins_file_share(self,text):
+        global hyperlink_obj
+        b = text.find(']')
+        name = lenghten_name('SERVER: ',21)
+        self.normal()
+        self.widget.insert(END, get_cur_time()+name+text[9:b+0]+' shared a file, use ','bluecol')
+        self.widget.insert(END, '/dl '+text[b+1:], hyperlink_obj.add('/dl '+text[b+1:]))
+        self.widget.insert(END, ' command or open file manager\n', 'bluecol')
+        self.disabled()
+
+    def ins_message(self,text):
+        global write_log
+        beeped,mgreen,mblack,mlink = False,'greencol','blackcol','bluecol'
+        self.normal()
+        usercol,uname = get_user_color(text[3],text[4:23],False)
+            
+        temp_list = []
+        dat = text[23:]
+        b = dat.find('@@')
+        c = dat.find(']')
+        ## Removes "]" from private message
+        if b is not -1 and c is not -1:
+            dat = dat[:c]+' '+dat[c+1:]
+
+        ## Separates words and append to temp_list
+        dat = dat+' '
+        while True:
+            b = dat.find(' ')
+            temp_list.append(dat[:b]+' ')
+            dat = dat[b+1:]
+            if b is -1:
+                break
+        temp_list[-1] = temp_list[-1][:-2]
+
+        ## Tags words
+        self.widget.insert(END, get_cur_time(),'blackcol')
+        self.widget.insert(END, uname+': ',usercol)
+        ## Detects private messages
+        if temp_list[0][0:2] == '@@':
+            mgreen,mblack,mlink = 'privatgreen','privatecol','privatlink'
+            del temp_list[0]
+        ## Username mentioned
+        for x in temp_list:
+            nfind, beeped = find_2name(x,username,uname,beeped)
+            if nfind is True:
+                self.widget.insert(END, x,mgreen)
+            ## Hyperlinks
+            elif nfind is False:
+                linkk = find_link(x)
+                if linkk is not 'False':
+                    if mlink == 'privatlink':
+                        self.widget.insert(END, linkk,hyperlink_obj2.add(linkk))
+                    else:
+                        self.widget.insert(END, linkk, hyperlink_obj.add(linkk))
+                    self.widget.insert(END,' ')
+                if linkk is 'False' and nfind is False:
+                    self.widget.insert(END, x,mblack)       
+        self.widget.insert(END,'\n')
+        ## Writes to logfile
+        if write_log == 1:
+            tstring= get_cur_time_log()
+            tstring+=remove_spaces(uname)+': '
+            for x in temp_list:
+                tstring+=x
+            write_logfile('log/',connected_server,tstring+'\n')
+        nfind = False
+        self.disabled()
+
+class toolbar_alternative:
+        def __init__(self):
+            self.frame = Frame(root, height=20,width=X_size)
+            self.frame.pack_propagate(0)
+            self.frame.pack(side=TOP,fill=Y)
+            self.menu_btn= tkButton(self.frame,text='Menu', command=self.open_submenu,bd=0,width=10,highlightthickness=0)
+            self.menu_btn.pack(side=LEFT)
+            self.menu = Menu(None, tearoff=0, takefocus=0)
+            self.submenus = toolbar_menus(self.menu)
+            self.frame.bind("<Configure>", self.on_resize)
+            
+        def open_submenu(self):
+            self.menu.tk_popup(self.menu_btn.winfo_rootx()+55, self.menu_btn.winfo_rooty()+40,entry="0")
+
+        def destroy(self):
+            self.frame.destroy()
+
+        def on_resize(self,event):
+            windowX = root.winfo_width()
+            self.frame.configure(width=windowX)
+            
+class toolbar_default:
+    def __init__(self):
+        self.menu = Menu(root,tearoff=0,borderwidth=0)
+        root.config(menu=self.menu)
+        self.submenus = toolbar_menus(self.menu)
+            
+    def destroy(self):
+        self.menu.destroy()
+
 class msg_binder:
     def __init__(self,_frame,_text,_font,l_width,_color,_bgcolor,function,function_exc,gui_add,*arg):
         self.msg = Message(_frame, text = _text,width=l_width)
@@ -3000,6 +3146,132 @@ class msg_binder:
             self.function_exc()
         elif self.function == 'link' and self.function_exc != 'none':
             open_address_in_webbrowser(self.function_exc)
+
+class Scrollbar_alternative:
+    def __init__(self,widget,*arg,**kwargs):
+        self.bg, self.troughcolor,self.highlightbackground, self.highlightcolor = '#DBD9D9','#9f9f9f','#DBD9D9','#606060'
+        self.frame = Frame(widget,width=16, height=2, bg=self.bg, bd=0, highlightthickness= 0)
+        self.windowY = float(self.frame.winfo_height())
+        self.m_x, self.m_y, self.m_x_old, self.m_y_old = 0,0,0,0
+        self.bar_color = self.troughcolor
+        self.activated = False
+        self.command = None
+        self.izmers = float(0.5)
+        self.kur = float(0.0)
+        self.canva = Canvas(self.frame, width=16, height=Y_size, bg=self.bg, bd= 0,highlightthickness= 0, relief= SUNKEN)
+        self.canva.bind('<Motion>',self.motion)
+        self.bind("<Configure>", self.on_resize)
+        self.canva.bind("<Enter>", self.on_enter)
+        self.canva.bind("<Leave>", self.on_leave)
+        self.canva.bind("<ButtonPress-1>", self.click_view)
+        self.canva.bind("<ButtonRelease-1>", self.click_view_stop)
+        
+
+    def pack(self,**kwargs):
+        for key in kwargs:
+            if str(key) == 'side':
+                sider = kwargs[key]
+        self.frame.pack(side=sider,fill=Y)
+        self.canva.pack(fill=Y)
+        self.canva.create_rectangle(0, self.kur, 16, self.windowY*self.izmers, fill=self.bar_color)
+
+    def on_resize(self,event):
+        self.windowY = float(self.frame.winfo_height())
+        self.canva.configure(height=self.windowY)
+    def on_enter(self,event):
+        self.bar_color = self.highlightcolor
+        self.redraw_canva()
+    def on_leave(self,event):
+        self.bar_color = self.troughcolor
+        self.redraw_canva()
+        
+    def configure(self,**kwargs):
+        self.on_config(**kwargs)
+        self.redraw_canva()
+
+    def config(self,**kwargs):
+        self.on_config(**kwargs)
+        self.redraw_canva()
+
+    def on_config(self,**kwargs):
+        for key in kwargs:
+            if str(key) == 'bg':
+                self.bg = kwargs[key]
+                self.frame.config(bg=self.bg)
+                self.canva.config(bg=self.bg)
+            elif str(key) == 'command':
+                self.command = kwargs[key]
+                self.target_widget = kwargs[key].im_self
+            elif str(key) == 'troughcolor':
+                self.troughcolor = kwargs[key]
+                self.bar_color = self.troughcolor
+            elif str(key) == 'highlightbackground':
+                self.highlightbackground = kwargs[key]
+            elif str(key) == 'highlightcolor':
+                self.highlightcolor = kwargs[key]
+            elif str(key) == 'bd' or str(key) == 'border':
+                self.frame.config(bd=kwargs[key])
+            elif str(key) == 'highlightthickness':
+                self.frame.config(highlightthickness = kwargs[key])
+                
+    def destroy(self,*arg):
+        self.frame.destroy()
+
+    def redraw_canva(self,*arg):
+        izmers = self.izmers
+        kur = self.kur
+        if izmers > 0.96:
+            izmers = 0.96
+        if kur - izmers < 0.04:
+            kur = izmers +0.04
+        if self.activated == False:
+            self.canva.create_rectangle(0, self.windowY*kur, 18, self.windowY*izmers, fill=self.bar_color, outline=self.bar_color)
+        else:
+            self.canva.create_rectangle(0, self.windowY*kur, 18, self.windowY*izmers, fill=self.highlightcolor, outline=self.highlightcolor)
+
+    def click_view(self,*arg):
+        self.activated = True
+    def click_view_stop(self,*arg):
+        self.activated = False
+        self.mouse_click()
+
+    def set(self,izmers,kur):
+        self.izmers = float(izmers)
+        self.kur = float(kur)
+        self.canva.delete(ALL)
+        self.redraw_canva()
+
+    def bind(self,button, command):
+        self.frame.bind(button, command)
+
+    def motion(self,event,*arg):
+        self.m_x, self.m_y = event.x, event.y
+        self.m_y = self.m_y + self.windowY/2*(self.izmers - self.kur)
+        if self.activated == True:
+            self.mouse_click()
+
+    def mouse_click(self,*arg):
+        try:
+            lncount = float(self.target_widget.index("end-1c"))
+        except:
+            try:
+                lncount = float(self.target_widget.size())
+            except:
+                print 'Scrollbar: did not find any lines'
+        try:
+            calc = 1.00/(self.windowY/self.m_y)
+        except ZeroDivisionError:
+            calc = 0.00
+        calc = lncount*calc
+        self.command(int(calc))
+        
+    def get(self):
+        return self.izmers, self.kur
+
+    def grid(self,*args,**kwargs):
+        pass
+    def focus_set(self,*args,**kwargs):
+        pass
 
 def About():
     global ver, updater_ver
@@ -3116,7 +3388,7 @@ if __name__ == '__main__':
     ## Loading from settings file
     ### 0all_sound, 1entry, 2username mention in textbox
     sound_settings = [1,1,1]
-    task_loop_interval = int(read_settings('chat_interval=',500))
+    task_loop_interval = int(read_settings('chat_interval=',40))
     sound_settings[0] = int(read_settings('enable_sound=',1))
     sound_settings[1] = int(read_settings('entry_enabled=',0))
     sound_settings[2] = int(read_settings('user_textbox=',1))
@@ -3153,6 +3425,8 @@ if __name__ == '__main__':
     scroll_class_u = str(read_settings('scrollbar_class=','system'))
     if scroll_class_u == 'system':
         from ttk import Scrollbar
+    if scroll_class_u == 'alternative':
+        Scrollbar = Scrollbar_alternative
     E_borderlen = int(read_settings('E_borderlen=',1))
     T_borderlen = int(read_settings('T_borderlen=',1))
     S_borderlen = int(read_settings('S_borderlen=',1))
@@ -3202,7 +3476,7 @@ if __name__ == '__main__':
         chat_color_list = list(default_colors_list)
 
     ## Setting global vars
-    ver = '1.11'
+    ver = '1.12'
     sound_interval = 0
     msg_thrd = 0
     action_time = True
@@ -3227,36 +3501,6 @@ if __name__ == '__main__':
     maxsize = "5x5"
     textt = StringVar()
     textt.set("")
-    ###Toolbar
-    class toolbar_alternative:
-        def __init__(self):
-            self.frame = Frame(root, height=20,width=X_size)
-            self.frame.pack_propagate(0)
-            self.frame.pack(side=TOP,fill=Y)
-            self.menu_btn= tkButton(self.frame,text='Menu', command=self.open_submenu,bd=0,width=10,highlightthickness=0)
-            self.menu_btn.pack(side=LEFT)
-            self.menu = Menu(None, tearoff=0, takefocus=0)
-            self.submenus = toolbar_menus(self.menu)
-            self.frame.bind("<Configure>", self.on_resize)
-            
-        def open_submenu(self):
-            self.menu.tk_popup(self.menu_btn.winfo_rootx()+55, self.menu_btn.winfo_rooty()+40,entry="0")
-
-        def destroy(self):
-            self.frame.destroy()
-
-        def on_resize(self,event):
-            windowX = root.winfo_width()
-            self.frame.configure(width=windowX)
-            
-    class toolbar_default:
-        def __init__(self):
-            self.menu = Menu(root,tearoff=0,borderwidth=0)
-            root.config(menu=self.menu)
-            self.submenus = toolbar_menus(self.menu)
-            
-        def destroy(self):
-            self.menu.destroy()
         
     def toolbar_menus(menu):
         menu1 = Menu(menu,tearoff=0)
@@ -3311,137 +3555,10 @@ if __name__ == '__main__':
         helpmenu.add_command(label='About..', command=About)
         return (menu1,menu2, menu3, menu4, menu5, helpmenu)
 
-    if scroll_class_u == 'alternative':
-        class Scrollbar:
-            def __init__(self,widget,*arg,**kwargs):
-                self.bg, self.troughcolor,self.highlightbackground, self.highlightcolor = '#DBD9D9','#9f9f9f','#DBD9D9','#606060'
-                self.frame = Frame(widget,width=16, height=2, bg=self.bg, bd=0, highlightthickness= 0)
-                self.windowY = float(self.frame.winfo_height())
-                self.m_x, self.m_y, self.m_x_old, self.m_y_old = 0,0,0,0
-                self.bar_color = self.troughcolor
-                self.activated = False
-                self.command = None
-                self.izmers = float(0.5)
-                self.kur = float(0.0)
-                self.canva = Canvas(self.frame, width=16, height=Y_size, bg=self.bg, bd= 0,highlightthickness= 0, relief= SUNKEN)
-                self.canva.bind('<Motion>',self.motion)
-                self.bind("<Configure>", self.on_resize)
-                self.canva.bind("<Enter>", self.on_enter)
-                self.canva.bind("<Leave>", self.on_leave)
-                self.canva.bind("<ButtonPress-1>", self.click_view)
-                self.canva.bind("<ButtonRelease-1>", self.click_view_stop)
-                
-
-            def pack(self,**kwargs):
-                for key in kwargs:
-                    if str(key) == 'side':
-                        sider = kwargs[key]
-                self.frame.pack(side=sider,fill=Y)
-                self.canva.pack(fill=Y)
-                self.canva.create_rectangle(0, self.kur, 16, self.windowY*self.izmers, fill=self.bar_color)
-
-            def on_resize(self,event):
-                self.windowY = float(self.frame.winfo_height())
-                self.canva.configure(height=self.windowY)
-            def on_enter(self,event):
-                self.bar_color = self.highlightcolor
-                self.redraw_canva()
-            def on_leave(self,event):
-                self.bar_color = self.troughcolor
-                self.redraw_canva()
-                
-            def configure(self,**kwargs):
-                self.on_config(**kwargs)
-                self.redraw_canva()
-
-            def config(self,**kwargs):
-                self.on_config(**kwargs)
-                self.redraw_canva()
-
-            def on_config(self,**kwargs):
-                for key in kwargs:
-                    if str(key) == 'bg':
-                        self.bg = kwargs[key]
-                        self.frame.config(bg=self.bg)
-                        self.canva.config(bg=self.bg)
-                    elif str(key) == 'command':
-                        self.command = kwargs[key]
-                        self.target_widget = kwargs[key].im_self
-                    elif str(key) == 'troughcolor':
-                        self.troughcolor = kwargs[key]
-                        self.bar_color = self.troughcolor
-                    elif str(key) == 'highlightbackground':
-                        self.highlightbackground = kwargs[key]
-                    elif str(key) == 'highlightcolor':
-                        self.highlightcolor = kwargs[key]
-                    elif str(key) == 'bd' or str(key) == 'border':
-                        self.frame.config(bd=kwargs[key])
-                    elif str(key) == 'highlightthickness':
-                        self.frame.config(highlightthickness = kwargs[key])
-                        
-            def destroy(self,*arg):
-                self.frame.destroy()
-
-            def redraw_canva(self,*arg):
-                izmers = self.izmers
-                kur = self.kur
-                if izmers > 0.96:
-                    izmers = 0.96
-                if kur - izmers < 0.04:
-                    kur = izmers +0.04
-                if self.activated == False:
-                    self.canva.create_rectangle(0, self.windowY*kur, 18, self.windowY*izmers, fill=self.bar_color, outline=self.bar_color)
-                else:
-                    self.canva.create_rectangle(0, self.windowY*kur, 18, self.windowY*izmers, fill=self.highlightcolor, outline=self.highlightcolor)
-
-            def click_view(self,*arg):
-                self.activated = True
-            def click_view_stop(self,*arg):
-                self.activated = False
-                self.mouse_click()
-
-            def set(self,izmers,kur):
-                self.izmers = float(izmers)
-                self.kur = float(kur)
-                self.canva.delete(ALL)
-                self.redraw_canva()
-
-            def bind(self,button, command):
-                self.frame.bind(button, command)
-
-            def motion(self,event,*arg):
-                self.m_x, self.m_y = event.x, event.y
-                self.m_y = self.m_y + self.windowY/2*(self.izmers - self.kur)
-                if self.activated == True:
-                    self.mouse_click()
-
-            def mouse_click(self,*arg):
-                try:
-                    lncount = float(self.target_widget.index("end-1c"))
-                except:
-                    try:
-                        lncount = float(self.target_widget.size())
-                    except:
-                        print 'Scrollbar: did not find any lines'
-                try:
-                    calc = 1.00/(self.windowY/self.m_y)
-                except ZeroDivisionError:
-                    calc = 0.00
-                calc = lncount*calc
-                self.command(int(calc))
-                
-            def get(self):
-                return self.izmers, self.kur
-
-            def grid(self,*args,**kwargs):
-                pass
-            def focus_set(self,*args,**kwargs):
-                pass
-
     ### Window widgets
     def create_widgets():
         global T,E,User_area,S,S2, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen, toolbar
-        global show_toolbar, use_alternative_tlb
+        global show_toolbar, use_alternative_tlb, TMAN
         if show_toolbar == 1:
             if use_alternative_tlb == 0:
                 toolbar = toolbar_default()
@@ -3452,6 +3569,7 @@ if __name__ == '__main__':
         S = Scrollbar(root)
         S2 = Scrollbar(root)
         T = Text(root, height=46, width=114,wrap=WORD)
+        TMAN = T_manager(T)
         configure_border_size(E,E_borderlen)
         configure_border_size(T,T_borderlen)
         try:
@@ -3476,7 +3594,6 @@ if __name__ == '__main__':
         default_os_color = root.cget('bg')
         tag_colors(preset='default')
         
-        
         root.bind("<Control-a>", widget_sel_all)
         root.bind("<Tab>", focus_entry)
         root.bind("<Control-q>",lambda x: file_manager())
@@ -3485,8 +3602,8 @@ if __name__ == '__main__':
         root.bind('<Control-c>', copy_text)
         root.bind('<Control-g>', command_window)
         T.bind('<Control-f>',lambda x: search_text_dialog(T))
+        E.bind('<Control-f>',lambda x: search_text_dialog(T))
         User_area.bind('<Control-f>',lambda x: search_text_dialog(User_area))
-        ##E.bind("<Key>", return_break)
         root.bind('<Return>', enter_text)
         root.bind('<KP_Enter>', enter_text)
         root.bind('<Escape>', reset_entry)
@@ -3524,7 +3641,7 @@ if __name__ == '__main__':
         
     def tag_colors(**kwargs):
         global text_font, show_users, chat_color_list, default_colors_list
-        global toolbar,default_os_color, use_alternative_tlb, show_toolbar, hyperlink_obj, hyperlink_obj2
+        global toolbar,default_os_color, use_alternative_tlb, show_toolbar, hyperlink_obj, hyperlink_obj2, TMAN
         preset = get_dict_item(kwargs,'preset','False')
         window_widget = get_dict_item(kwargs,'window',[])
         text_widgets = get_dict_item(kwargs,'text',[])
@@ -3560,12 +3677,8 @@ if __name__ == '__main__':
                         # Normal text
                         dd.tag_configure(x[2], font=text_font, background=x[4], foreground=x[3])
                     except Exception as e:
-                        e = str(e)
-                        scroller = S.get()
-                        T_ins_warning(T, S, 'Text ERROR: loading color tags')
-                        T_ins_warning(T, S, e)
-                        if scroller[1] == 1.0:  
-                            T.yview(END)
+                        TMAN.ins_warning('Text ERROR: loading color tags')
+                        TMAN.ins_warning(e)
                 # Listbox
                 for dd in listbox_widgets:
                     if x[2] == 'blackcol':
@@ -3625,12 +3738,9 @@ if __name__ == '__main__':
                                 for dd in scrollbar_widgets:
                                     dd.config(troughcolor=bgcol,highlightbackground=fgcol,highlightcolor=fgcol)
                             except Exception as e:
-                                e = str(e)
-                                scroller = S.get()
-                                T_ins_warning(T, S, 'Scrollbar ERROR: loading color tags')
-                                T_ins_warning(T, S, e)
-                                if scroller[1] == 1.0:  
-                                    T.yview(END)
+                                TMAN.ins_warning('Scrollbar ERROR: loading color tags')
+                                TMAN.ins_warning(e)
+                                
                     # Select
                     elif x[2] == 'selectbg':
                         for dd in text_widgets:
@@ -3658,12 +3768,8 @@ if __name__ == '__main__':
                             if use_alternative_tlb == 1:
                                 toolbar.menu.config(bg=bgcol,fg=fgcol)
                 except Exception as e:
-                    e = str(e)
-                    scroller = S.get()
-                    T_ins_warning(T, S, 'ERROR: loading color tags')
-                    T_ins_warning(T, S, e)
-                    if scroller[1] == 1.0:  
-                        T.yview(END)
+                    TMAN.ins_warning('ERROR: loading color tags')
+                    TMAN.ins_warning(e)
     ##    selectbackground="red",highlightbackground="red"
         T.tag_raise("sel")
         User_area.tag_raise("sel")
@@ -3703,13 +3809,12 @@ if __name__ == '__main__':
         E.select_clear()
         User_area.tag_remove(SEL, "1.0", END)
     create_widgets()
-        
 
 
     def task():
         global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
         global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
-        global file_list, thread_message_list, msg_thrd
+        global file_list, thread_message_list, msg_thrd, TMAN
         for x in thread_message_list[msg_thrd:]:
             if x[0] == 'command':
                 enter_text('command_window',x[1])
@@ -3723,44 +3828,32 @@ if __name__ == '__main__':
             sound_interval-=float(task_loop_interval)/1000
         if msg_recv < len(data_list):
             for x in range(msg_recv,len(data_list)):
-    ##            print data_list[x]
                 ## Server messages
                 if data_list[x][:9] == 'SSERVER::':
-                    T.config(yscrollcommand=S.set,state="normal")
                     name = lenghten_name('SERVER: ',21)
-                    T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
+                    TMAN.ins_server(name+data_list[x][9:]+'\n')
                     userlog_list.append(get_cur_time()+name+data_list[x][9:])
-                    if write_log == 1:
-                            write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
-                    T.config(yscrollcommand=S.set,state="disabled")
                 ## Private server messages
                 elif data_list[x][:9] == 'WSERVER::':
-                    T.config(yscrollcommand=S.set,state="normal")
                     name = lenghten_name('SERVER: ',21)
-                    T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','browncol')
+                    TMAN.ins_server_warning(name+data_list[x][9:]+'\n')
                     userlog_list.append(get_cur_time()+name+data_list[x][9:])
                     if write_log == 1:
                             write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
-                    T.config(yscrollcommand=S.set,state="disabled")
                 ## Server leave/join messages
                 elif data_list[x][:9] == 'SERVELJ::':
-                    if leave_join == 0:
-                        doing = 'nothing'
+                    if leave_join == 0: pass
                     else:
-                        T.config(yscrollcommand=S.set,state="normal")
                         name = lenghten_name('SERVER: ',21)
-                        T.insert(END, get_cur_time()+name+data_list[x][9:]+'\n','bluecol')
+                        TMAN.ins_server(name+data_list[x][9:]+'\n')
                         userlog_list.append(get_cur_time()+name+data_list[x][9:])
                         if write_log == 1:
                             write_logfile('log/',connected_server,get_cur_time_log()+'SERVER: '+data_list[x][9:]+'\n')
-                        T.config(yscrollcommand=S.set,state="disabled")
                 ## Server closing connection
                 elif data_list[x][:9] == 'CLOSING::':
-                    T.config(yscrollcommand=S.set,state="normal")
-                    war = lenghten_name('WARNING: ',21)
-                    T.insert(END, get_cur_time()+name+'Server shutting down\n', 'redcol')
+                    name = lenghten_name('WARNING: ',21)
+                    TMAN.ins_warning(name+'Server shutting down\n')
                     leave_server()
-                    T.config(yscrollcommand=S.set,state="disabled")
                 ## File list
                 elif data_list[x][:9] == 'FILLIST::':
                     data_list[x] = data_list[x].rstrip()
@@ -3770,14 +3863,9 @@ if __name__ == '__main__':
                         file_list = string_to_list(data_list[x][9:])
                 ## New file shared
                 elif data_list[x][:9] == 'NEWFILE::':
-                    b = data_list[x].find(']')
-                    T.config(yscrollcommand=S.set,state="normal")
+                    TMAN.ins_file_share(data_list[x])
                     name = lenghten_name('SERVER: ',21)
-                    T.insert(END, get_cur_time()+name+data_list[x][9:b+0]+' shared a file, use ','bluecol')
-                    T.insert(END, '/dl '+data_list[x][b+1:], hyperlink_obj.add('/dl '+data_list[x][b+1:]))
-                    T.insert(END, ' command or open file manager\n', 'bluecol')
                     userlog_list.append(get_cur_time()+name+data_list[x][9:])
-                    T.config(yscrollcommand=S.set,state="disabled")
                 ## User list update
                 elif data_list[x][:9] == 'USRLIST::':
                     organise_USRLIST(data_list[x][9:])
@@ -3788,68 +3876,7 @@ if __name__ == '__main__':
                     username = data_list[x][9:]
                 ## Messages from users
                 else:
-                    userlog_list.append(get_cur_time()+remove_spaces(data_list[x][4:23])+': '+data_list[x][23:])
-                    beeped = False
-                    mgreen = 'greencol'
-                    mblack = 'blackcol'
-                    mlink = 'bluecol'
-                    T.config(yscrollcommand=S.set,state="normal")
-                    usercol,uname = get_user_color(data_list[x][3],data_list[x][4:23],False)
-                        
-                    temp_list = []
-                    dat = data_list[x][23:]
-                    b = dat.find('@@')
-                    c = dat.find(']')
-                    ## Removes "]" from private message
-                    if b is not -1 and c is not -1:
-                        dat = dat[:c]+' '+dat[c+1:]
-
-                    ## Separates words and append to temp_list
-                    dat = dat+' '
-                    while True:
-                        b = dat.find(' ')
-                        temp_list.append(dat[:b]+' ')
-                        dat = dat[b+1:]
-                        if b is -1:
-                            break
-                    temp_list[-1] = temp_list[-1][:-2]
-
-                    ## Tags words
-                    T.insert(END, get_cur_time(),'blackcol')
-                    T.insert(END, uname+': ',usercol)
-                    ## Detects private messages
-                    if temp_list[0][0:2] == '@@':
-                        mgreen = 'privatgreen'
-                        mblack = 'privatecol'
-                        mlink = 'privatlink'
-                        del temp_list[0]
-                    ## Username mentioned
-                    for x in temp_list:
-                        nfind, beeped = find_2name(x,username,uname,beeped)
-                        if nfind is True:
-                            T.insert(END, x,mgreen)
-                        ## Hyperlinks
-                        elif nfind is False:
-                            linkk = find_link(x)
-                            if linkk is not 'False':
-                                if mlink == 'privatlink':
-                                    T.insert(END, linkk,hyperlink_obj2.add(linkk))
-                                else:
-                                    T.insert(END, linkk, hyperlink_obj.add(linkk))
-                                T.insert(END,' ')
-                            if linkk is 'False' and nfind is False:
-                                T.insert(END, x,mblack)       
-                    T.insert(END,'\n')
-                    ## Writes to logfile
-                    if write_log == 1:
-                        tstring= get_cur_time_log()
-                        tstring+=remove_spaces(uname)+': '
-                        for x in temp_list:
-                            tstring+=x
-                        write_logfile('log/',connected_server,tstring+'\n')
-                        
-                    nfind = False
-                    T.config(yscrollcommand=S.set,state="disabled")
+                    TMAN.ins_message(data_list[x])
                     if windowfocus is False:
                         set_winicon(root,'icon2')
                         icon_was_switched = True

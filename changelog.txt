@@ -1,3 +1,22 @@
+## Client[1.12] - 2016-4-3
+### Added
+ - Chat text finder dialog hotkey - entry widget <Control-f>
+ - Text finder "Match case" option is functional
+ - Text finder "Wrap around" function is functional
+ - Text finder "Search backwards" option
+ - Warning ("Nothing found") when text finder returns nothing
+ - New "T_manager" class to manage text insertion in chat text widget
+ - Text finder in editor
+### Changed
+ - Removed text finder search direction option buttons, replaced with "Search backwards" button
+
+## Server[1.06] - 2016-4-3
+### Added
+ - New command - s/shut down server (Will shut down all server threads and connections, requires lvl 9)
+### Fixed
+ - Quit command works and will shut down all threads and connections
+
+
 ## Updater[4] - 2016-4-2
 ### Added
  - Updater can extract files
@@ -5,16 +24,16 @@
 ## Client[1.11] - 2016-4-2
 ### Added
  - Autocomplete will complete shared file names
- - Left click shared file downloading in chat text box through hyperlink object
- - Left click download folder opening from chat text box after a download finishes
+ - Left click shared file downloading in chat text widget through hyperlink object
+ - Left click download folder opening from chat text widget after a download finishes
  - Threaded server joining (Smoother gui)
-## Changed
+### Changed
  - Default username won't be changed when it's a duplicate
 
-## Server[1.04b] - 2016-4-2
+## Server[1.05] - 2016-4-2
 ### Added
  - Saves user offline message settings to disk
-### Fix
+### Fixed
  - File_server handler object was crashing after a day, replaced with while loop function
 
 
@@ -43,7 +62,7 @@
 ### Changed
  - "Apply" button in font menu changes chat menu too now, "Save" does the same + saves the change in settings.ini
  - Saves font name instead of a font list number
-### Fix
+### Fixed
  - Won't append empty lines to settings.ini when a text setting is not used
 
 ## Server[1.03] - 2016-2-18
@@ -54,7 +73,7 @@
 
 ## Client[1.08] - 2016-2-17
 ### Added
- - Received message buffer (can receive and process long messages)
+ - Received message buffer (Can receive and process long messages)
  - New menu option - "Use system scrollbar" (Switches between tk and ttk scrollbars)
  - New menu option - "Entry widget border width"
  - New menu option - "Text widget border width"
@@ -66,7 +85,7 @@
 
 ## Server[1.02] - 2016-2-17
 ### Added
- - Added a received message buffer (can receive and process long messages)
+ - Added a received message buffer (Can receive and process long messages)
 ### Changed
  - eventThread sleep timer is no longer 0.05 sec. Now it changes dynamically when a new user joins. Current formula is 0.05 sec. + 0.002 sec. for every connected user (Up to 2 sec. ar 1000 users)
 
@@ -101,7 +120,7 @@
 
 ## Client[1.05b] - 2016-2-8
 ### Added
- - Added script importer function (imports scripts that are specified in lib/loadscripts.ini). After then, main(data_list, thread_message_list, dl_ul_events, entry_mlist) is run, each argument is a global variable.
+ - Added script importer function (iImports scripts that are specified in lib/loadscripts.ini). After then, main(data_list, thread_message_list, dl_ul_events, entry_mlist) is run, each argument is a global variable.
  - New icons
  - New, beautiful "About" window
  - Autocomplete now adds "]" after username instead of space when it's a private message
@@ -115,7 +134,7 @@
  - Moved "Edit" toolbar buttons - "Clear textbox", "Clear Entry box" to Commands
  - Removed "Edit" toolbar button
  - Removed duplicate download folder opener toolbar button
-### Fix
+### Fixed
  - Updater updater window won't show up again after a successful update
  - New lines were not being added to log files after the recent new line removal from recv_thread's data append function (Every new message was added to the same line)
 
@@ -140,7 +159,7 @@
  - File delete button for lvl 4+ in file manager
 ### Changed
  - File manager hotkey is <Control-q> now
-### Fix
+### Fixed
  - Previous recv_thread fix caused recv_thread to skip some messages, it's fixed in 1.02b
 
 
@@ -164,7 +183,7 @@
  - Removed "Open in browser" rightclick button
  - User name mention sound will play only when another user mentions the user name
  - User name mention sound will play only when text in chat is an exact match or match with "@" in front
-### Fix
+### Fixed
  - recv_thread won't go into an infinite loop after receiving unexcepted message ending symbols
 
 ## Server[1.00] - 2016-2-6
@@ -173,7 +192,7 @@
  - Expanded file_list, newly added values - file_format, upload time, time remaining (placeholder)
 ### Changed
  - Switched user-append and user-remove functions to eventThread (Won't crash when many users leave at the same moment)
-### Fix
+### Fixed
  - Won't allow users to send message ending symbols to other users
 
 
@@ -182,7 +201,7 @@
  - Will now always load and save default values when they can't be found in the settings.cfg file
 
 ## Server[0.99b] - 2016-1-29
-### Fix
+### Fixed
  - Private offline messages get delivered again
 
 
@@ -191,7 +210,7 @@
  - Sends version number to server
  - Commands /u /usr /users - print client versions
  - Command window (ctrl-g hotkey) can run commands on "Enter" keypress
-### Fix
+### Fixed
  - Textbox autofocus on mousewheel events works in Windows too now
  - Context menu threaded destroy worked in Linux only and crashed in Windows. Switched Windows to a different system
 
@@ -223,7 +242,7 @@
  - Commands /u /usr /users format, online and offline users are separated and background color tagged like in User_area. Changed value order for clarity
  - Offline users are no longer light blue, instead they are grey
  - Moved changelog to main folder
-### Fix
+### Fixed
  - Space was not inserted between time and usernames in chat when name length was not forced to 19chr
  - Average upload and download speed is shown again
 
@@ -240,7 +259,7 @@
  - Chat colors
 ### Changed
  - Lvl 4 color changed from pink to orange
-### Fix
+### Fixed
  - Infinite loop when wrong file name is entered in /dl
 
 
@@ -248,7 +267,7 @@
 ### Added
  - New client commands - s/help, s/filelist, s/clear files, s/fld(server stores files in server folder)
  - New server commands - filelist, clear files, fld(server stores files in server folder)
-### Fix
+### Fixed
  - Infinite loop when wrong file name is entered in /dl
 
 
@@ -260,7 +279,7 @@
 ## Server[0.95b] - 2016-1-14
 ### Added
  - Server can take commands from clients now. Added 3 - s/log, s/mlog, s/threadip.
-### Fix
+### Fixed
  - No chatlog.append on thread timeout
 
 
@@ -276,7 +295,7 @@
  - Time outs for user threads (set to every 8 sec currently)
  - Users get kicked after 30 sec of no communication and reason is shown as TIMEOUT
  - Welcome message can be changed from server console now with "welcm" command
-### Fix
+### Fixed
  - New lines get stripped from usernames
 
 
@@ -303,7 +322,7 @@
  - Updater (server not included)
 
 ## Server[0.93c] - 2016-1-5
-### Fix
+### Fixed
  - broadcastPrivate function was looking for unregistered users when variable was not set and crashed a thread
 
 
@@ -312,13 +331,13 @@
  - Commands after @Username
 ### Changed
  - Different colortag for private server warnings
-### Fix
+### Fixed
  - Won't crash when can't read settings file or find a value in it
 
 ## Server[0.93b] - 2015-12-31
 ### Added
  - Warning when private message target user does not exist
-### Fix
+### Fixed
  - Threads won't crash when user is disconnecting with no username set
 
 
@@ -326,17 +345,16 @@
 ### Added
  - Offline messages (Offline users are tagged with light blue color)
  - App title changes when username is a duplicate now
-## Changed
+### Changed
  - Improved private message sending (Type @@ + "username" + "]" + your message)
  - Added black background and colors for received private messages
-## Fixed
+### Fixed
  - Mistake that caused some tags to switch to size 10 fonts when changing size only
 
 ## Server[0.93] - 2015-12-30
 ### Added
  - Offline messages for registered users (Can be switched off by clients)
-###
-Changed
+### Changed
  - Improved replicant protection
 
 
@@ -402,7 +420,7 @@ Changed
  - Tkinter error when attempting to color tag text in disabled user window
 
 ## Server[0.86] - 2015-12-26
-###Changed
+### Changed
  - Increased username length to 19 to have space for duplicate renaming
 ### Fixed
  - Duplicate username bug

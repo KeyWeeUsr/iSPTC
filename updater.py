@@ -174,7 +174,7 @@ def worker_thread():
                         os.mkdir(x[9:])
                         T.insert(END, 'Making folder - '+x[9:]+'\n','blackcol')
                 elif x[:7] == 'extract':
-                    T.insert(END, 'FLnam '+x[8:]+'\n','redcol')
+                    T.insert(END, 'Extracting '+x[8:]+'\n','blackcol')
                     zifi = zipfile.ZipFile(x[8:])
                     zifi.extractall()
             except Exception as e:

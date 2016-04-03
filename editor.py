@@ -18,7 +18,7 @@ from PIL import ImageTk
 from tkFileDialog import askopenfilename
 from tkFileDialog import askdirectory
 import os,platform,tkFont, tkMessageBox, importlib
-from client import read_settings, savef, readf
+from client import read_settings, savef, readf, T_ins_warning
 from sys import argv
 OS = platform.system()
 sys_path = os.getcwd()
@@ -30,7 +30,8 @@ def widget_sel_all(widget):
         return "break"
 
 def set_winicon(window,name):
-    global OS, sys_path
+    global sys_path
+    OS = platform.system()
     if OS is 'Windows':
         try:
             window.iconbitmap(sys_path+"\\"+"load\\"+name+".ico")
@@ -42,6 +43,102 @@ def set_winicon(window,name):
             window.tk.call('wm', 'iconphoto', window._w, img)
         except:
             print "Couldn't load Linux icon"
+
+def search_text_dialog(widget,widget_scroll):
+    widget.tag_configure("search", background="green")
+    def color_tagger_thread(name, back, case):
+        start = 1.0
+        while start != widget.index(CURRENT):
+             pos = widget.search(name, start, stopindex=END, nocase=case)
+             b = pos.find('.')
+             pos2 = pos[b+1:]
+             if not pos:
+                 break
+             pos2 = pos[:b]+'.'+str(int(pos2)+int(countVar.get()))
+             widget.tag_add("search", pos, pos2)
+             start = pos + "+1c"
+    def text_finder(*arg):
+        if t_findtext_old.get() != t_findtext.get() or t_match_case_old != t_match_case:
+            widget.tag_remove("search",1.0,END)
+        widget.tag_remove("sel",1.0,END)
+        ftext = t_findtext.get()
+        t_findtext_old.set(ftext)
+        t_match_case_old.set(t_match_case)
+        if t_match_case.get() == 1: nocase = 0
+        else: nocase = 1
+        if t_search_backward.get() == 1: startVar,stopindex, back = start.get(),'1.0', True
+        else: startVar,stopindex, back = start.get(), 'END', False
+        if t_wrap_around.get() == 0:
+            pos = widget.search(ftext, startVar, stopindex=stopindex, count=countVar, backwards=back, nocase=nocase)
+        else:
+            pos = widget.search(ftext, startVar, count=countVar, backwards=back, nocase=nocase)
+        if pos != '':
+            widget.see(pos)
+            b = pos.find('.')
+            pos2 = pos[b+1:]
+            pos2 = pos[:b]+'.'+str(int(pos2)+int(countVar.get()))
+            widget.tag_add(SEL, pos, pos2)
+            widget.tag_raise("sel")
+            if back == True: start.set(pos)
+            else: start.set(pos2)
+            color_tagger_thread(ftext,back,nocase)
+        else:
+            T_ins_warning(widget, widget_scroll, 'Nothing found')
+    topwin = Toplevel()
+    set_winicon(topwin,'icon_grey')
+    topwin.title("Search dialog")
+    topwin.minsize(600,80)
+    topwin.resizable(FALSE,FALSE)
+
+    frame4 = Frame(topwin, height=100,width=120, relief=SUNKEN,bg='')
+    frame4.pack_propagate(0)
+    frame4.pack(side=RIGHT)
+    frame1 = Frame(topwin, height=40,width=480, relief=SUNKEN,bg='')
+    frame1.pack_propagate(0)
+    frame1.pack(side=TOP)
+    frame2 = Frame(topwin, height=40,width=480, relief=SUNKEN,bg='')
+    frame2.pack_propagate(0)
+    frame2.pack(side=TOP)
+    frame3 = Frame(topwin, height=40,width=480, relief=SUNKEN,bg='')
+    frame3.pack_propagate(0)
+    frame3.pack(side=TOP)
+
+    start = StringVar()
+    countVar = StringVar()
+    
+    t_match_case = IntVar()
+    t_match_case_old = IntVar()
+    t_wrap_around = IntVar()
+    t_findtext = StringVar()
+    t_findtext_old = StringVar()
+    t_search_backward = IntVar()
+    t_findtext.set('')
+    t_findtext_old.set('')
+    t_match_case.set(0)
+    t_match_case_old.set(0)
+    t_wrap_around.set(1)
+    t_search_backward.set(0)
+    
+    start.set("1.0")
+    Label(frame1, text="Find text: ").pack(side=LEFT)
+    tEntry = Entry(frame1,textvariable=t_findtext,width=50)
+    tEntry.pack(side=LEFT)
+    tEntry.focus_set()
+
+    Label(frame2, text="Options: ").pack(side=LEFT)
+    Checkbutton(frame2, text="Match case", variable=t_match_case).pack(side=LEFT,padx=5)
+    Checkbutton(frame2, text="Wrap around", variable=t_wrap_around).pack(side=LEFT,padx=5)
+    Checkbutton(frame2, text="Search backwards", variable=t_search_backward).pack(side=LEFT,padx=5)
+
+    def close_func(*arg):
+        widget.tag_remove("search",1.0,END)
+        topwin.destroy()
+    button = Button(frame4, text='Find', command=text_finder).pack(side=TOP,pady=15, padx=10)
+    button = Button(frame4, text='Close', command=close_func).pack(side=TOP, padx=10)
+    
+    topwin.protocol('WM_DELETE_WINDOW', close_func)
+    topwin.bind('<Escape>', close_func)
+    topwin.bind('<Return>', text_finder)
 
 class File_editor:       
     def __init__(self,topwin,argv,**kwargs):
@@ -98,7 +195,7 @@ class File_editor:
         self.reload_file_list()
         self.topwin.bind('<Escape>', self.close_func)
         self.topwin.bind("<Control-a>", lambda x: widget_sel_all(self.Tbox))
-        self.Tbox.bind('<Control-f>',lambda x: search_text_dialog(self.Tbox))
+        self.Tbox.bind('<Control-f>',lambda x: search_text_dialog(self.Tbox,self.Tscroll))
         self.listbox.bind('<Button-1>', lambda x: self.topwin.after(20,self.file_loader))
         self.topwin.protocol('WM_DELETE_WINDOW', self.close_func)
         self.topwin.after(200,self.after_task)
