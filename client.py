@@ -343,7 +343,7 @@ def copy_paste_buttons(*arg):
 
 def sender_thread():
     global sender_thread_list, s, action_time
-    tim = 0
+    tim,pingtime = 0,0
     while True:
         if len(sender_thread_list) > 0:
             try:
@@ -357,12 +357,18 @@ def sender_thread():
                 break
         tim+=(0.15)
         if tim > 6:
-            sender_thread_list.append('kpALIVE::')
+            if pingtime == 4:
+                global Server_obj
+                sender_thread_list.append('PING::')
+                Server_obj.ping_start()
+                pingtime = 0
+            else: sender_thread_list.append('kpALIVE::')
             tim = 0
+            pingtime+=1
         sleep(0.15)
         
 def recv_thread():
-    global action_time, s, connected_server
+    global action_time, s, connected_server, Server_obj
     buff = ''
     while action_time is True:
         try:
@@ -378,7 +384,8 @@ def recv_thread():
             while True:
                 b = data.find('<e%$>')
                 if b is not -1:
-                    data_list.append(data[:b])
+                    if data[:b] == 'PING::': Server_obj.ping_end()
+                    else: data_list.append(data[:b])
                     if len(data[b:]) > 4:
                         data = data[b+len('<e%$>'):]
                 else:
@@ -395,16 +402,13 @@ def recv_thread():
 
 def jlost_reconnect():
     global connected_server,kill_reconnect,User_area
-    scroller = S.get()
-    T_ins_warning(T,S,'Connection lost, attempting reconnect')
+    TMAN_warning('Connection lost, attempting reconnect')
     clear_textbox(User_area,True)
     kill_reconnect = False
     cnt = 1
     while kill_reconnect is False:
         if cnt > 1:
-            T_ins_warning(T,S,'attempting reconnect '+str(cnt)+'. time')
-            if scroller[1] == 1.0:  
-                T.yview(END)
+            TMAN_warning('attempting reconnect '+str(cnt)+'. time')
         join_server(connected_server)
         cnt += 1
         sleep(15)
@@ -476,8 +480,8 @@ def join_srv_check(curselection,jaddr):
         join_server(jaddr)
                 
 def join_server(typing):
-    global username_saved, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server, ver, sender_thread_list
-    scroller = S.get()
+    global username_saved, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server
+    global ver, sender_thread_list, Server_obj
     try:
         action_time = False
         s.send('close::'+'<e%$>')
@@ -488,6 +492,7 @@ def join_server(typing):
     try:
         sender_thread_list = []
         if typing is not False:
+            joinaddr = typing
             TCP_IP = typing
             TCP_PORT = 44671
             write_settings('joinaddr',TCP_IP)
@@ -509,20 +514,11 @@ def join_server(typing):
         sleep(0.3)
         Thread(target=sender_thread).start()
         sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
+        sender_thread_list.append('RQINFO::')
+        Server_obj.address = joinaddr
         kill_reconnect = True
     except Exception as e:
-        e = str(e)
-        T.config(yscrollcommand=S.set,state="normal")
-        war = lenghten_name('WARNING: ',21)
-        T.insert(END, get_cur_time()+war+e+"\n", 'redcol')
-        T.config(yscrollcommand=S.set,state="disabled")
-    if scroller[1] == 1.0:  
-        T.yview(END)
-
-def scroller_to_end():
-    scroller = S.get()
-    if scroller[1] == 1.0:  
-        T.yview(END)
+        TMAN_warning(e)
 
 def open_address_no_http(address):
     webbrowser.open(address)
@@ -545,28 +541,25 @@ def Tbox_insert_lock(Tbx,Scr,text,tag):
 
 def T_ins_userlist():
     global USRLIST
-    T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Userlist]\n', 'light-grey-bg')
-    T.insert(END, '[Level] [AFK] [Name] [IP]\n', 'light-grey-bg')
+    TMAN_text('[Userlist]\n', 'light-grey-bg')
+    TMAN_text('[Level] [AFK] [Name] [IP] [Version]\n', 'light-grey-bg')
     for x in USRLIST:
         while len(x) < 5:
             x.append('')
         try:
             ## Inserts Online and Offline text tagged
             if x[1] == 'olfo-':
-                T.insert(END, x[0]+'\n','olfo-backgr')
+                TMAN_text(x[0]+'\n','olfo-backgr')
             else:
                 if x[0] == '' and x[1] == '' and x[2] == '':
                     pass
                 elif x[2]!='-1':
                     if x[4] == 'unknown' or x[4] == '':
-                        T.insert(END, x[2]+', '+x[3]+', '+x[0]+', '+x[1]+'\n', 'blackcol')
+                        TMAN_text(x[2]+', '+x[3]+', '+x[0]+', '+x[1]+'\n', 'blackcol')
                     else:
-                        T.insert(END, x[2]+', '+x[3]+', '+x[0]+', '+x[1]+', '+x[4]+'\n', 'blackcol')
+                        TMAN_text(x[2]+', '+x[3]+', '+x[0]+', '+x[1]+', '+x[4]+'\n', 'blackcol')
         except Exception as e:
-            print e
-    T.config(yscrollcommand=S.set,state="disabled")
-    T.yview(END)
+            TMAN_warning(e)
 
 def restore_toolbar():
     global show_toolbar, use_alternative_tlb, T, E, S, S2, User_area, toolbar
@@ -589,9 +582,8 @@ def restore_toolbar():
 
 def T_ins_help():
     global USRLIST
-    T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Help]\n', 'light-grey-bg')
-    T.insert(END, 'Type:\n/help to see this message \n/u to show userlist\n/log to show chatlog\n'+
+    TMAN_text('[Help]\n', 'light-grey-bg')
+    TMAN_text('Type:\n/help to see this message \n/u to show userlist\n/log to show chatlog\n'+
                 '/afk to go afk\n/ll to see all links\n'+'/reg "password" to register\n'+
                 '/auth "password" to authenticate\n/clear to clear textbox\n/share to share a file\n'+
                 '/dl "filename" to download\n'+
@@ -599,34 +591,23 @@ def T_ins_help():
                 '/files to open download folder\n'+
                 '/join to open server join window\n/ljoin to join last server\n'+
                 '/leave to leave\n/quit or /exit to close this application\n/about to open about window\n'+
-                '/changelog to open changelog\n/toolbar to show/hide toolbar\n'
+                '/changelog to open changelog\n/toolbar to show/hide toolbar\n/server to open server information window\n'
                 , 'light-grey-bg')
-    T.config(yscrollcommand=S.set,state="disabled")
-    T.yview(END)
 
 def T_ins_log():
-    T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Log]\n', 'light-grey-bg')
+    TMAN_text('[Log]\n', 'light-grey-bg')
     for x in userlog_list:
-        T.insert(END, x+'\n','light-grey-bg')
-    T.config(yscrollcommand=S.set,state="disabled")
-    T.yview(END)
+        TMAN_text(x+'\n','light-grey-bg')
 
 def T_ins_datalist():
-    T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[data_list]\n', 'light-grey-bg')
+    TMAN_text('[data_list]\n', 'light-grey-bg')
     for x in data_list:
-        T.insert(END, x+'\n','light-grey-bg')
-    T.config(yscrollcommand=S.set,state="disabled")
-    T.yview(END)
+        TMAN_text(x+'\n','light-grey-bg')
     
 def T_ins_linklist():
-    T.config(yscrollcommand=S.set,state="normal")
-    T.insert(END, '[Link list]\n', 'light-grey-bg')
+    TMAN_text('[Link list]\n', 'light-grey-bg')
     for x in linklist:
-        T.insert(END, x[1]+'\n','bluecol')
-    T.config(yscrollcommand=S.set,state="disabled")
-    T.yview(END)
+        TMAN_text(x[1]+'\n','bluecol')
 
 def send_afk():
     try:
@@ -636,32 +617,24 @@ def send_afk():
 
 def attempt_registration(s,authps):
     if len(authps) < 4:
-        T_ins_warning(T,S,'Too short')
+        TMAN_warning('Too short')
     else:
         try:
             sender_thread_list.append('aUSRREG::'+authps)
         except Exception as e:
-            T.config(yscrollcommand=S.set,state="normal")
-            war = lenghten_name('WARNING: ',21)
             if str(e)[:10] == '[Errno 32]':
-                T.insert(END, get_cur_time()+war+'Not connected\n', 'redcol')
+                TMAN_warning('Not connected')
             else:
-                T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
-            T.config(yscrollcommand=S.set,state="disabled")
-    T.yview(END)
+                TMAN_warning(e)
 
 def attempt_auth(s,authps):
     try:
         sender_thread_list.append('USRLOGI::'+authps)
     except Exception as e:
-        T.config(yscrollcommand=S.set,state="normal")
-        war = lenghten_name('WARNING: ',21)
         if str(e)[:10] == '[Errno 32]':
-            T.insert(END, get_cur_time()+war+'Not connected\n', 'redcol')
+            TMAN_warning('Not connected')
         else:
-            T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
-        T.config(yscrollcommand=S.set,state="disabled")
-    T.yview(END)
+            TMAN_warning(e)
 
 def auth_register(auth_reg_var,t_passwd):
     global s, passwd
@@ -673,7 +646,6 @@ def auth_register(auth_reg_var,t_passwd):
     elif auth_reg_var == 'auth':
         attempt_auth(s,passwd)
         print 'Auth with', passwd
-    T.yview(END)
     
 def t_auth_window(auth_or_register):
     global passwd
@@ -709,22 +681,10 @@ def T_ins_file_list():
     global file_list, s
     sender_thread_list.append('RQFILES::')
     def append_files():
-        T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, '[File list]\n', 'light-grey-bg')
+        TMAN_text('[File list]\n', 'light-grey-bg')
         for x in file_list:
-            T.insert(END, x[0]+' - '+x[1]+'\n', 'light-grey-bg')
-        T.config(yscrollcommand=S.set,state="disabled")
-        T.yview(END)
+            TMAN_text(x[0]+' - '+x[1]+'\n', 'light-grey-bg')
     root.after(300, append_files)
-
-def T_ins_warning(T,S,text):
-    scroller = S.get()
-    T.config(yscrollcommand=S.set,state="normal")
-    war = lenghten_name('WARNING: ',21)
-    T.insert(END, get_cur_time()+war+text+'\n', 'redcol')
-    T.config(yscrollcommand=S.set,state="disabled")
-    if scroller[1] == 1.0:  
-        T.yview(END)
 
 def chat_commands(text):
     global fdl_path
@@ -770,6 +730,9 @@ def chat_commands(text):
         About()
     elif text == '/toolbar':
         restore_toolbar()
+    elif text == '/server':
+        global Server_obj
+        Server_obj.server_info_window()
     else:
         return True
     return False
@@ -808,12 +771,11 @@ def enter_text(*arg):
                 if text[1] == '@':
                     c = text.find(']')
                     if c is not -1:
-                        T.config(yscrollcommand=S.set,state="normal")
                         name = lenghten_name('Sending private: ',21)
-                        T.insert(END, get_cur_time(), 'blackcol')
-                        T.insert(END, name, 'browncol')
-                        T.insert(END, text[1:]+'\n', 'blackcol')
-                        T.config(yscrollcommand=S.set,state="disabled")
+                        TMAN_text(get_cur_time(), 'blackcol')
+                        TMAN_text(name, 'browncol')
+                        TMAN_text(text[1:]+'\n', 'blackcol')
+                        
                         textt.set(text[:c+1])
                 else:
                     if b is not -1:
@@ -830,8 +792,7 @@ def enter_text(*arg):
                     mesig = mesig.encode('utf-8')
                     sender_thread_list.append(mesig)
                 except Exception as ee:
-                    T_ins_warning(T,S,str(ee))
-    T.yview(END)
+                    TMAN_warning(e)
 
 def clear_textbox(clt,disable):
     clt.config(yscrollcommand=S.set,state="normal")
@@ -842,23 +803,18 @@ def clear_textbox(clt,disable):
 def leave_server():
     global s,action_time, username_saved
     root.title("iSPTC - "+username_saved)
-    war = lenghten_name('WARNING: ',21)
     try:
         sender_thread_list.append('close::')
         action_time = False
         sleep(0.2)
         s.close()
         s = ''
-        T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, get_cur_time()+war+'Left server\n', 'redcol')
-        T.config(yscrollcommand=S.set,state="disabled")
+        TMAN_warning('Left server')
         User_area.config(state="normal")
         User_area.delete(1.0,END)
         User_area.config(state="disabled")
     except Exception as e:
-        T.config(yscrollcommand=S.set,state="normal")
-        T.insert(END, get_cur_time()+war+str(e)+'\n', 'redcol')
-        T.config(yscrollcommand=S.set,state="disabled")
+        TMAN_warning(e)
 
 def winf_is(vv):
     global windowfocus,icon_was_switched
@@ -1289,10 +1245,7 @@ def change_name(t_new_name,t_passwd,t_offline_msg):
         passwd = t_passwd.get()
         write_settings('usrauth',passwd)
         if len(new_name) <3:
-            T.config(yscrollcommand=S.set,state="normal")
-            war = lenghten_name('WARNING: ',21)
-            T.insert(END, get_cur_time()+war+'Name is too short\n', 'redcol')
-            T.config(yscrollcommand=S.set,state="disabled")
+            TMAN_warning('Name is too short')
         else:
             username_saved = new_name
             root.title("iSPTC - "+new_name)
@@ -2125,7 +2078,7 @@ def change_other_settings(a,c,e,f,g,h,i,j,k,l,m,n):
             pass
         configure_border_size(S,S_borderlen)
     except:
-        T_ins_warning(T,S,'Not a number')
+        TMAN_warning('Not a number')
 
     # Removes all root window widgets and adds new
     if show_users is not g or show_toolbar is not m or use_alternative_tlb is not n:
@@ -2143,7 +2096,7 @@ def change_other_settings(a,c,e,f,g,h,i,j,k,l,m,n):
         create_widgets()
         user_area_insert()
         if show_toolbar == 0:
-            T_ins_warning(T,S,'Toolbar can be restored by typing /toolbar')
+            TMAN_warning('Toolbar can be restored by typing /toolbar')
         
     show_ttime = f
     write_settings('show_ttime',f)
@@ -2508,7 +2461,7 @@ def autocomplete_name(*arg):
     global file_list
     is_private = False
     commandli = ('/help','/users','/log','/afk','/reg','/auth','/clear','/share','/file','/files','/file_list',
-                '/join','/ljoin','/leave','/changelog','/about','/quit','/exit','/datal', '/toolbar')
+                '/join','/ljoin','/leave','/changelog','/about','/quit','/exit','/datal', '/toolbar','/server')
     try:
     ## Finds the last word in entry widget
         text = textt.get()
@@ -2570,8 +2523,7 @@ def autocomplete_name(*arg):
                     except:
                         pass
     except Exception as e:
-        e = str(e)
-        T_ins_warning(T,S,e)
+        TMAN_warning(e)
     ## Stops tkinter from tabbing
     return "break"
 
@@ -2636,7 +2588,7 @@ def search_text_dialog(widget):
             else: start.set(pos2)
             Thread(target=color_tagger_thread,args=(ftext,back,nocase)).start()
         else:
-            T_ins_warning(T, S, 'Nothing found')
+            TMAN_warning('Nothing found')
     topwin = Toplevel()
     set_winicon(topwin,'icon_grey')
     topwin.title("Search dialog")
@@ -2747,11 +2699,7 @@ def file_recvd(conn):
     try:
         data = conn.recv(8192)
     except Exception as e:
-        e = str(e)
-        scroller = S.get()
-        T_ins_warning(T,S,e)
-        if scroller[1] == 1.0:  
-            T.yview(END)
+        TMAN_warning(e)
         if e == 'timed out':
             return 'TIMEOUT::'
     return data
@@ -2762,19 +2710,17 @@ def TCPconnect(ip,port):
     return contcp   
 
 def fldownloader_thread(name):
-    global connected_server, fdl_path, dl_ul_events, hyperlink_obj
+    global connected_server, fdl_path, dl_ul_events
     print 'File download thread started - ',name
     dl_ul_events.append([get_cur_time(),'Downloading',name])
     buflen, flstring = 0, ''
-    scroller = S.get()
     try:
         os.makedirs('downloads')
     except:
         pass
     tim = time()
-    Tbox_insert_lock(T,S,get_cur_time()+' Downloading "'+name+'"\n','blackcol')
-    if scroller[1] == 1.0:  
-            T.yview(END)
+    TMAN_text(get_cur_time()+' Downloading "'+name+'"\n','blackcol')
+    
     sf = TCPconnect(connected_server,44672)
     
     data = file_recvd(sf)
@@ -2797,22 +2743,20 @@ def fldownloader_thread(name):
             fh = open(fdl_path+name, 'ab')
             fh.write(flstring)
         except:
-            T_ins_warning(T,S,'Download path is wrong, saving in downloads/')
+            TMAN_warning('Download path is wrong, saving in downloads/')
             fh = open('downloads/'+name, 'ab')
             fh.write(flstring)
         fh.close()
         tim2 = round(time() - tim,2)
         buflen = len(flstring)
-        Tbox_insert_lock(T,S,get_cur_time()+' File downloaded in '+str(tim2)+'sec. - '+str(round(buflen/tim2/1000/1024,2))+' MB/s - ','blackcol')
-        Tbox_insert_lock(T,S, 'Browse files\n', hyperlink_obj.add('/files'))
+        TMAN_text(get_cur_time()+' File downloaded in '+str(tim2)+'sec. - '+str(round(buflen/tim2/1000/1024,2))+' MB/s - ','blackcol')
+        TMAN_browsef()
     else:
-        T_ins_warning(T,S,'File does not exist')
+        TMAN_warning('File does not exist')
     try:
         sf.close()
     except:
         pass
-    if scroller[1] == 1.0:  
-            T.yview(END)
     print 'File download thread stopped - ',name
     dl_ul_events.append([get_cur_time(),'Downloaded',name])
         
@@ -2821,15 +2765,12 @@ def share_file_thread(path,name):
     global connected_server, username, action_time, passwd, dl_ul_events
     print 'File share thread started - ',name
     dl_ul_events.append([get_cur_time(),'Uploading',name])
-    scroller = S.get()
     registered = False
     try:
         sf = TCPconnect(connected_server,44672)
         state = 'connected'
         tim = time()
-        Tbox_insert_lock(T,S,get_cur_time()+' Sending "'+name+'"\n','blackcol')
-        if scroller[1] == 1.0:  
-                T.yview(END)
+        TMAN_text(get_cur_time()+' Sending "'+name+'"\n','blackcol')
 
         data = file_recvd(sf)
         sleep(0.05)
@@ -2858,16 +2799,13 @@ def share_file_thread(path,name):
                         buf = fi.read(8192)
                         buflen += 1
                 tim2 = round(time() - tim,2)
-                Tbox_insert_lock(T,S,get_cur_time()+' File sent in '+str(tim2)+'sec. - '+str(round(buflen/tim2*8/1024,2))+' MB/s\n','blackcol')
+                TMAN_text(get_cur_time()+' File sent in '+str(tim2)+'sec. - '+str(round(buflen/tim2*8/1024,2))+' MB/s\n','blackcol')
                 sleep(1)
                 sf.send('ENDING::')
                 print 'File share thread stopped - ',name
                 dl_ul_events.append([get_cur_time(),'Uploaded',name])
     except Exception as e:
-        e = str(e)
-        T_ins_warning(T,S,e)
-    if scroller[1] == 1.0:  
-            T.yview(END)
+        TMAN_warning(e)
     try:
         sf.close
     except:
@@ -2924,9 +2862,8 @@ def load_lib_scripts(root):
 ##                sys.stderr.write("ERROR: missing python module: " + module + "\n")
 ##                sys.exit(1)
             except Exception as e:
-                e = str(e)
-                T_ins_warning(T, S, 'ERROR: loading '+module)
-                T_ins_warning(T, S, e)
+                TMAN_warning('ERROR: loading '+module)
+                TMAN_warning(e)
 
 def Changelog():
     global text_font, window_sizes
@@ -2945,8 +2882,7 @@ def Changelog():
             win_sizeY = ''.join(window_sizes[0][1])
             topwin.geometry(win_sizeX+'x'+win_sizeY)
     except Exception as e:
-        e = str(e)
-        T_ins_warning(T, S, e)
+        TMAN_warning(e)
     
     Tbox = Text(topwin, height=12, width=50,wrap=WORD)
     Tbox.tag_configure('blackcol', font=text_font, foreground='black')
@@ -2991,26 +2927,96 @@ def Changelog():
     topwin.bind("<Control-a>", widget_sel_all)
     Tbox.bind('<Control-f>',lambda x: search_text_dialog(Tbox))
 
+def get_values_from_text(text,value):
+    b = text.find(value+'=')
+    if b != -1:
+        c = text[b:].find(',')
+        if c != -1:
+            return text[b+1+len(value):c]
+        else:
+            return text[b+1+len(value):]
+    else:
+        return 'None'
+
+class Server:
+    def __init__(self):
+        self.address = ''
+        self.version = ''
+        self.ping = ''
+    def update(self,text):
+        self.version = get_values_from_text(text,'ver')
+
+    def ping_start(self):
+        self.ping_time = time()
+    def ping_end(self):
+        self.ping = str(round(time() - self.ping_time,2))
+        
+    def server_info_window(self):
+        topwin = Toplevel()
+        set_winicon(topwin,'icon_grey')
+        topwin.title("Server info")
+        topwin.minsize(300,250)
+        Label(topwin, text='Address: '+self.address).pack(anchor=NW,padx=20,pady=5)
+        Label(topwin, text='Version: '+self.version).pack(anchor=NW,padx=20,pady=5)
+        label_ping = Label(topwin, text='Ping: '+self.ping).pack(anchor=NW,padx=20,pady=5)
+        def close_func(*arg):
+            topwin.destroy()
+##        def refresh_values(*arg):
+##            label_ping.configure(text='Ping: '+self.ping)
+##            topwin.after(1000, refresh_values)
+        topwin.bind('<Escape>', close_func)
+##        topwin.after(1000, refresh_values)
+
+def TMAN_text(text,tag):
+    global TMAN
+    TMAN.queue.append(['Text',text,tag])
+def TMAN_warning(text):
+    global TMAN
+    TMAN.queue.append(['Warning',text])
+def TMAN_browsef():
+    global TMAN
+    TMAN.queue.append(['Browse files'])
+
 class T_manager:
-    def __init__(self,widget):
+    def __init__(self,widget,widget_scroll):
         self.widget = widget
+        self.widget_scroll = widget_scroll
+        self.queue = []
     def normal(self):
         self.widget.config(state="normal")
     def disabled(self):
         self.widget.config(state="disabled")
 
+    def update_queue(self):
+        if self.queue != []:
+            global hyperlink_obj
+            cnt = 0
+            scroller = self.widget_scroll.get()
+            for x in self.queue:
+                if x[0] == 'Warning': self.ins_warning(str(x[1]))
+                elif x[0] == 'Browse files':
+                    self.ins_text('Browse files', hyperlink_obj.add('/files'))
+                    self.ins_text('\n','blackcol')
+                elif x[0] == 'Text' : self.ins_text(x[1],x[2])
+                cnt += 1
+            for i in range(0,cnt):
+                del self.queue[0]
+            if scroller[1] == 1.0:  
+                    self.widget.yview(END)
+
     def ins_text(self,text,tag,*args,**kwargs):
+        global hyperlink_obj
         time = get_dict_item(kwargs,'time','False')
-        place = get_dict_item(kwargs,'place','END')
         self.normal()
-        if time == False: self.widget.insert(place, text, tag)
-        else: self.widget.insert(place, get_cur_time()+text, tag)
+        if time == 'False': self.widget.insert(END, text, tag)
+        else: self.widget.insert(END, get_cur_time()+text, tag)
         self.disabled()
         
     def ins_warning(self,text):
+        war = lenghten_name('WARNING: ',21)
         text = str(text)
         self.normal()
-        self.widget.insert(END, get_cur_time()+text, 'redcol')
+        self.widget.insert(END, get_cur_time()+war+text+'\n', 'redcol')
         self.disabled()
         
     def ins_server(self,text):
@@ -3476,7 +3482,7 @@ if __name__ == '__main__':
         chat_color_list = list(default_colors_list)
 
     ## Setting global vars
-    ver = '1.12'
+    ver = '1.13'
     sound_interval = 0
     msg_thrd = 0
     action_time = True
@@ -3503,8 +3509,11 @@ if __name__ == '__main__':
     textt.set("")
         
     def toolbar_menus(menu):
+        global Server_obj
         menu1 = Menu(menu,tearoff=0)
         menu.add_cascade(label='Server',menu=menu1)
+        menu1.add_command(label='Info', command=lambda: Server_obj.server_info_window())
+        menu1.add_separator()
         menu1.add_command(label='Join', command=join_typing)
         menu1.add_command(label='Join last', command=lambda: join_server(False))
         menu1.add_separator()
@@ -3558,7 +3567,7 @@ if __name__ == '__main__':
     ### Window widgets
     def create_widgets():
         global T,E,User_area,S,S2, usra_len, default_os_color, E_borderlen, T_borderlen, S_borderlen, toolbar
-        global show_toolbar, use_alternative_tlb, TMAN
+        global show_toolbar, use_alternative_tlb, TMAN, Server_obj
         if show_toolbar == 1:
             if use_alternative_tlb == 0:
                 toolbar = toolbar_default()
@@ -3569,7 +3578,8 @@ if __name__ == '__main__':
         S = Scrollbar(root)
         S2 = Scrollbar(root)
         T = Text(root, height=46, width=114,wrap=WORD)
-        TMAN = T_manager(T)
+        TMAN = T_manager(T,S)
+        Server_obj = Server()
         configure_border_size(E,E_borderlen)
         configure_border_size(T,T_borderlen)
         try:
@@ -3814,7 +3824,7 @@ if __name__ == '__main__':
     def task():
         global msg_recv,sound_interval,dsound_interval,username, task_loop_interval, leave_join, userlog_list
         global show_ttime,nadd_spaces,icon_was_switched,T,E,S,S2,User_area,hyperlink,connected_server, write_log
-        global file_list, thread_message_list, msg_thrd, TMAN
+        global file_list, thread_message_list, msg_thrd, TMAN, Server_obj
         for x in thread_message_list[msg_thrd:]:
             if x[0] == 'command':
                 enter_text('command_window',x[1])
@@ -3826,6 +3836,7 @@ if __name__ == '__main__':
         scroller = S.get()
         if sound_interval > 0:
             sound_interval-=float(task_loop_interval)/1000
+        TMAN.update_queue()
         if msg_recv < len(data_list):
             for x in range(msg_recv,len(data_list)):
                 ## Server messages
@@ -3874,6 +3885,8 @@ if __name__ == '__main__':
                     data_list[x] = data_list[x].rstrip()
                     root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
                     username = data_list[x][9:]
+                elif data_list[x][:9] == 'SRVINFO::':
+                    Server_obj.update(data_list[x][9:])
                 ## Messages from users
                 else:
                     TMAN.ins_message(data_list[x])

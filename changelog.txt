@@ -1,3 +1,10 @@
+## Client[1.13] - 2016-4-6
+### Added
+ - Added "Server" class that will hold and show server settings and ping times
+ - Added a text insertion queue to "T_manager" class TMAN object
+ - Moved all Chat textbox text insertion to TMAN object
+
+
 ## Client[1.12] - 2016-4-3
 ### Added
  - Chat text finder dialog hotkey - entry widget <Control-f>
@@ -120,7 +127,7 @@
 
 ## Client[1.05b] - 2016-2-8
 ### Added
- - Added script importer function (iImports scripts that are specified in lib/loadscripts.ini). After then, main(data_list, thread_message_list, dl_ul_events, entry_mlist) is run, each argument is a global variable.
+ - Added script importer function (Imports scripts that are specified in lib/loadscripts.ini). After then, main(data_list, thread_message_list, dl_ul_events, entry_mlist) is run, each argument is a global variable.
  - New icons
  - New, beautiful "About" window
  - Autocomplete now adds "]" after username instead of space when it's a private message
