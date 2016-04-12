@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 from socket import *
 from threading import Thread
-import threading, time
 from time import sleep
-ver = '1.06'
+import threading, time, ssl
+ver = '1.07'
 ##welcome_comment = '\n Private offline messages enabled for registered users'
 welcome_comment = ''
 welcome_msg= 'SSERVER::Welcome to inSecure Plain Text Chat server - ver: '+ver+' '+welcome_comment
@@ -379,7 +379,6 @@ def list_sender_thread(conn,lisst,typ):
             flsizemb = float(len(x[1]))/float(1052291)
             flsizemb =  round(flsizemb,2)
             event_list.append(['Send-Thread',conn,'WSERVER::'+x[0]+'  MB['+str(flsizemb)+'] '+' B['+str(len(x[1]))+']'])
-            sleep(0.02)
         event_list.append(['Send-Thread',conn,'WSERVER::Total size '+str(tflsize)])
     elif typ == 'filelist-list':
         sendlist = ''
@@ -399,7 +398,6 @@ def list_sender_thread(conn,lisst,typ):
             for words in x:
                 tstring += str(words)+' '
             event_list.append(['Send-Thread',conn,'WSERVER::'+tstring])
-            sleep(0.005)
 
 def remove_offline_usr(username2):
     cnt = 0
@@ -453,7 +451,8 @@ def usrLeaving(conn,username2,addr,threadip,i,username_set,authed_user,off_msg,r
     send_ulist_only()
 
 def eventThread():
-    global threadip, action_time
+    global threadip, action_time, threads
+    threadcnt = start_servers()
     user_count = 0
     sleep_more = 0
     while action_time:
@@ -473,8 +472,11 @@ def eventThread():
                     pass
             ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk,6client version
             elif x[0] == 'USR-APPEND':
-                threadip.append([x[1],x[2],x[3],x[4],x[5],x[6],x[7]])
+                threadip.append([x[1],x[2],x[3],x[4],x[5],x[6],x[7],x[8]])
                 user_count += 1
+                threadcnt += 1
+                if user_count < threads and action_time == True:
+                    Thread(target=clientHandler,args=(threadcnt,x[8])).start()
             elif x[0] == 'USR-REM':
                 usrLeaving(x[1],x[2],x[3],x[4],x[5],x[6],x[7],x[8],x[9])
                 user_count -= 1
@@ -483,7 +485,7 @@ def eventThread():
                 except Exception as e:
                     e = str(e)
                     print e
-                if action_time == True: Thread(target=clientHandler,args=(x[5],)).start()
+                if action_time == True: Thread(target=clientHandler,args=(x[5],x[10])).start()
             elif x[0] == 'Save-Users':
                 save_user_settings()
             cnt += 1
@@ -500,16 +502,23 @@ def eventThread():
     for x in threadip: x[1].close()
     
 
-def clientHandler(i):
+def clientHandler(i,use_ssl):
     global threadip, threads, msgprint_enabled, logging_enabled, welcome_msg, iplist, action_time, shared_filelist
     username,username2,username_set,authed_user,looping,off_msg = '','', False, True, False, '0'
     level, timeouts, usr_ver = 1, 0, 'unknown'
     if action_time == True:
-        conn, addr = s.accept() # awaits for a client to connect and then accepts 
-        print get_cur_time(),addr," connected!"
+        if use_ssl == True:
+            global s_ssl
+            conn, addr = s_ssl.accept()
+            ssl.wrap_socket(conn, server_side=True, certfile='cert.pem')
+            print get_cur_time(),addr," connected SSL!"
+        else:
+            global s
+            conn, addr = s.accept()
+            print get_cur_time(),addr," connected No SSL!"
         chatlog.append([get_cur_time(),addr[0]," connected!"])
-        ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl,5afk,6client version
-        event_list.append(['USR-APPEND',str(i),conn,'',[addr[0],addr[1]],1,'1',usr_ver])
+        ## 0Thread, 1connecton, 2usrname, 3[0]ip, 3[1]port, 4lvl, 5afk, 6client version, 7SSL
+        event_list.append(['USR-APPEND',str(i),conn,'',[addr[0],addr[1]],1,'1',usr_ver,use_ssl])
         cnt = 0
         for x in range(1000):
             sleep(0.01)
@@ -525,7 +534,7 @@ def clientHandler(i):
             if data_list == []:
                 data_list = ['close::']
             for data in data_list:
-                if data != 'kpALIVE::' and data != 'TIMEOUT::':
+                if data != 'kpALIVE::' and data != 'TIMEOUT::' and data != 'PING::':
                     chatmlog.append([get_cur_time(),username,data])
                 ## User messages
                 if data[0:9] == 'MESSAGE::' and username_set is True:
@@ -546,7 +555,11 @@ def clientHandler(i):
                             event_list.append(['Send-Thread',conn,'WSERVER::Sending '+str(len(chatmlog))+' lines'])
                             Thread(target=list_sender_thread,args=(conn,chatmlog,'',)).start()
                         elif data == 'MESSAGE::s/threadip':
-                            Thread(target=list_sender_thread,args=(conn,threadip,'',)).start()
+                            templist = []
+                            for x in threadip:
+                                templist.append((x[0],x[3],x[7],x[2]))
+                            Thread(target=list_sender_thread,args=(conn,templist,'',)).start()
+                            templist = []
                         elif data == 'MESSAGE::s/fld':
                             for x in shared_filelist:
                                 fh = open(x[0], 'a')
@@ -589,9 +602,9 @@ def clientHandler(i):
                 ## Leaving2
                 elif data == 'close::' or data == 'TIMEOUT::':
                     if data == 'close::':
-                        event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no'])
+                        event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'no',use_ssl])
                     else:
-                        event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::'])
+                        event_list.append(['USR-REM',conn,username2,addr,threadip,i,username_set,authed_user,off_msg,'TIMEOUT::',use_ssl])
                     looping = False
                     break
                 ## Requesting file list
@@ -665,10 +678,12 @@ def clientHandler(i):
                             if x[0] == str(i):
                                 x[6] = usr_ver
                         send_ulist_only()
-                                
-                    else:
-        ##                sleep(0.1)
-        ##                conn.send('WSERVER::You have no power here')
+                elif data == 'PING::':
+                    event_list.append(['Send-Thread',conn,'PING::'])
+                elif data == 'RQINFO::':
+                    global ver
+                    event_list.append(['Send-Thread',conn,'SRVINFO::ver='+ver+',version='+ver])
+                elif data == 'kpALIVE::':
                         pass
                 ## AFK
                 elif data[0:9] == 'aAFKAFK::':
@@ -779,14 +794,11 @@ def clientHandler(i):
                         send_offline_msg(username_set,authed_user,username2,conn)
             
                 else:
-                    if data == 'kpALIVE::':
-                        pass
-                    else:
-                        sleep(0.05)
-                        event_list.append(['Send-Thread',conn,"WSERVER::We don't accept this"])
+                    sleep(0.05)
+                    event_list.append(['Send-Thread',conn,"WSERVER::We don't accept this"])
 
 
-def fileserver_handler():
+def fileserver_handler(threadcnt):
     global shared_filelist, sf, action_time
     sf = socket(AF_INET, SOCK_STREAM)
     try:
@@ -798,9 +810,9 @@ def fileserver_handler():
     sf.listen(5)
     print "File server is running......"
     
-    for i in range(1,6):
+    for i in range(1,threadcnt+1):
         new_fileserver_thread(i,sf)
-    print '5 threads started\n'
+    print '5 threads'
     while action_time:
         cnt = 0
         for x in shared_filelist:
@@ -965,11 +977,61 @@ def reset_offmsg_list():
             if x[2] == '1':
                 off_users.append(x[0])
 
+def start_servers():
+    global s,s_ssl,sf, action_time, msgprint_enabled, log_enabled, iplist, threads
+    chat_threads = 10
+    chat_threads_ssl = 10
+    file_server_threads = 5
+    ## Chat server No-SSL
+    s = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
+    try:
+        s.bind(('', 44671)) # tells the socket to bind to localhost on port 44671
+    except:
+        print "Can't bind chat address"
+        sleep(2)
+        shut_down_servers()
+        quit()
+    s.listen(threads) # number of connections listening for
+    print "Chat server is running......"
+
+    for i in range(1,1+chat_threads):
+        Thread(target=clientHandler,args=(i,False)).start()
+        print i
+    ## Chat server SSL
+    s_ssl = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
+    try:
+        s_ssl.bind(('', 44673)) # tells the socket to bind to localhost on port 44673
+    except:
+        print "Can't bind chat SSL address"
+        sleep(2)
+        shut_down_servers()
+        quit()
+    s_ssl.listen(threads) # number of connections listening for
+    print "Chat server SSL is running......"
+
+    for i in range(1+chat_threads,2+chat_threads+1+chat_threads_ssl):
+        Thread(target=clientHandler,args=(i,True)).start()
+        print i
+
+    ## Fileserver
+    Thread(target=fileserver_handler,args=(file_server_threads,)).start()
+    ## Other
+    sleep(0.3)
+    
+    sleep(0.3)
+    print 'eventThread started'
+    print 'Active thread count: '+str(threading.active_count()-1)
+    return chat_threads+chat_threads_ssl
+
 def shut_down_servers():
-    global s, sf, action_time
+    global s, s_ssl, sf, action_time
     action_time = False
-    s.shutdown(SHUT_RDWR)
-    sf.shutdown(SHUT_RDWR)
+    try: s.shutdown(SHUT_RDWR)
+    except: pass
+    try: sf.shutdown(SHUT_RDWR)
+    except: pass
+    try: s_ssl.shutdown(SHUT_RDWR)
+    except: pass
     
 
 threads = int(read_settings('threadcnt=',60))
@@ -981,29 +1043,12 @@ msgprint_enabled = int(read_settings('msgprint=',0))
 file_time = int(read_settings('file_time=',2900))
 reset_offmsg_list()
 def main(): # main function
-    global s,sf, action_time, msgprint_enabled, log_enabled, iplist, threads
-    ## Chat server
-    s = socket(AF_INET, SOCK_STREAM) # creates our socket; TCP socket
-    try:
-        s.bind(('', 44671)) # tells the socket to bind to localhost on port 44671
-    except:
-        print "Can't bind chat address"
-        sleep(2)
-        quit()
-    s.listen(threads) # number of connections listening for
-    print "Chat server is running......"
-
-    for i in range(1,1+threads):
-        Thread(target=clientHandler,args=(i,)).start()
-    print str(threading.active_count()-1)+' threads started\n'
-    
-    Thread(target=fileserver_handler).start()
-    
+    global s,s_ssl,sf, action_time, msgprint_enabled, log_enabled, iplist, threads
     Thread(target=eventThread).start()
-    print 'eventThread started\n'
+    sleep(0.6)
 
     while action_time:
-        msg = raw_input('::: ')
+        msg = raw_input('\n::: ')
         msg = str(msg)
         if msg == 'quit':
             shut_down_servers()
@@ -1017,7 +1062,7 @@ def main(): # main function
             
         elif msg == 'threadip':
             for x in threadip:
-                print x
+                print x[0],x[3],x[7],x[2]
         elif msg == 'iplist':
             for x in iplist:
                 print x
@@ -1098,7 +1143,7 @@ def main(): # main function
                 x = 0
             threads += x
             for i in range(threads+1,threads+1+x):
-                Thread(target=clientHandler,args=(i,)).start()
+                Thread(target=clientHandler,args=(i,False)).start()
         elif msg == 'events':
             for x in event_list:
                 print x

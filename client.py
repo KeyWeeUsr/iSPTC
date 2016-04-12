@@ -25,7 +25,7 @@ from tkColorChooser import askcolor
 from subprocess import *
 from PIL import Image as Pillow_image
 from PIL import ImageTk
-import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib
+import socket,os,platform,webbrowser, tkFont, urllib, urllib2, tkMessageBox, importlib, ssl
 
 def set_winicon(window,name):
     OS = platform.system()
@@ -401,12 +401,13 @@ def recv_thread():
             Thread(target=jlost_reconnect).start()
 
 def jlost_reconnect():
-    global connected_server,kill_reconnect,User_area
+    global connected_server,kill_reconnect,User_area, action_time
     TMAN_warning('Connection lost, attempting reconnect')
     clear_textbox(User_area,True)
     kill_reconnect = False
     cnt = 1
     while kill_reconnect is False:
+        if action_time == False: break
         if cnt > 1:
             TMAN_warning('attempting reconnect '+str(cnt)+'. time')
         join_server(connected_server)
@@ -415,8 +416,26 @@ def jlost_reconnect():
         if cnt == 50:
             kill_reconnect = True
         
-def join_typing():
-    global server_list
+def join_server_window():
+    def save_and_jsrvcheck(*arg):
+        global use_ssl
+        use_ssl = t_use_ssl.get()
+        write_settings('use_ssl',use_ssl)
+        join_srv_check(display.curselection(),jaddr.get())
+        jsrv.destroy()
+    def closewin():
+        global use_ssl
+        use_ssl = t_use_ssl.get()
+        write_settings('use_ssl',use_ssl)
+        jsrv.destroy()     
+    def cmdbind(*arg):
+        global use_ssl
+        join_srv_check(display.curselection(),jaddr.get())
+        use_ssl = t_use_ssl.get()
+        write_settings('use_ssl',use_ssl)
+        jsrv.destroy()
+        
+    global server_list, use_ssl
     server_list = []
     temp_text = readf('load/serverlist.ini')
     for x in temp_text:
@@ -450,19 +469,19 @@ def join_typing():
     usrEntry = Entry(jsrv,textvariable=jaddr)
     usrEntry.pack(side=TOP)
     usrEntry.focus_set()
+    t_use_ssl = IntVar()
+    t_use_ssl.set(use_ssl)
+    Checkbutton(jsrv,text="Use SSL",variable=t_use_ssl).pack(side=TOP)
+
     buttonframe = Frame(jsrv, height=30,width=120, relief=SUNKEN)
     buttonframe.pack_propagate(0)
     buttonframe.pack(padx=10,pady=20, side=TOP)
-    button = Button(buttonframe, text='Join',command=lambda: {join_srv_check(display.curselection(),jaddr.get()),
-                                                                jsrv.destroy()})
+    button = Button(buttonframe, text='Join',command=save_and_jsrvcheck)
     button.pack(fill=BOTH, expand=1)
-    def cmdbind(*arg):
-        join_srv_check(display.curselection(),jaddr.get())
-        jsrv.destroy()
+
     jsrv.bind('<Return>', cmdbind)
-    def close_func(*arg):
-        jsrv.destroy()
-    jsrv.bind('<Escape>', close_func)
+    jsrv.bind('<Escape>', closewin)
+    jsrv.protocol('WM_DELETE_WINDOW', closewin)
 
 def join_srv_check(curselection,jaddr):
     global server_list
@@ -481,7 +500,7 @@ def join_srv_check(curselection,jaddr):
                 
 def join_server(typing):
     global username_saved, s, action_time, passwd, autoauth, offline_msg, kill_reconnect, connected_server
-    global ver, sender_thread_list, Server_obj
+    global ver, sender_thread_list, Server_obj, use_ssl
     try:
         action_time = False
         s.send('close::'+'<e%$>')
@@ -489,33 +508,46 @@ def join_server(typing):
         s.close()
     except:
         pass
+    if use_ssl == 1: TCP_PORT = 44673
+    else: TCP_PORT = 44671
     try:
         sender_thread_list = []
         if typing is not False:
             joinaddr = typing
             TCP_IP = typing
-            TCP_PORT = 44671
             write_settings('joinaddr',TCP_IP)
             connected_server = typing
         else:
             joinaddr = str(read_settings('joinaddr=',''))
             TCP_IP = joinaddr
-            TCP_PORT = 44671
             connected_server = joinaddr
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         print 'joining',TCP_IP, TCP_PORT
         s.connect((TCP_IP, TCP_PORT))
+        getadr_info = socket.getaddrinfo(TCP_IP, TCP_PORT)[0][4]
+                                 
+        Server_obj.use_ssl = 'No'
+        if use_ssl == 1:
+            try:
+                ssl.wrap_socket(s)
+                Server_obj.use_ssl = 'Yes'
+            except Exception as e:
+                Server_obj.use_ssl = 'No'
+                TMAN_warning('SSL not available')
+                TMAN_warning(e)
+        
         action_time = True
         Thread(target=recv_thread).start()
         if passwd is '' or autoauth is 0:
             s.send('USRINFO::'+username_saved+'<e%$>')
         else:
             s.send('USRINFO::'+username_saved+']'+passwd+'<e%$>')
-        sleep(0.3)
+        sleep(0.2)
         Thread(target=sender_thread).start()
         sender_thread_list.append('CONFIGR::offmsg='+str(offline_msg)+' ver=iSPTC-'+ver)
         sender_thread_list.append('RQINFO::')
-        Server_obj.address = joinaddr
+        Server_obj.address = str(getadr_info[0])
+        Server_obj.port = str(getadr_info[1])
         kill_reconnect = True
     except Exception as e:
         TMAN_warning(e)
@@ -531,6 +563,15 @@ def open_address_in_webbrowser(address):
         webbrowser.open('http://'+address)
     else:
         webbrowser.open(address)
+
+def T_ins_warning(T,S,text):
+    scroller = S.get()
+    T.config(yscrollcommand=S.set,state="normal")
+    war = lenghten_name('WARNING: ',21)
+    T.insert(END, get_cur_time()+war+text+'\n', 'redcol')
+    T.config(yscrollcommand=S.set,state="disabled")
+    if scroller[1] == 1.0:  
+        T.yview(END)
 
 def Tbox_insert_lock(Tbx,Scr,text,tag):
     scroller = Scr.get()
@@ -717,7 +758,7 @@ def chat_commands(text):
     elif text == '/files':
         open_address_no_http(fdl_path)
     elif text == '/join':
-        join_typing()
+        join_server_window()
     elif text == '/ljoin':
         join_server(False)
     elif text == '/leave':
@@ -2167,16 +2208,16 @@ def other_menu():
     Checkbutton(frame, text="Enable autoauthentication", variable=t_autoauth).pack(anchor=NW)
     Checkbutton(frame, text="Enable autojoin", variable=t_autojoin).pack(anchor=NW)
     Label(frame, text="\nLog file time:",justify = LEFT).pack(anchor=NW)
-    Radiobutton(frame,text="Show full",variable=t_log_time,value=3).pack(anchor=NW)
-    Radiobutton(frame,text="Without seconds",variable=t_log_time,value=2).pack(anchor=NW)
-    Radiobutton(frame,text="Hide",variable=t_log_time,value=1).pack(anchor=NW)
+    Radiobutton(frame, text="Show full",variable=t_log_time,value=3).pack(anchor=NW)
+    Radiobutton(frame, text="Without seconds",variable=t_log_time,value=2).pack(anchor=NW)
+    Radiobutton(frame, text="Hide",variable=t_log_time,value=1).pack(anchor=NW)
 
     Checkbutton(frame2, text="Enable log writing", variable=t_write_log).pack(anchor=NW)
     Checkbutton(frame2, text="Force 19chr length usernames", variable=t_lenghten).pack(anchor=NW)
     Label(frame2, text="\n\nText box time:",justify = LEFT).pack(anchor=NW)
-    Radiobutton(frame2,text="Show full",variable=t_box_time,value=3).pack(anchor=NW)
-    Radiobutton(frame2,text="Without seconds",variable=t_box_time,value=2).pack(anchor=NW)
-    Radiobutton(frame2,text="Hide",variable=t_box_time,value=1).pack(anchor=NW)
+    Radiobutton(frame2, text="Show full",variable=t_box_time,value=3).pack(anchor=NW)
+    Radiobutton(frame2, text="Without seconds",variable=t_box_time,value=2).pack(anchor=NW)
+    Radiobutton(frame2, text="Hide",variable=t_box_time,value=1).pack(anchor=NW)
 
     Checkbutton(frame4, text="Show user box", variable=t_show_users).pack(anchor=NW)
     Checkbutton(frame4, text="Show toolbar", variable=t_show_toolbar).pack(anchor=NW)
@@ -2940,9 +2981,11 @@ def get_values_from_text(text,value):
 
 class Server:
     def __init__(self):
-        self.address = ''
-        self.version = ''
-        self.ping = ''
+        self.address = ' '
+        self.port = ' '
+        self.version = ' '
+        self.ping = ' '
+        self.use_ssl = 'No'
     def update(self,text):
         self.version = get_values_from_text(text,'ver')
 
@@ -2950,6 +2993,10 @@ class Server:
         self.ping_time = time()
     def ping_end(self):
         self.ping = str(round(time() - self.ping_time,2))
+
+    def return_ssl(self):
+        if self.use_ssl == 'Yes': return 'SSL'
+        else: return 'No-SSL'
         
     def server_info_window(self):
         topwin = Toplevel()
@@ -2957,6 +3004,8 @@ class Server:
         topwin.title("Server info")
         topwin.minsize(300,250)
         Label(topwin, text='Address: '+self.address).pack(anchor=NW,padx=20,pady=5)
+        Label(topwin, text='Port: '+self.port).pack(anchor=NW,padx=20,pady=5)
+        Label(topwin, text='SSL: '+self.use_ssl).pack(anchor=NW,padx=20,pady=5)
         Label(topwin, text='Version: '+self.version).pack(anchor=NW,padx=20,pady=5)
         label_ping = Label(topwin, text='Ping: '+self.ping).pack(anchor=NW,padx=20,pady=5)
         def close_func(*arg):
@@ -3438,6 +3487,7 @@ if __name__ == '__main__':
     S_borderlen = int(read_settings('S_borderlen=',1))
     show_toolbar = int(read_settings('show_toolbar=',1))
     use_alternative_tlb = int(read_settings('use_alternative_tlb=',0))
+    use_ssl = int(read_settings('use_ssl=',1))
     default_colors_list = [['chat','Warnings','redcol','red','white'],
                         ['chat','Server msg','bluecol','blue','white'],
                         ['chat','Server warnings','browncol','#862d2d','white'],
@@ -3482,7 +3532,7 @@ if __name__ == '__main__':
         chat_color_list = list(default_colors_list)
 
     ## Setting global vars
-    ver = '1.13'
+    ver = '1.14'
     sound_interval = 0
     msg_thrd = 0
     action_time = True
@@ -3514,7 +3564,7 @@ if __name__ == '__main__':
         menu.add_cascade(label='Server',menu=menu1)
         menu1.add_command(label='Info', command=lambda: Server_obj.server_info_window())
         menu1.add_separator()
-        menu1.add_command(label='Join', command=join_typing)
+        menu1.add_command(label='Join', command=join_server_window)
         menu1.add_command(label='Join last', command=lambda: join_server(False))
         menu1.add_separator()
         menu1.add_command(label='Leave', command=leave_server)
@@ -3882,8 +3932,11 @@ if __name__ == '__main__':
                     organise_USRLIST(data_list[x][9:])
                 ## User name change
                 elif data_list[x][:9] == 'DUPLICT::':
+                    global use_ssl
+                    if use_ssl == 1: use_ssl22 = 'SSL'
+                    else: use_ssl22 = 'No-SSL'
                     data_list[x] = data_list[x].rstrip()
-                    root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server)
+                    root.title("iSPTC - "+data_list[x][9:]+' - '+connected_server+' - '+Server_obj.return_ssl())
                     username = data_list[x][9:]
                 elif data_list[x][:9] == 'SRVINFO::':
                     Server_obj.update(data_list[x][9:])
