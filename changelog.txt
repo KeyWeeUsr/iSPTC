@@ -1,8 +1,26 @@
-## Client[1.13] - 2016-4-6
+## Client[1.14] - 2016-4-nyet
 ### Added
- - Added "Server" class that will hold and show server settings and ping times
- - Added a text insertion queue to "T_manager" class TMAN object
- - Moved all Chat textbox text insertion to TMAN object
+ - no_gui mode, run with "nogui" or "-nogui" argument to use it
+
+## Server[1.08] - 2016-4-nyet
+### Changed
+ - Increased timeout from 30 to 120 seconds
+
+
+## Client[1.13] - 2016-4-12
+### Added
+ - SSL on port 44673, enabled by default
+ - New Server/Info submenu -  shows server settings and ping times
+ - Client pings the server and checks ping time periodically
+### Changed
+ - Moved all Chat text insertion to main thread
+
+## Server[1.07] - 2016-4-12
+### Added
+ - Returns "PING::" when "PING::" is received 
+ - SSL chat on port 44673, uses "cert.pem" file in same folder as certificate
+### Changed
+ - Starts with a minimal amount of client threads (10 regular socket and 10 ssl socket by default) and adds more when new users join instead of starting all at startup
 
 
 ## Client[1.12] - 2016-4-3
@@ -210,6 +228,7 @@
 ## Server[0.99b] - 2016-1-29
 ### Fixed
  - Private offline messages get delivered again
+
 
 
 ## Client[1.00] - 2016-1-28
